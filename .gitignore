@@ -18,3 +18,9 @@ db/*.db
 .vscode/
 .idea/
 *.DS_Store
+
+# Profil Chrome généré par undetected-chromedriver
+src/scraping_profile/
+
+# Fichiers locaux divers
+Installer Python.txt

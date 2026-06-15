@@ -19,6 +19,20 @@ def _charger_annonces(source: str, recherche: dict, day: int = 1) -> list:
     return charger(recherche, day=day)
 
 
+def _ouvrir_session_scraping(source: str):
+    """Lance Chrome une fois avant la boucle de recherches (mobile.de uniquement)."""
+    if source == "mobile.de":
+        from src.sources.mobile_de import ouvrir_session
+        ouvrir_session()
+
+
+def _fermer_session_scraping(source: str):
+    """Ferme Chrome après la boucle de recherches."""
+    if source == "mobile.de":
+        from src.sources.mobile_de import fermer_session
+        fermer_session()
+
+
 def _dedup_liste_interne(annonces: list) -> list:
     """Supprime les doublons au sein d'un même fichier/réponse (même listing_id)."""
     seen = set()
@@ -60,61 +74,68 @@ def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notif
 
     total_lues = total_nouvelles = total_notifiees = 0
 
-    for recherche in recherches:
-        search_id = recherche["search_id"]
-        nom = recherche.get("nom_recherche", search_id)
-        print(f"\n[--] Recherche : {nom}")
+    # Ouvrir le navigateur une seule fois pour toutes les recherches du run
+    _ouvrir_session_scraping(source)
+    try:
+        for recherche in recherches:
+            search_id = recherche["search_id"]
+            nom = recherche.get("nom_recherche", search_id)
+            print(f"\n[--] Recherche : {nom}")
 
-        # 1. Charger et dédoublonner les annonces de la source
-        annonces_brutes = _dedup_liste_interne(_charger_annonces(source, recherche, day))
-        total_lues += len(annonces_brutes)
-        print(f"  -> {len(annonces_brutes)} annonces chargees")
+            # 1. Charger et dédoublonner les annonces de la source
+            annonces_brutes = _dedup_liste_interne(_charger_annonces(source, recherche, day))
+            total_lues += len(annonces_brutes)
+            print(f"  -> {len(annonces_brutes)} annonces chargees")
 
-        # 2. Séparer nouvelles vs déjà vues (une seule requête SQL)
-        conn = get_conn()
-        nouvelles = filtrer_nouvelles_annonces(annonces_brutes, search_id, conn)
-        conn.close()
-        ids_nouvelles = {a["listing_id"] for a in nouvelles}
-        deja_vues = [a for a in annonces_brutes if a["listing_id"] not in ids_nouvelles]
-        print(f"  -> {len(nouvelles)} nouvelles, {len(deja_vues)} deja vues")
-        total_nouvelles += len(nouvelles)
+            # 2. Séparer nouvelles vs déjà vues (une seule requête SQL)
+            conn = get_conn()
+            nouvelles = filtrer_nouvelles_annonces(annonces_brutes, search_id, conn)
+            conn.close()
+            ids_nouvelles = {a["listing_id"] for a in nouvelles}
+            deja_vues = [a for a in annonces_brutes if a["listing_id"] not in ids_nouvelles]
+            print(f"  -> {len(nouvelles)} nouvelles, {len(deja_vues)} deja vues")
+            total_nouvelles += len(nouvelles)
 
-        # 3. Scorer + enregistrer les nouvelles annonces
-        annonces_scorees = []
-        for ann in nouvelles:
-            enrichie = _enrichir(ann, search_id, scorer_annonce(ann, recherche), est_nouvelle=True)
-            annonces_scorees.append(enrichie)
-            upsert_annonce(enrichie)
+            # 3. Scorer + enregistrer les nouvelles annonces
+            annonces_scorees = []
+            for ann in nouvelles:
+                enrichie = _enrichir(ann, search_id, scorer_annonce(ann, recherche), est_nouvelle=True)
+                annonces_scorees.append(enrichie)
+                upsert_annonce(enrichie)
 
-        # 4. Mettre à jour les annonces déjà vues et détecter les baisses de prix
-        baisses = []
-        for ann in deja_vues:
-            enrichie = _enrichir(ann, search_id, scorer_annonce(ann, recherche), est_nouvelle=False)
-            _, baisse_detectee = upsert_annonce(enrichie)
-            if baisse_detectee:
-                # Relire le montant de baisse calculé et stocké par upsert_annonce
-                conn2 = get_conn()
-                row = conn2.execute(
-                    "SELECT baisse_prix FROM annonces_vues WHERE search_id=? AND listing_id=?",
-                    (search_id, ann["listing_id"]),
-                ).fetchone()
-                conn2.close()
-                baisses.append({**enrichie, "baisse_prix": row["baisse_prix"] if row else 0})
+            # 4. Mettre à jour les annonces déjà vues et détecter les baisses de prix
+            baisses = []
+            for ann in deja_vues:
+                enrichie = _enrichir(ann, search_id, scorer_annonce(ann, recherche), est_nouvelle=False)
+                _, baisse_detectee = upsert_annonce(enrichie)
+                if baisse_detectee:
+                    # Relire le montant de baisse calculé et stocké par upsert_annonce
+                    conn2 = get_conn()
+                    row = conn2.execute(
+                        "SELECT baisse_prix FROM annonces_vues WHERE search_id=? AND listing_id=?",
+                        (search_id, ann["listing_id"]),
+                    ).fetchone()
+                    conn2.close()
+                    baisses.append({**enrichie, "baisse_prix": row["baisse_prix"] if row else 0})
 
-        if baisses:
-            print(f"  -> {len(baisses)} baisse(s) de prix detectee(s) !")
+            if baisses:
+                print(f"  -> {len(baisses)} baisse(s) de prix detectee(s) !")
 
-        # 5. Notifier selon les déclencheurs configurés
-        top = selectionner_top_annonces(annonces_scorees, recherche)
-        a_notifier = (top if notify_nouvelles else []) + (baisses if notify_baisses else [])
+            # 5. Notifier selon les déclencheurs configurés
+            top = selectionner_top_annonces(annonces_scorees, recherche)
+            a_notifier = (top if notify_nouvelles else []) + (baisses if notify_baisses else [])
 
-        print(f"  -> {len(a_notifier)} annonce(s) a notifier")
+            print(f"  -> {len(a_notifier)} annonce(s) a notifier")
 
-        if a_notifier:
-            notifier(recherche, a_notifier)
-            for ann in top:
-                marquer_notifiee(ann["seen_id"])
-            total_notifiees += len(a_notifier)
+            if a_notifier:
+                notifier(recherche, a_notifier)
+                for ann in top:
+                    marquer_notifiee(ann["seen_id"])
+                total_notifiees += len(a_notifier)
+
+    finally:
+        # Fermer le navigateur même si une erreur survient
+        _fermer_session_scraping(source)
 
     # 6. Sauvegarder le bilan du run
     save_run({

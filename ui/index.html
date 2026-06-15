@@ -467,6 +467,185 @@ button.btn-loading { opacity: 0.6; cursor: wait; pointer-events: none; }
 /* ── Loading ── */
 .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 4px; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Bouton mode sombre ── */
+.btn-theme {
+  background: rgba(255,255,255,.12); border: none; border-radius: 8px;
+  color: white; padding: 7px 10px; font-size: 1rem; cursor: pointer;
+  line-height: 1; transition: background .2s; flex-shrink: 0;
+}
+.btn-theme:hover { background: rgba(255,255,255,.22); }
+
+/* ══════════════ MODE SOMBRE ══════════════ */
+html[data-theme="dark"] body { background: #111318; color: #dde1f0; }
+
+/* Navigation */
+html[data-theme="dark"] nav { background: #1c1f2e; border-bottom-color: #2e3350; }
+html[data-theme="dark"] .nav-tab { color: #8b93b8; }
+html[data-theme="dark"] .nav-tab:hover { color: #dde1f0; }
+html[data-theme="dark"] .nav-tab.active { border-bottom-color: #5c9ef7; color: #dde1f0; }
+
+/* Cards */
+html[data-theme="dark"] .card { background: #1c1f2e; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+html[data-theme="dark"] .card-title { color: #dde1f0; }
+html[data-theme="dark"] .empty-state { color: #5c6494; }
+html[data-theme="dark"] .empty-state h3 { color: #8b93b8; }
+html[data-theme="dark"] .empty-state .arrow { color: #5c9ef7; }
+
+/* Formulaires */
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea { background: #22263a; border-color: #2e3350; color: #dde1f0; }
+html[data-theme="dark"] input:focus,
+html[data-theme="dark"] select:focus,
+html[data-theme="dark"] textarea:focus { border-color: #5c9ef7; }
+html[data-theme="dark"] label { color: #b0b8d8; }
+html[data-theme="dark"] label .hint { color: #5c6494; }
+html[data-theme="dark"] details { border-color: #2e3350; }
+html[data-theme="dark"] details summary { color: #8b93b8; }
+html[data-theme="dark"] select option { background: #22263a; }
+
+/* Boutons */
+html[data-theme="dark"] .btn-primary { background: #2e3a70; color: #c5d0ff; }
+html[data-theme="dark"] .btn-secondary { background: #22263a; color: #b0b8d8; }
+html[data-theme="dark"] .btn-test { background: #22263a; color: #b0b8d8; }
+html[data-theme="dark"] .btn-test:hover { background: #2e3350; }
+html[data-theme="dark"] .btn-sm { background: #22263a; border-color: #2e3350; color: #8b93b8; }
+html[data-theme="dark"] .btn-sm:hover { background: #1e2545; border-color: #5c9ef7; color: #5c9ef7; }
+html[data-theme="dark"] .btn-sm-ghost { background: #22263a; color: #8b93b8; }
+html[data-theme="dark"] .btn-sm-ghost:hover { background: #2e3350; }
+html[data-theme="dark"] .btn-sm-ghost.danger:hover { background: #3d1212; color: #f87171; }
+html[data-theme="dark"] .btn-detail { background: #22263a; color: #8b93b8; }
+html[data-theme="dark"] .btn-add-search { color: #5c9ef7; border-top-color: #2e3350; }
+html[data-theme="dark"] .btn-add-search:hover { background: #1e2545; }
+html[data-theme="dark"] .btn-add-slot { border-color: #2e3350; color: #5c6494; }
+html[data-theme="dark"] .btn-add-slot:hover { border-color: #5c9ef7; color: #5c9ef7; }
+html[data-theme="dark"] .btn-back { color: #5c9ef7; }
+html[data-theme="dark"] .btn-lien-del { color: #3a4060; }
+html[data-theme="dark"] .btn-lien-del:hover { color: #f87171; }
+html[data-theme="dark"] .btn-remove { background: #3d1212; color: #f87171; }
+html[data-theme="dark"] .btn-remove:hover { background: #5a1a1a; }
+html[data-theme="dark"] .btn-aide { background: rgba(200,210,255,.12); color: #c5d0ff; }
+html[data-theme="dark"] .btn-aide:hover { background: rgba(200,210,255,.22); }
+
+/* Tags */
+html[data-theme="dark"] .tag { background: #22263a; color: #8b93b8; }
+html[data-theme="dark"] .tag-new { background: #14401a; color: #4ade80; }
+html[data-theme="dark"] .tag-fresh { background: #3d1f00; color: #fb923c; }
+html[data-theme="dark"] .tag-baisse { background: #3d1f00; color: #fb923c; }
+html[data-theme="dark"] .tag-rejet { background: #3d0a0a; color: #f87171; }
+html[data-theme="dark"] .tag-source { background: #2d1e50; color: #a78bfa; }
+html[data-theme="dark"] .rech-count { background: #1e2545; color: #5c9ef7; }
+
+/* Annonces */
+html[data-theme="dark"] .annonce-card { border-color: #2e3350; }
+html[data-theme="dark"] .annonce-card.interet-oui { border-color: #4ade80; }
+html[data-theme="dark"] .annonce-card.baisse-prix { border-color: #fb923c; }
+html[data-theme="dark"] .annonce-titre { color: #dde1f0; }
+html[data-theme="dark"] .annonce-actions { border-top-color: #2e3350; }
+html[data-theme="dark"] .resultats-title { color: #dde1f0; }
+html[data-theme="dark"] .resultats-count { color: #5c6494; }
+html[data-theme="dark"] .resultats-filtres { border-bottom-color: #2e3350; }
+html[data-theme="dark"] .filtre-input { border-color: #2e3350; background: #22263a; color: #dde1f0; }
+html[data-theme="dark"] .filtre-input:focus { border-color: #5c9ef7; }
+html[data-theme="dark"] .filtre-reset { color: #5c6494; }
+html[data-theme="dark"] .filtre-reset:hover { color: #dde1f0; }
+html[data-theme="dark"] .prix-barre { color: #5c6494; }
+html[data-theme="dark"] .btn-oui { background: #14401a; color: #4ade80; }
+html[data-theme="dark"] .btn-non { background: #3d0a0a; color: #f87171; }
+html[data-theme="dark"] .btn-oui.active { background: #166534; color: white; }
+html[data-theme="dark"] .btn-non.active { background: #7f1d1d; color: white; }
+html[data-theme="dark"] .btn-translate { background: #1e2545; color: #5c9ef7; }
+
+/* Score breakdown */
+html[data-theme="dark"] .score-label { color: #8b93b8; }
+html[data-theme="dark"] .score-bar-bg { background: #22263a; }
+html[data-theme="dark"] .score-val { color: #b0b8d8; }
+html[data-theme="dark"] .badge-doublon { background: #3d1f00; color: #fb923c; border-color: #5a3010; }
+
+/* Notes */
+html[data-theme="dark"] .note-annonce textarea { border-color: #2e3350; background: #22263a; color: #dde1f0; }
+html[data-theme="dark"] .note-annonce textarea:focus { border-color: #5c9ef7; }
+
+/* Clients */
+html[data-theme="dark"] .client-card { background: #1c1f2e; box-shadow: 0 1px 4px rgba(0,0,0,.4); border-left-color: #5c9ef7; }
+html[data-theme="dark"] .client-card.archive { border-left-color: #2e3350; }
+html[data-theme="dark"] .client-nom { color: #dde1f0; }
+html[data-theme="dark"] .client-contact { color: #8b93b8; }
+html[data-theme="dark"] .client-notes { color: #5c6494; }
+html[data-theme="dark"] .client-pill { background: #22263a; color: #8b93b8; }
+html[data-theme="dark"] .client-pill.retenues { background: #14401a; color: #4ade80; }
+html[data-theme="dark"] .client-pill.retenues:hover { background: #1a5226; }
+html[data-theme="dark"] .recherches-client { border-top-color: #2e3350; }
+html[data-theme="dark"] .recherche-row { border-bottom-color: #252839; }
+html[data-theme="dark"] .recherche-nom { color: #dde1f0; }
+html[data-theme="dark"] .recherche-criteres { color: #5c6494; }
+html[data-theme="dark"] .recherche-vide { color: #3a4060; }
+html[data-theme="dark"] .search-card { border-color: #2e3350; }
+html[data-theme="dark"] .search-name { color: #dde1f0; }
+html[data-theme="dark"] .search-criteria { color: #8b93b8; }
+html[data-theme="dark"] .section-label { color: #3a4060; }
+html[data-theme="dark"] .sans-client-toggle { color: #3a4060; }
+html[data-theme="dark"] .sans-client-toggle:hover { color: #8b93b8; }
+html[data-theme="dark"] .archives-toggle { color: #3a4060; }
+html[data-theme="dark"] .archives-toggle:hover { color: #5c6494; }
+html[data-theme="dark"] .liens-section { border-top-color: #2e3350; }
+html[data-theme="dark"] .liens-url-input,
+html[data-theme="dark"] .liens-titre-input { border-color: #2e3350; background: #22263a; color: #dde1f0; }
+html[data-theme="dark"] .lien-row { border-bottom-color: #252839; }
+html[data-theme="dark"] .lien-row a { color: #5c9ef7; }
+html[data-theme="dark"] .rattacher-select { border-color: #2e3350; background: #22263a; color: #dde1f0; }
+html[data-theme="dark"] .run-date { color: #dde1f0; }
+html[data-theme="dark"] .run-stats { color: #8b93b8; }
+html[data-theme="dark"] .run-meta { color: #3a4060; }
+html[data-theme="dark"] .run-row { border-bottom-color: #252839; }
+
+/* Paramètres */
+html[data-theme="dark"] .param-section-title { color: #5c9ef7; border-bottom-color: #2e3350; }
+html[data-theme="dark"] .info-box { background: #1e2545; color: #b0b8d8; }
+html[data-theme="dark"] .info-box a { color: #5c9ef7; }
+html[data-theme="dark"] .toggle-switch span { color: #b0b8d8; }
+html[data-theme="dark"] .trigger-item { border-color: #2e3350; }
+html[data-theme="dark"] .trigger-item:hover { border-color: #5c6494; }
+html[data-theme="dark"] .trigger-label { color: #dde1f0; }
+html[data-theme="dark"] .trigger-desc { color: #5c6494; }
+html[data-theme="dark"] .jour-btn { border-color: #2e3350; background: #22263a; color: #5c6494; }
+html[data-theme="dark"] .jour-btn.active { background: #2e3a70; color: #c5d0ff; border-color: #3d4d9a; }
+html[data-theme="dark"] .horaire-item input[type=time] { border-color: #2e3350; background: #22263a; color: #dde1f0; }
+html[data-theme="dark"] .planif-badge { color: #5c9ef7; }
+
+/* Modals */
+html[data-theme="dark"] .modal { background: #1c1f2e; }
+html[data-theme="dark"] .modal-title { color: #dde1f0; }
+html[data-theme="dark"] .modal-edit-client .modal-box { background: #1c1f2e; }
+html[data-theme="dark"] .modal-edit-client h3 { color: #dde1f0; }
+
+/* Aide */
+html[data-theme="dark"] .aide-panel { background: #1c1f2e; }
+html[data-theme="dark"] .aide-titre { color: #dde1f0; }
+html[data-theme="dark"] .aide-close { background: #22263a; color: #8b93b8; }
+html[data-theme="dark"] .aide-close:hover { background: #2e3350; }
+html[data-theme="dark"] .aide-section-title { color: #5c6494; }
+html[data-theme="dark"] .aide-item-label { color: #dde1f0; }
+html[data-theme="dark"] .aide-item-desc { color: #8b93b8; }
+html[data-theme="dark"] .aide-score-bar { color: #8b93b8; }
+html[data-theme="dark"] .aide-divider { border-top-color: #2e3350; }
+html[data-theme="dark"] .aide-section-divider { border-top-color: #2e3350; }
+html[data-theme="dark"] .aide-section-titre { color: #5c9ef7; }
+
+/* AVIF */
+html[data-theme="dark"] .avif-drop-zone { border-color: #2e3350; background: #16192a; }
+html[data-theme="dark"] .avif-drop-zone:hover,
+html[data-theme="dark"] .avif-drop-zone.drag-over { border-color: #5c9ef7; background: #1e2545; }
+html[data-theme="dark"] .avif-drop-text { color: #b0b8d8; }
+html[data-theme="dark"] .avif-drop-sub { color: #5c6494; }
+html[data-theme="dark"] .conv-result-item { border-bottom-color: #252839; }
+html[data-theme="dark"] .conv-dossier { color: #5c9ef7; }
+
+/* Divers */
+html[data-theme="dark"] .run-info { color: #5c6494; }
+html[data-theme="dark"] .score-label { color: #5c6494; }
+html[data-theme="dark"] .search-criteria { color: #5c6494; }
 </style>
 </head>
 <body>
@@ -480,9 +659,12 @@ button.btn-loading { opacity: 0.6; cursor: wait; pointer-events: none; }
       <p>Veille automobile sur mobile.de</p>
     </div>
   </div>
-  <div class="status-pill" id="status-pill">
-    <div class="status-dot" id="status-dot"></div>
-    <span id="status-text">Chargement...</span>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="btn-theme" id="btn-theme" onclick="toggleTheme()" title="Mode sombre">🌙</button>
+    <div class="status-pill" id="status-pill">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Chargement...</span>
+    </div>
   </div>
 </header>
 
@@ -890,6 +1072,25 @@ button.btn-loading { opacity: 0.6; cursor: wait; pointer-events: none; }
 <!-- ═══════════════════════════════ SCRIPTS ═══════════════════════════════════ -->
 <script>
 const API = 'http://localhost:8765';
+
+// ── Mode sombre ──
+function toggleTheme() {
+  const dark = document.documentElement.getAttribute('data-theme') !== 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('btn-theme').textContent = dark ? '☀️' : '🌙';
+  localStorage.setItem('theme', dark ? 'dark' : 'light');
+}
+// Appliquer le thème sauvegardé au chargement
+(function() {
+  const saved = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  if (saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('btn-theme');
+      if (btn) btn.textContent = '☀️';
+    });
+  }
+})();
 let currentSearchId = null;
 let currentSearchNom = '';
 let pollTimer = null;
