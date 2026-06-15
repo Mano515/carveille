@@ -1,0 +1,13 @@
+# Forcer les fins de ligne Windows pour les fichiers batch (CRLF obligatoire sous CMD)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Fichiers texte normaux : fin de ligne selon l'OS
+*.py text eol=lf
+*.html text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.env text eol=lf
