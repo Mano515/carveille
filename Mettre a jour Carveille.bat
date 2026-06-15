@@ -2,6 +2,14 @@
 chcp 65001 >nul
 title Carveille - Mise a jour
 
+:: Empecher plusieurs instances simultanees
+tasklist /fi "WINDOWTITLE eq Carveille - Mise a jour" 2>nul | findstr /i "cmd.exe" >nul
+if not errorlevel 1 (
+    echo Une mise a jour est deja en cours.
+    timeout /t 3 /nobreak >nul
+    exit
+)
+
 cd /d "%~dp0"
 
 echo.
