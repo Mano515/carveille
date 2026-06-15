@@ -214,6 +214,54 @@ details > * + * { margin-top: 12px; }
 .planif-row label { flex-direction: row; align-items: center; gap: 8px; font-size: 0.9rem; }
 .planif-row input[type=time] { width: 120px; }
 
+/* ── Bouton aide ── */
+.btn-aide {
+  position: fixed; bottom: 24px; right: 24px; z-index: 200;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(26,26,46,0.15); color: #1a1a2e;
+  border: none; font-size: 1rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s;
+  backdrop-filter: blur(4px);
+}
+.btn-aide:hover { background: rgba(26,26,46,0.28); }
+
+/* ── Panneau aide ── */
+.aide-overlay {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.45); backdrop-filter: blur(2px);
+}
+.aide-overlay.open { display: flex; align-items: flex-start; justify-content: flex-end; padding: 16px; }
+.aide-panel {
+  background: white; border-radius: 16px; width: 400px; max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px); overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0,0,0,.25);
+  padding: 24px;
+}
+.aide-close {
+  float: right; background: #f0f2f5; border: none; border-radius: 50%;
+  width: 30px; height: 30px; font-size: 1rem; cursor: pointer; color: #555;
+  display: flex; align-items: center; justify-content: center;
+}
+.aide-close:hover { background: #e0e0e0; }
+.aide-titre { font-size: 1rem; font-weight: 700; color: #1a1a2e; margin-bottom: 20px; }
+.aide-section { margin-bottom: 20px; }
+.aide-section-title {
+  font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; color: #888; margin-bottom: 10px;
+}
+.aide-item { margin-bottom: 10px; }
+.aide-item-label { font-size: 0.88rem; font-weight: 600; color: #1a1a2e; margin-bottom: 2px; }
+.aide-item-desc { font-size: 0.82rem; color: #555; line-height: 1.55; }
+.aide-score-bar {
+  display: flex; align-items: center; gap: 8px; margin: 3px 0;
+  font-size: 0.8rem; color: #555;
+}
+.aide-score-bar .fill {
+  width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;
+}
+.aide-divider { border: none; border-top: 1px solid #eee; margin: 18px 0; }
+
 /* ── Toast ── */
 .toast {
   position: fixed; bottom: 24px; right: 24px;
@@ -489,6 +537,133 @@ details > * + * { margin-top: 12px; }
 </main>
 
 <div class="toast" id="toast"></div>
+
+<button class="btn-aide" onclick="toggleAide()" title="Aide">?</button>
+
+<div class="aide-overlay" id="aide-overlay" onclick="fermerAide(event)">
+  <div class="aide-panel">
+    <button class="aide-close" onclick="toggleAide()">&#10005;</button>
+    <div class="aide-titre">&#128218; Guide de Carveille</div>
+
+    <div class="aide-section">
+      <div class="aide-section-title">Les onglets</div>
+      <div class="aide-item">
+        <div class="aide-item-label">&#128269; Mes recherches</div>
+        <div class="aide-item-desc">La page principale. Vous y trouvez toutes vos recherches sauvegardees et le bouton pour lancer une verification sur mobile.de.</div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">&#128196; Resultats</div>
+        <div class="aide-item-desc">Les annonces trouvees pour une recherche. Cliquez sur "Voir les resultats" dans une recherche pour y acceder.</div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">+ Nouvelle recherche</div>
+        <div class="aide-item-desc">Formulaire pour creer une nouvelle recherche : marque, budget, kilometrage, etc.</div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">&#9881; Parametres</div>
+        <div class="aide-item-desc">Configurer comment vous voulez etre alerte (Telegram, email) et activer la verification automatique a une heure fixe.</div>
+      </div>
+    </div>
+
+    <hr class="aide-divider">
+
+    <div class="aide-section">
+      <div class="aide-section-title">La verification automatique</div>
+      <div class="aide-item">
+        <div class="aide-item-label">Bouton "Chercher maintenant"</div>
+        <div class="aide-item-desc">Lance immediatement une recherche sur mobile.de pour toutes vos recherches actives. La fenetre noire doit rester ouverte pendant l'operation.</div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">Planificateur (dans Parametres)</div>
+        <div class="aide-item-desc">Carveille peut verifier automatiquement chaque jour a l'heure que vous choisissez. La fenetre noire doit etre ouverte a ce moment-la.</div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">Statut dans le bandeau en haut</div>
+        <div class="aide-item-desc">Indique si une recherche est en cours (point orange clignotant) ou quand la derniere verification a eu lieu (point vert).</div>
+      </div>
+    </div>
+
+    <hr class="aide-divider">
+
+    <div class="aide-section">
+      <div class="aide-section-title">Les annonces et leur score</div>
+      <div class="aide-item">
+        <div class="aide-item-label">Le score (ex : 85/100)</div>
+        <div class="aide-item-desc">Chaque annonce recoit une note calculee automatiquement selon vos criteres. Plus le score est eleve, mieux l'annonce correspond a ce que vous cherchez.</div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">Couleur du score</div>
+        <div class="aide-item-desc">
+          <div class="aide-score-bar"><div class="fill" style="background:#2e7d32"></div> Vert (80+) : excellente annonce</div>
+          <div class="aide-score-bar"><div class="fill" style="background:#ef6c00"></div> Orange (60-79) : annonce correcte</div>
+          <div class="aide-score-bar"><div class="fill" style="background:#c62828"></div> Rouge (moins de 60) : ne correspond pas bien</div>
+        </div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">Comment est calcule le score</div>
+        <div class="aide-item-desc">
+          Prix : 30 pts &middot; Kilometrage : 25 pts &middot; Annee : 20 pts<br>
+          Boite : 10 pts &middot; Carburant : 10 pts &middot; Options : 5 pts<br>
+          + Bonus si annonce tres recente (&lt;24h, &lt;48h, &lt;7j)<br>
+          &minus; Penalite si des informations sont manquantes
+        </div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">Bouton "Detail du score"</div>
+        <div class="aide-item-desc">Affiche le sous-score de chaque critere pour comprendre pourquoi une annonce a cette note.</div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">Baisse de prix</div>
+        <div class="aide-item-desc">Si le prix d'une annonce deja vue a baisse depuis la derniere fois, un badge orange "Baisse -X EUR" apparait. Carveille conserve toujours le prix initial pour comparaison.</div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">Nouvelle annonce</div>
+        <div class="aide-item-desc">Badge vert visible sur les annonces que vous n'aviez jamais vues avant ce run.</div>
+      </div>
+    </div>
+
+    <hr class="aide-divider">
+
+    <div class="aide-section">
+      <div class="aide-section-title">Les boutons sur chaque annonce</div>
+      <div class="aide-item">
+        <div class="aide-item-label">Voir l'annonce</div>
+        <div class="aide-item-desc">Ouvre la page de l'annonce sur mobile.de dans un nouvel onglet.</div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">Traduire</div>
+        <div class="aide-item-desc">Ouvre la page de l'annonce traduite automatiquement en francais via DeepL.</div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">&#128077; Interesse</div>
+        <div class="aide-item-desc">Marque l'annonce en vert pour la retrouver facilement. Elle restera visible en evidence.</div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">&#128078; Pas interesse</div>
+        <div class="aide-item-desc">Masque l'annonce (elle devient transparente). Elle n'est pas supprimee, juste mise de cote.</div>
+      </div>
+    </div>
+
+    <hr class="aide-divider">
+
+    <div class="aide-section">
+      <div class="aide-section-title">Creer une recherche</div>
+      <div class="aide-item">
+        <div class="aide-item-label">URL mobile.de (recommande)</div>
+        <div class="aide-item-desc">Faites votre recherche directement sur mobile.de avec tous vos filtres, copiez l'adresse de la page et collez-la dans le formulaire. Carveille utilisera exactement cette recherche.</div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">Budget strict</div>
+        <div class="aide-item-desc">Si coche : toute annonce au-dessus du budget est ignoree. Si non coche : une tolerance de 5% est accordee (ex : 21 000 EUR pour un budget de 20 000 EUR).</div>
+      </div>
+      <div class="aide-item">
+        <div class="aide-item-label">Reglages avances</div>
+        <div class="aide-item-desc">Permet de modifier l'importance de chaque critere dans le calcul du score. Par defaut, le prix a le plus d'importance (30 pts), puis le kilometrage (25 pts), etc.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 <!-- ═══════════════════════════════ SCRIPTS ═══════════════════════════════════ -->
 <script>
@@ -890,6 +1065,16 @@ async function sauvegarderPlanificateur() {
     );
     chargerPlanificateur();
   } catch { showToast('Erreur de connexion.', false); }
+}
+
+// ── Aide ───────────────────────────────────────────────────────────────────────
+
+function toggleAide() {
+  document.getElementById('aide-overlay').classList.toggle('open');
+}
+
+function fermerAide(e) {
+  if (e.target === document.getElementById('aide-overlay')) toggleAide();
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────────
