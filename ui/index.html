@@ -290,6 +290,17 @@ details > * + * { margin-top: 12px; }
 .recherche-vide { font-size: 0.82rem; color: #aaa; padding: 12px 20px; font-style: italic; }
 .btn-sm { padding: 5px 10px; font-size: 0.78rem; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; white-space: nowrap; }
 .btn-sm:hover { background: #f0f4ff; border-color: #1565c0; color: #1565c0; }
+.rech-count { font-size: 0.72rem; background: #e3f2fd; color: #1565c0; padding: 1px 7px; border-radius: 10px; font-weight: 500; vertical-align: middle; }
+.btn-edit { background: #f5f5f5; color: #555; }
+.btn-edit:hover { background: #fff3e0; color: #e65100; border-color: #e65100; }
+.btn-delete { background: #f5f5f5; color: #555; }
+.btn-delete:hover { background: #fee2e2; color: #c62828; border-color: #c62828; }
+.rattacher-select { font-size: 0.78rem; padding: 4px 8px; border: 1px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; max-width: 160px; }
+.run-row { display: flex; align-items: baseline; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; flex-wrap: wrap; }
+.run-row:last-child { border-bottom: none; }
+.run-date { font-size: 0.85rem; font-weight: 600; color: #1a1a2e; white-space: nowrap; }
+.run-stats { font-size: 0.82rem; color: #555; flex: 1; }
+.run-meta { font-size: 0.78rem; color: #999; white-space: nowrap; }
 .btn-add-search {
   width: 100%; padding: 10px; text-align: center;
   background: none; border: none; color: #1565c0;
@@ -483,8 +494,8 @@ details > * + * { margin-top: 12px; }
   <!-- ── Onglet 3 : Nouvelle recherche ── -->
   <div class="tab-content" id="tab-form">
     <div class="card">
-      <div class="card-title">Nouvelle recherche</div>
-      <form id="form-recherche" onsubmit="soumettreRecherche(event)">
+      <div class="card-title" id="form-titre">Nouvelle recherche</div>
+      <form id="form-recherche" onsubmit="soumettreRecherche(event)" data-edit-id="">
 
         <label class="full">
           Client
@@ -584,8 +595,8 @@ details > * + * { margin-top: 12px; }
         </details>
 
         <div class="full" style="display:flex;gap:10px;margin-top:4px">
-          <button type="submit" class="btn-primary">Enregistrer la recherche</button>
-          <button type="reset" class="btn-secondary">Effacer</button>
+          <button type="submit" class="btn-primary" id="form-submit-btn">Enregistrer la recherche</button>
+          <button type="reset" class="btn-secondary" id="form-reset-btn" onclick="annulerEdition()">Effacer</button>
         </div>
 
       </form>
@@ -673,8 +684,27 @@ details > * + * { margin-top: 12px; }
           </label>
         </div>
 
+        <div class="param-section" style="margin-top:20px">
+          <div style="font-size:0.85rem;font-weight:600;color:#333;margin-bottom:10px">Résumé hebdomadaire</div>
+          <label class="trigger-item">
+            <input type="checkbox" id="trig-resume-hebdo">
+            <div>
+              <div class="trigger-label">Résumé du dimanche</div>
+              <div class="trigger-desc">Recevoir chaque dimanche un email récapitulatif par client : nouvelles annonces de la semaine et favoris</div>
+            </div>
+          </label>
+        </div>
+
         <button class="btn-save" onclick="sauvegarderPlanificateur()">Sauvegarder le planning</button>
 
+      </div>
+    </div>
+
+    <!-- Historique des runs -->
+    <div class="card">
+      <div class="param-section-title">&#128203; Historique des vérifications</div>
+      <div id="runs-list">
+        <div style="color:#aaa;font-size:0.85rem">Chargement...</div>
       </div>
     </div>
 
@@ -882,14 +912,22 @@ function _criteresCourt(r) {
 }
 
 function renderClientCard(c) {
-  const recherches = (c.recherches || []).map(r => `
-    <div class="recherche-row">
+  const recherches = (c.recherches || []).map(r => {
+    const nbBadge = r.nb_annonces
+      ? `<span class="rech-count">${r.nb_annonces} annonce${r.nb_annonces > 1 ? 's' : ''}</span>` : '';
+    const nomSafe = r.nom_recherche.replace(/'/g, "\\'");
+    return `<div class="recherche-row">
       <div class="recherche-info">
-        <span class="recherche-nom">${r.nom_recherche}</span>
+        <span class="recherche-nom">${r.nom_recherche} ${nbBadge}</span>
         <span class="recherche-criteres">${_criteresCourt(r)}</span>
       </div>
-      <button class="btn-voir btn-sm" onclick="voirResultats('${r.search_id}', '${r.nom_recherche.replace(/'/g, "\\'")}')">Résultats</button>
-    </div>`).join('');
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn-voir btn-sm" onclick="voirResultats('${r.search_id}', '${nomSafe}')">Résultats</button>
+        <button class="btn-sm btn-edit" onclick="editerRecherche('${r.search_id}')">✏️</button>
+        <button class="btn-sm btn-delete" onclick="supprimerRecherche('${r.search_id}', '${nomSafe}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
 
   const favorisBtn = c.nb_retenues
     ? `<span class="client-pill retenues" onclick="voirHistoriqueClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}')">⭐ ${c.nb_retenues} favori${c.nb_retenues > 1 ? 's' : ''}</span>`
@@ -949,14 +987,25 @@ async function chargerClients() {
     const sansList    = document.getElementById('sans-client-list');
     if (sans.length) {
       sansSection.style.display = '';
-      sansList.innerHTML = sans.map(r => `
-        <div class="recherche-row">
-          <div class="recherche-info">
-            <span class="recherche-nom">${r.nom_recherche}</span>
-            <span class="recherche-criteres">${_criteresCourt(r)}</span>
-          </div>
-          <button class="btn-voir btn-sm" onclick="voirResultats('${r.search_id}', '${r.nom_recherche.replace(/'/g, "\\'")}')">Résultats</button>
-        </div>`).join('');
+      sansList.innerHTML = sans.map(r => {
+      const nomSafe = r.nom_recherche.replace(/'/g, "\\'");
+      const clientOpts = _clientsData.map(c =>
+        `<option value="${c.client_id}">${c.nom}</option>`).join('');
+      return `<div class="recherche-row">
+        <div class="recherche-info">
+          <span class="recherche-nom">${r.nom_recherche}</span>
+          <span class="recherche-criteres">${_criteresCourt(r)}</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;align-items:center;flex-wrap:wrap">
+          ${_clientsData.length ? `<select class="rattacher-select" id="rattach-${r.search_id}" onchange="rattacherRechercheClient('${r.search_id}', this)">
+            <option value="">Rattacher à...</option>${clientOpts}
+          </select>` : ''}
+          <button class="btn-voir btn-sm" onclick="voirResultats('${r.search_id}', '${nomSafe}')">Résultats</button>
+          <button class="btn-sm btn-edit" onclick="editerRecherche('${r.search_id}')">✏️</button>
+          <button class="btn-sm btn-delete" onclick="supprimerRecherche('${r.search_id}', '${nomSafe}')">🗑️</button>
+        </div>
+      </div>`;
+    }).join('');
     } else {
       sansSection.style.display = 'none';
     }
@@ -980,13 +1029,13 @@ async function chargerArchives() {
       archList.innerHTML = '<div style="color:#999;font-size:0.85rem;padding:8px 0">Aucun client archivé.</div>';
     } else {
       archList.innerHTML = data.map(c => `
-        <div class="client-card" style="opacity:0.65">
+        <div class="client-card" style="opacity:0.75">
           <div class="client-header">
             <div class="client-identity">
               <span class="client-nom">${c.nom}</span>
               ${c.contact ? `<span class="client-contact">${c.contact}</span>` : ''}
             </div>
-            <span style="font-size:0.75rem;color:#999">Archivé</span>
+            <button class="btn-sm-ghost" onclick="reactiverClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}')">Réactiver</button>
           </div>
         </div>`).join('');
     }
@@ -1001,6 +1050,109 @@ function toggleSansClient() {
 function toggleArchives() {
   const el = document.getElementById('archives-list');
   el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+async function editerRecherche(searchId) {
+  try {
+    const r = await fetch(`${API}/recherches/${searchId}`).then(res => res.json());
+    const form = document.getElementById('form-recherche');
+    form.dataset.editId = searchId;
+    document.getElementById('form-titre').textContent = 'Modifier la recherche';
+    document.getElementById('form-submit-btn').textContent = 'Enregistrer les modifications';
+
+    // Pré-remplir tous les champs
+    const set = (name, val) => { const el = form.elements[name]; if (el) el.value = val ?? ''; };
+    set('client_id', r.client_id || '');
+    set('nom_recherche', r.nom_recherche || '');
+    set('marque', r.marque || '');
+    set('modele', r.modele || '');
+    set('budget_max', r.budget_max || '');
+    set('km_max', r.km_max || '');
+    set('annee_min', r.annee_min || '');
+    set('boite', r.boite || 'indifferent');
+    set('carburant', r.carburant || 'indifferent');
+    set('vendeur_filtre', r.vendeur_filtre || 'indifferent');
+    set('options_recherchees', r.options_recherchees || '');
+    set('mobile_de_url', r.mobile_de_url || '');
+    set('score_min_notification', r.score_min_notification ?? 60);
+    set('max_annonces', r.max_annonces ?? 3);
+    set('poids_prix', r.poids_prix ?? 30);
+    set('poids_km', r.poids_km ?? 25);
+    set('poids_annee', r.poids_annee ?? 20);
+    set('poids_boite', r.poids_boite ?? 10);
+    set('poids_carburant', r.poids_carburant ?? 10);
+    set('poids_options', r.poids_options ?? 5);
+    const cbStrict = form.elements['budget_strict'];
+    if (cbStrict) cbStrict.checked = !!r.budget_strict;
+
+    switchTab('form');
+  } catch { showToast('Impossible de charger la recherche.', false); }
+}
+
+function annulerEdition() {
+  const form = document.getElementById('form-recherche');
+  form.dataset.editId = '';
+  document.getElementById('form-titre').textContent = 'Nouvelle recherche';
+  document.getElementById('form-submit-btn').textContent = 'Enregistrer la recherche';
+}
+
+async function supprimerRecherche(searchId, nom) {
+  if (!confirm(`Supprimer la recherche "${nom}" ? Les annonces déjà trouvées seront conservées.`)) return;
+  try {
+    await fetch(`${API}/recherches/${searchId}`, { method: 'DELETE' });
+    showToast(`Recherche "${nom}" supprimée.`);
+    chargerClients();
+  } catch { showToast('Erreur de connexion.', false); }
+}
+
+async function reactiverClient(clientId, nom) {
+  try {
+    await fetch(`${API}/clients/${clientId}/reactiver`, { method: 'POST' });
+    showToast(`${nom} réactivé.`);
+    chargerClients();
+  } catch { showToast('Erreur de connexion.', false); }
+}
+
+async function rattacherRechercheClient(searchId, selectEl) {
+  const clientId = selectEl.value;
+  if (!clientId) return;
+  try {
+    await fetch(`${API}/recherches/${searchId}/client`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: clientId })
+    });
+    showToast('Recherche rattachée au client !');
+    chargerClients();
+  } catch { showToast('Erreur de connexion.', false); }
+}
+
+async function chargerRuns() {
+  const el = document.getElementById('runs-list');
+  if (!el) return;
+  try {
+    const runs = await fetch(`${API}/runs`).then(r => r.json());
+    if (!runs.length) {
+      el.innerHTML = '<div style="color:#aaa;font-size:0.85rem">Aucune vérification effectuée pour l\'instant.</div>';
+      return;
+    }
+    el.innerHTML = runs.map(r => {
+      const date = new Date(r.started_at);
+      const dateStr = date.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+      const heureStr = date.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+      const duree = r.ended_at
+        ? Math.round((new Date(r.ended_at) - date) / 1000) + 's' : '—';
+      const ok = r.statut === 'ok';
+      return `<div class="run-row">
+        <div class="run-date">${dateStr} à ${heureStr}</div>
+        <div class="run-stats">
+          ${r.nb_annonces_lues} lues · ${r.nb_annonces_nouvelles} nouvelles · ${r.nb_annonces_notifiees} notifiées
+        </div>
+        <div class="run-meta">${duree} · <span style="color:${ok ? '#2e7d32':'#c62828'}">${ok ? '✓ OK' : '✗ Erreur'}</span></div>
+      </div>`;
+    }).join('');
+  } catch {
+    el.innerHTML = '<div style="color:#aaa;font-size:0.85rem">Impossible de charger l\'historique.</div>';
+  }
 }
 
 // ── Recherches (conservé pour compatibilité) ────────────────────────────────────
@@ -1211,13 +1363,18 @@ async function marquerInteret(seenId, interet, searchId) {
 
 async function soumettreRecherche(e) {
   e.preventDefault();
-  const fd = new FormData(e.target);
+  const form = e.target;
+  const fd = new FormData(form);
   const body = {};
   fd.forEach((v, k) => { body[k] = v === '' ? null : v; });
   body.budget_strict = fd.has('budget_strict');
   ['budget_max','km_max','annee_min','poids_prix','poids_km','poids_annee',
    'poids_boite','poids_carburant','poids_options','score_min_notification','max_annonces']
     .forEach(k => { if (body[k]) body[k] = parseFloat(body[k]); });
+
+  // En mode édition : conserver le search_id existant
+  if (form.dataset.editId) body.search_id = form.dataset.editId;
+
   try {
     const d = await fetch(`${API}/recherches`, {
       method: 'POST',
@@ -1225,8 +1382,9 @@ async function soumettreRecherche(e) {
       body: JSON.stringify(body)
     }).then(r => r.json());
     if (d.ok) {
-      showToast('Recherche enregistree !');
-      e.target.reset();
+      showToast(form.dataset.editId ? 'Recherche modifiée !' : 'Recherche enregistrée !');
+      annulerEdition();
+      form.reset();
       chargerClients();
       switchTab('voitures');
     }
@@ -1327,8 +1485,9 @@ async function chargerPlanificateur() {
       b.classList.toggle('active', jours.includes(b.dataset.jour));
     });
 
-    document.getElementById('trig-nouvelles').checked = s.nouvelles_annonces !== false;
-    document.getElementById('trig-baisses').checked   = s.baisses_prix !== false;
+    document.getElementById('trig-nouvelles').checked    = s.nouvelles_annonces !== false;
+    document.getElementById('trig-baisses').checked      = s.baisses_prix !== false;
+    document.getElementById('trig-resume-hebdo').checked = !!s.resume_hebdo;
 
     togglePlanif();
 
@@ -1356,6 +1515,7 @@ async function sauvegarderPlanificateur() {
     jours,
     nouvelles_annonces: nouv,
     baisses_prix: bais,
+    resume_hebdo: document.getElementById('trig-resume-hebdo').checked,
   };
   try {
     await fetch(`${API}/planificateur`, {
@@ -1447,6 +1607,7 @@ function fermerAide(e) {
     updateStatus(),
     chargerConfig(),
     chargerPlanificateur(),
+    chargerRuns(),
   ]);
 
   // Verifier si un run est deja en cours au chargement de la page

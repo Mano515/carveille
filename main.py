@@ -82,7 +82,8 @@ def _load_schedule() -> dict:
         "jours": ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"],
         "nouvelles_annonces": True,
         "baisses_prix": True,
-        "derniers_runs": [],   # liste de "YYYY-MM-DD_HH:MM" déjà traités
+        "resume_hebdo": False,   # résumé hebdomadaire le dimanche
+        "derniers_runs": [],     # liste de "YYYY-MM-DD_HH:MM" ou "resume_YYYY-WNN"
     }
     if os.path.exists(_SCHEDULE_PATH):
         try:
@@ -124,6 +125,27 @@ def _do_run_with_status(source: str, day: int = 1, notify_nouvelles: bool = True
 _JOURS_SEMAINE = {"lun": 0, "mar": 1, "mer": 2, "jeu": 3, "ven": 4, "sam": 5, "dim": 6}
 
 
+def _envoyer_resume_hebdo():
+    """Envoie un email de résumé hebdomadaire avec les stats par client."""
+    from src.database import get_resume_hebdo
+    from src.notifier import envoyer_email
+    clients = get_resume_hebdo()
+    if not clients:
+        return
+    lignes = ["Bonjour,\n", "Voici le résumé de la semaine écoulée :\n"]
+    for c in clients:
+        lignes.append(f"• {c['nom']}")
+        if c.get("nb_annonces_semaine"):
+            lignes.append(f"  → {c['nb_annonces_semaine']} nouvelle(s) annonce(s) cette semaine")
+        else:
+            lignes.append("  → Aucune nouvelle annonce cette semaine")
+        if c.get("nb_retenues_total"):
+            lignes.append(f"  → {c['nb_retenues_total']} annonce(s) marquée(s) comme intéressante(s) au total")
+        lignes.append("")
+    lignes.append("Bonne semaine,\nCarveille")
+    envoyer_email("\n".join(lignes), sujet="Carveille — Résumé de la semaine")
+
+
 def _scheduler_thread():
     """Tourne en arriere-plan et declenche les runs automatiques selon le planning."""
     while True:
@@ -133,12 +155,31 @@ def _scheduler_thread():
             if not sched.get("actif"):
                 continue
             now = datetime.now()
-            jours_actifs = {_JOURS_SEMAINE[j] for j in sched.get("jours", []) if j in _JOURS_SEMAINE}
-            if now.weekday() not in jours_actifs:
-                continue
             today = now.strftime("%Y-%m-%d")
             derniers_runs = sched.get("derniers_runs", [])
             changed = False
+
+            # Résumé hebdomadaire le dimanche
+            if sched.get("resume_hebdo") and now.weekday() == 6:
+                semaine_key = f"resume_{now.strftime('%Y-W%U')}"
+                heure_str = sched.get("horaires", ["09:00"])[0]
+                try:
+                    h, m = map(int, heure_str.split(":"))
+                    if now.hour == h and now.minute == m and semaine_key not in derniers_runs:
+                        print("[RESUME] Envoi du résumé hebdomadaire")
+                        derniers_runs.append(semaine_key)
+                        changed = True
+                        threading.Thread(target=_envoyer_resume_hebdo, daemon=True).start()
+                except ValueError:
+                    pass
+
+            jours_actifs = {_JOURS_SEMAINE[j] for j in sched.get("jours", []) if j in _JOURS_SEMAINE}
+            if now.weekday() not in jours_actifs:
+                if changed:
+                    sched["derniers_runs"] = derniers_runs[-100:]
+                    _save_schedule(sched)
+                continue
+
             for heure_str in sched.get("horaires", ["09:00"]):
                 try:
                     h, m = map(int, heure_str.split(":"))
@@ -160,7 +201,7 @@ def _scheduler_thread():
                     )
                     t.start()
             if changed:
-                sched["derniers_runs"] = derniers_runs[-100:]  # eviter une liste infinie
+                sched["derniers_runs"] = derniers_runs[-100:]
                 _save_schedule(sched)
         except Exception as e:
             print(f"[WARN] Erreur planificateur : {e}")
@@ -222,10 +263,12 @@ def cmd_run(source: str, day: int):
 def cmd_ui():
     import http.server
     from src.database import (
-        init_db, get_recherches_actives, insert_recherche,
+        init_db, get_recherches_actives, insert_recherche, get_recherche_by_id,
         get_derniers_resultats, marquer_interet,
-        insert_client, get_clients, archiver_client,
+        insert_client, get_clients, archiver_client, reactiver_client,
         get_historique_client, get_recherches_sans_client,
+        desactiver_recherche, rattacher_recherche_client,
+        get_derniers_runs, get_resume_hebdo,
     )
 
     init_db()
@@ -254,10 +297,19 @@ def cmd_ui():
             self.end_headers()
             self.wfile.write(content)
 
+        def do_DELETE(self):
+            if self.path.startswith("/recherches/"):
+                search_id = self.path.split("/recherches/")[1]
+                desactiver_recherche(search_id)
+                self._send_json({"ok": True})
+            else:
+                self.send_response(404)
+                self.end_headers()
+
         def do_OPTIONS(self):
             self.send_response(204)
             self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
 
@@ -275,6 +327,12 @@ def cmd_ui():
                 self._send_json(get_recherches_sans_client())
             elif self.path == "/recherches":
                 self._send_json(get_recherches_actives())
+            elif self.path.startswith("/recherches/"):
+                search_id = self.path.split("/recherches/")[1]
+                r = get_recherche_by_id(search_id)
+                self._send_json(r if r else {}, status=200 if r else 404)
+            elif self.path == "/runs":
+                self._send_json(get_derniers_runs(15))
             elif self.path.startswith("/resultats/"):
                 search_id = self.path.split("/resultats/")[1]
                 self._send_json(get_derniers_resultats(search_id))
@@ -312,6 +370,16 @@ def cmd_ui():
             elif self.path.startswith("/clients/") and self.path.endswith("/archiver"):
                 client_id = self.path.split("/clients/")[1].replace("/archiver", "")
                 archiver_client(client_id)
+                self._send_json({"ok": True})
+
+            elif self.path.startswith("/clients/") and self.path.endswith("/reactiver"):
+                client_id = self.path.split("/clients/")[1].replace("/reactiver", "")
+                reactiver_client(client_id)
+                self._send_json({"ok": True})
+
+            elif self.path.startswith("/recherches/") and self.path.endswith("/client"):
+                search_id = self.path.split("/recherches/")[1].replace("/client", "")
+                rattacher_recherche_client(search_id, body.get("client_id"))
                 self._send_json({"ok": True})
 
             elif self.path == "/recherches":
@@ -392,6 +460,7 @@ def cmd_ui():
                 sched["jours"]             = body.get("jours") or list(_JOURS_SEMAINE.keys())
                 sched["nouvelles_annonces"] = bool(body.get("nouvelles_annonces", True))
                 sched["baisses_prix"]      = bool(body.get("baisses_prix", True))
+                sched["resume_hebdo"]      = bool(body.get("resume_hebdo", False))
                 _save_schedule(sched)
                 self._send_json({"ok": True})
 

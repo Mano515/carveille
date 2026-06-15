@@ -140,17 +140,24 @@ def insert_client(data: dict):
 
 
 def get_clients(statut: str = "actif") -> list[dict]:
-    """Retourne les clients avec leurs recherches et le nombre d'annonces retenues."""
+    """Retourne les clients avec leurs recherches (+ stats annonces) et le nombre de favoris."""
     with get_conn() as conn:
         clients = [dict(r) for r in conn.execute(
             "SELECT * FROM clients WHERE statut=? ORDER BY nom COLLATE NOCASE",
             (statut,)
         ).fetchall()]
         for c in clients:
-            c["recherches"] = [dict(r) for r in conn.execute(
-                "SELECT * FROM recherches WHERE client_id=? AND statut='active' ORDER BY nom_recherche",
-                (c["client_id"],)
-            ).fetchall()]
+            c["recherches"] = [dict(r) for r in conn.execute("""
+                SELECT r.*,
+                       COUNT(av.seen_id) AS nb_annonces,
+                       MAX(av.date_premiere_vue) AS derniere_annonce
+                FROM recherches r
+                LEFT JOIN annonces_vues av ON av.search_id = r.search_id
+                    AND (av.interet IS NULL OR av.interet != 'non')
+                WHERE r.client_id = ? AND r.statut = 'active'
+                GROUP BY r.search_id
+                ORDER BY r.nom_recherche
+            """, (c["client_id"],)).fetchall()]
             c["nb_retenues"] = conn.execute("""
                 SELECT COUNT(*) FROM annonces_vues av
                 JOIN recherches r ON av.search_id = r.search_id
@@ -166,6 +173,61 @@ def archiver_client(client_id: str):
             "UPDATE clients SET statut='archive', updated_at=? WHERE client_id=?",
             (now, client_id)
         )
+
+
+def reactiver_client(client_id: str):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE clients SET statut='actif', updated_at=? WHERE client_id=?",
+            (_now(), client_id)
+        )
+
+
+def desactiver_recherche(search_id: str):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE recherches SET statut='inactive', updated_at=? WHERE search_id=?",
+            (_now(), search_id)
+        )
+
+
+def rattacher_recherche_client(search_id: str, client_id):
+    """Rattache (ou détache si client_id=None) une recherche à un client."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE recherches SET client_id=?, updated_at=? WHERE search_id=?",
+            (client_id or None, _now(), search_id)
+        )
+
+
+def get_derniers_runs(limit: int = 10) -> list[dict]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM runs ORDER BY started_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_resume_hebdo() -> list[dict]:
+    """Stats de la semaine écoulée pour chaque client actif."""
+    from datetime import timedelta
+    semaine_debut = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    with get_conn() as conn:
+        clients = [dict(r) for r in conn.execute(
+            "SELECT * FROM clients WHERE statut='actif' ORDER BY nom"
+        ).fetchall()]
+        for c in clients:
+            c["nb_annonces_semaine"] = conn.execute("""
+                SELECT COUNT(*) FROM annonces_vues av
+                JOIN recherches r ON av.search_id = r.search_id
+                WHERE r.client_id = ? AND av.date_premiere_vue >= ?
+            """, (c["client_id"], semaine_debut)).fetchone()[0]
+            c["nb_retenues_total"] = conn.execute("""
+                SELECT COUNT(*) FROM annonces_vues av
+                JOIN recherches r ON av.search_id = r.search_id
+                WHERE r.client_id = ? AND av.interet = 'oui'
+            """, (c["client_id"],)).fetchone()[0]
+    return clients
 
 
 def get_historique_client(client_id: str) -> list[dict]:
