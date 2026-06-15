@@ -9,6 +9,7 @@ import argparse
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import threading
@@ -349,7 +350,12 @@ def cmd_ui():
                 self._send_json({"ok": True})
             elif self.path.startswith("/clients/"):
                 client_id = self.path.split("/clients/")[1]
+                client = get_client_by_id(client_id)
                 supprimer_client(client_id)
+                # Supprimer aussi le dossier Windows (en arrière-plan pour ne pas bloquer)
+                if client:
+                    dossier = _dossier_client(client["nom"])
+                    threading.Thread(target=shutil.rmtree, args=(str(dossier),), kwargs={"ignore_errors": True}, daemon=True).start()
                 self._send_json({"ok": True})
             else:
                 self.send_response(404)

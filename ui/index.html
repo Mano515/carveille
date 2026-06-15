@@ -1290,9 +1290,9 @@ async function supprimerRecherche(searchId, nom, btn) {
 
 async function supprimerClient(clientId, nom, btn) {
   const cheminDossier = _dossierClientsRoot
-    ? `\n\n📂 Le dossier Windows "${_dossierClientsRoot}\\${nom}" n'est PAS supprimé automatiquement — vous pouvez le supprimer manuellement si vous n'en avez plus besoin.`
+    ? `\n\n📂 Le dossier Windows "${_dossierClientsRoot}\\${nom}" et tout son contenu seront également supprimés.`
     : '';
-  if (!confirm(`Supprimer définitivement le dossier "${nom}" ?\n\nToutes ses recherches et annonces seront effacées dans Carveille. Cette action est irréversible.${cheminDossier}`)) return;
+  if (!confirm(`Supprimer définitivement "${nom}" ?\n\nToutes ses recherches et annonces seront effacées. Cette action est irréversible.${cheminDossier}`)) return;
   if (btn) btnLoad(btn, 'Suppression…');
   try {
     await fetch(`${API}/clients/${clientId}`, { method: 'DELETE' });
