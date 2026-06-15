@@ -571,10 +571,21 @@ def cmd_ui():
     # Demarrer le planificateur en arriere-plan
     threading.Thread(target=_scheduler_thread, daemon=True).start()
 
-    # Ouvrir le navigateur apres un court delai (laisse le temps au serveur de demarrer)
+    # Ouvrir Chrome apres un court delai (laisse le temps au serveur de demarrer)
     def _open_browser():
         time.sleep(1.5)
-        webbrowser.open(f"http://localhost:{port}")
+        url = f"http://localhost:{port}"
+        if sys.platform == "win32":
+            # Ouvre un nouvel onglet dans Chrome s'il est installe, sinon navigateur par defaut
+            import subprocess
+            result = subprocess.run(
+                ["cmd", "/c", "start", "chrome", url],
+                capture_output=True
+            )
+            if result.returncode != 0:
+                webbrowser.open(url)
+        else:
+            webbrowser.open(url)
     threading.Thread(target=_open_browser, daemon=True).start()
 
     print(f"[WEB] Carveille demarre sur http://localhost:{port}")

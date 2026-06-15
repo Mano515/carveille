@@ -25,9 +25,9 @@ if errorlevel 1 (
 git --version >nul 2>&1
 if not errorlevel 1 (
     echo  Verification des mises a jour...
-    git pull --quiet origin master
+    git -c credential.helper= pull --quiet --no-rebase origin master >nul 2>&1
     if errorlevel 1 (
-        echo  [INFO] Mise a jour impossible (pas de connexion internet ?). Carveille demarre avec la version actuelle.
+        echo  [INFO] Mise a jour ignoree (pas de connexion ou depot non configure).
     ) else (
         echo  Carveille est a jour.
     )
