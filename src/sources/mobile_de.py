@@ -206,14 +206,20 @@ def _parse_html(html: str, url: str) -> tuple[list, int]:
 
 def _scrape_avec_playwright(urls: list[str]) -> list[tuple[list, int]]:
     """
-    Scrape plusieurs pages via Playwright (vrai Chromium).
-    Retourne une liste de (annonces, nb_total) dans le même ordre que urls.
+    Scrape plusieurs pages via Playwright.
+    Essaie d'abord avec Chrome installé sur le PC (moins détectable),
+    puis avec Chromium en fallback.
     """
     from playwright.sync_api import sync_playwright
 
     resultats = []
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        # Chrome installé sur le PC passe mieux la détection de bot que Chromium headless
+        try:
+            browser = p.chromium.launch(channel="chrome", headless=True)
+        except Exception:
+            browser = p.chromium.launch(headless=True)
+
         context = browser.new_context(
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -222,7 +228,13 @@ def _scrape_avec_playwright(urls: list[str]) -> list[tuple[list, int]]:
             ),
             locale="fr-FR",
             viewport={"width": 1280, "height": 800},
+            # Masquer les indices de navigateur automatisé
+            java_script_enabled=True,
         )
+
+        # Masquer la propriété webdriver qui trahit Playwright
+        context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
         page = context.new_page()
 
         # Bloquer images et polices pour aller plus vite
@@ -230,12 +242,8 @@ def _scrape_avec_playwright(urls: list[str]) -> list[tuple[list, int]]:
 
         for i, url in enumerate(urls):
             try:
-                page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                # Attendre que __NEXT_DATA__ soit dans le DOM
-                page.wait_for_function(
-                    "() => !!document.getElementById('__NEXT_DATA__')",
-                    timeout=15000
-                )
+                # networkidle attend que toutes les requêtes JS soient terminées
+                page.goto(url, wait_until="networkidle", timeout=45000)
                 html = page.content()
                 resultats.append(_parse_html(html, url))
             except Exception as e:
@@ -243,7 +251,7 @@ def _scrape_avec_playwright(urls: list[str]) -> list[tuple[list, int]]:
                 resultats.append(([], 0))
 
             if i < len(urls) - 1:
-                time.sleep(random.uniform(1.5, 2.5))
+                time.sleep(random.uniform(2.0, 3.5))
 
         browser.close()
     return resultats
