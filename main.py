@@ -425,7 +425,8 @@ def cmd_ui():
                     self._send_json({"ok": False, "error": f"Un client « {data['nom']} » existe déjà."}, 409)
                     return
                 insert_client(data)
-                _creer_dossier_client(data["nom"])
+                # Création du dossier en arrière-plan pour ne pas bloquer la réponse HTTP
+                threading.Thread(target=_creer_dossier_client, args=(data["nom"],), daemon=True).start()
                 self._send_json({"ok": True, "client_id": data["client_id"]})
 
             elif self.path.startswith("/clients/") and self.path.endswith("/archiver"):
