@@ -180,6 +180,11 @@ def _parse_html(html: str, url: str) -> tuple[list, int]:
     if not data:
         print("  [ERR] __NEXT_DATA__ introuvable. mobile.de a peut-etre bloque la requete.")
         print(f"        URL tentee : {url}")
+        # Afficher le titre et un extrait du HTML pour diagnostiquer
+        titre_match = re.search(r'<title[^>]*>(.*?)</title>', html, re.IGNORECASE | re.DOTALL)
+        if titre_match:
+            print(f"        Titre de la page recue : {titre_match.group(1).strip()[:120]}")
+        print(f"        Debut HTML : {html[:300].replace(chr(10), ' ')}")
         return [], 0
 
     try:
