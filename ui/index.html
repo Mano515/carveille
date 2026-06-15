@@ -5,236 +5,680 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Carveille</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #222; }
-  header { background: #1a1a2e; color: white; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
-  header h1 { font-size: 1.4rem; letter-spacing: .5px; }
-  .container { max-width: 980px; margin: 24px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 24px; }
-  .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-  h2 { font-size: 1.05rem; margin-bottom: 16px; color: #1a1a2e; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-  th { text-align: left; padding: 8px 12px; background: #f0f0f0; border-bottom: 2px solid #ddd; }
-  td { padding: 8px 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
-  .badge-active { background: #d4edda; color: #155724; }
-  form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  form .full { grid-column: 1 / -1; }
-  label { display: flex; flex-direction: column; gap: 4px; font-size: 0.88rem; font-weight: 500; }
-  input, select { padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.9rem; width: 100%; }
-  input:focus, select:focus { outline: 2px solid #1a1a2e; border-color: transparent; }
-  .checkbox-row { flex-direction: row; align-items: center; gap: 8px; }
-  .checkbox-row input { width: auto; }
-  button { padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: opacity .15s; }
-  button:hover { opacity: 0.85; }
-  .btn-primary { background: #1a1a2e; color: white; }
-  .btn-secondary { background: #e8e8e8; color: #333; }
-  .btn-run { background: #4caf50; color: white; font-size: 0.8rem; padding: 6px 12px; border-radius: 6px; }
-  .btn-sm { padding: 5px 10px; font-size: 0.78rem; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; }
-  .btn-oui { background: #d4edda; color: #155724; }
-  .btn-non { background: #f8d7da; color: #721c24; }
-  .btn-oui.active { background: #155724; color: white; }
-  .btn-non.active { background: #721c24; color: white; }
-  .run-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
-  select.small { width: auto; padding: 6px 8px; font-size: 0.8rem; }
-  .annonce-card { border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
-  .annonce-card.interet-non { opacity: 0.35; }
-  .annonce-card.interet-oui { border-color: #4caf50; border-width: 2px; }
-  .annonce-card.baisse-prix { border-color: #ff9800; border-width: 2px; }
-  .annonce-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-  .annonce-titre { font-size: 0.95rem; font-weight: 600; }
-  .annonce-titre a { color: #1a1a2e; text-decoration: none; }
-  .annonce-titre a:hover { text-decoration: underline; }
-  .annonce-score-badge { font-size: 1.15rem; font-weight: 800; white-space: nowrap; }
-  .annonce-meta { font-size: 0.82rem; color: #555; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-  .tag { background: #f0f0f0; padding: 2px 8px; border-radius: 10px; }
-  .tag-new { background: #d4edda; color: #155724; }
-  .tag-fresh { background: #fff3cd; color: #856404; }
-  .tag-baisse { background: #fff3cd; color: #e65100; font-weight: 600; }
-  .annonce-rejet { font-size: 0.8rem; color: #c62828; margin-bottom: 8px; }
-  .score-breakdown { border-top: 1px solid #f0f0f0; padding-top: 10px; margin-top: 4px; display: none; }
-  .score-breakdown.open { display: block; }
-  .score-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; margin-bottom: 5px; }
-  .score-label { width: 80px; color: #666; flex-shrink: 0; }
-  .score-bar-bg { flex: 1; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
-  .score-bar-fill { height: 100%; border-radius: 3px; }
-  .score-val { width: 55px; text-align: right; color: #333; font-weight: 500; }
-  .annonce-actions { display: flex; gap: 6px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
-  .btn-detail-toggle { background: #f0f0f0; color: #333; }
-  .btn-translate { background: #e8f4fd; color: #1565c0; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; padding: 5px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 500; }
-  .section-tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; }
-  .tab { padding: 10px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500; font-size: 0.9rem; color: #666; }
-  .tab.active { border-bottom-color: #1a1a2e; color: #1a1a2e; }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-  .toast { position: fixed; bottom: 20px; right: 20px; background: #1a1a2e; color: white; padding: 12px 20px; border-radius: 8px; font-size: 0.9rem; display: none; z-index: 100; max-width: 320px; }
-  .no-data { color: #888; font-size: 0.9rem; text-align: center; padding: 24px; }
-  .prix-initial { font-size: 0.78rem; color: #aaa; text-decoration: line-through; margin-left: 4px; }
-  details summary { cursor: pointer; font-size: 0.85rem; color: #555; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #f0f2f5; color: #222; min-height: 100vh; }
+
+/* ── Header ── */
+header {
+  background: #1a1a2e; color: white;
+  padding: 14px 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  position: sticky; top: 0; z-index: 50;
+}
+.header-left { display: flex; align-items: center; gap: 10px; }
+header h1 { font-size: 1.3rem; font-weight: 700; }
+header p { font-size: 0.78rem; opacity: 0.7; margin-top: 1px; }
+.status-pill {
+  font-size: 0.78rem; padding: 4px 12px; border-radius: 20px;
+  background: rgba(255,255,255,0.12); white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #aaa; flex-shrink: 0; }
+.status-dot.ok { background: #4caf50; }
+.status-dot.running { background: #ff9800; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── Navigation ── */
+nav {
+  background: white; border-bottom: 1px solid #e0e0e0;
+  display: flex; padding: 0 16px;
+  position: sticky; top: 57px; z-index: 40;
+}
+.nav-tab {
+  padding: 14px 20px; cursor: pointer;
+  border-bottom: 3px solid transparent;
+  font-weight: 500; font-size: 0.9rem; color: #666;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.nav-tab:hover { color: #1a1a2e; }
+.nav-tab.active { border-bottom-color: #1a1a2e; color: #1a1a2e; }
+
+/* ── Layout ── */
+main { max-width: 860px; margin: 0 auto; padding: 24px 16px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.card { background: white; border-radius: 14px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 20px; }
+.card-title { font-size: 1rem; font-weight: 600; color: #1a1a2e; margin-bottom: 18px; }
+
+/* ── Bouton principal ── */
+.btn-chercher {
+  width: 100%; padding: 18px; border: none; border-radius: 12px;
+  background: #2e7d32; color: white;
+  font-size: 1.05rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: background .2s, transform .1s;
+}
+.btn-chercher:hover:not(:disabled) { background: #1b5e20; }
+.btn-chercher:active:not(:disabled) { transform: scale(0.99); }
+.btn-chercher:disabled { background: #888; cursor: not-allowed; }
+.run-info { text-align: center; margin-top: 10px; font-size: 0.82rem; color: #777; min-height: 20px; }
+.planif-badge {
+  text-align: center; margin-top: 6px; font-size: 0.8rem; color: #1565c0;
+  display: none;
+}
+
+/* ── Liste des recherches ── */
+.search-card {
+  border: 1px solid #e8e8e8; border-radius: 12px; padding: 16px 20px;
+  margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  flex-wrap: wrap;
+}
+.search-card:last-child { margin-bottom: 0; }
+.search-info { flex: 1; min-width: 200px; }
+.search-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+.search-criteria { font-size: 0.82rem; color: #666; }
+.search-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
+
+/* ── Boutons generiques ── */
+button { cursor: pointer; border: none; border-radius: 8px; font-weight: 600; transition: opacity .15s; }
+button:hover { opacity: .85; }
+.btn-primary { background: #1a1a2e; color: white; padding: 10px 20px; font-size: 0.9rem; }
+.btn-secondary { background: #e8e8e8; color: #333; padding: 10px 20px; font-size: 0.9rem; }
+.btn-voir { background: #1565c0; color: white; padding: 8px 16px; font-size: 0.85rem; }
+.btn-save { background: #2e7d32; color: white; padding: 10px 24px; font-size: 0.9rem; }
+.btn-back { background: none; color: #1565c0; padding: 0; font-size: 0.88rem; font-weight: 500; text-decoration: underline; cursor: pointer; border: none; margin-bottom: 16px; }
+
+/* ── Etat vide ── */
+.empty-state {
+  text-align: center; padding: 48px 24px; color: #888;
+}
+.empty-state .icon { font-size: 3rem; margin-bottom: 16px; }
+.empty-state h3 { font-size: 1.1rem; color: #444; margin-bottom: 8px; }
+.empty-state p { font-size: 0.88rem; line-height: 1.6; }
+.empty-state .arrow { font-size: 1.5rem; margin-top: 16px; color: #1a1a2e; }
+
+/* ── Annonces (resultats) ── */
+.resultats-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; flex-wrap: wrap; gap: 8px;
+}
+.resultats-title { font-size: 1rem; font-weight: 600; color: #1a1a2e; }
+.resultats-count { font-size: 0.82rem; color: #888; }
+
+.annonce-card {
+  border: 1.5px solid #e8e8e8; border-radius: 12px;
+  padding: 18px; margin-bottom: 14px;
+  transition: border-color .2s;
+}
+.annonce-card.interet-non { opacity: 0.35; }
+.annonce-card.interet-oui { border-color: #4caf50; }
+.annonce-card.baisse-prix { border-color: #ff9800; }
+
+.annonce-top {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; margin-bottom: 10px;
+}
+.annonce-titre { font-weight: 600; font-size: 0.95rem; color: #1a1a2e; line-height: 1.4; }
+.score-badge {
+  font-size: 1.2rem; font-weight: 800; white-space: nowrap; flex-shrink: 0;
+}
+.annonce-tags {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+}
+.tag {
+  background: #f0f2f5; padding: 3px 10px; border-radius: 20px;
+  font-size: 0.78rem; color: #444;
+}
+.tag-new { background: #e8f5e9; color: #2e7d32; font-weight: 600; }
+.tag-fresh { background: #fff8e1; color: #e65100; }
+.tag-baisse { background: #fff3e0; color: #e65100; font-weight: 700; }
+.tag-rejet { background: #fce4ec; color: #c62828; }
+
+.annonce-actions {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f0f0;
+}
+.btn-annonce {
+  background: #1565c0; color: white;
+  padding: 9px 18px; font-size: 0.88rem; border-radius: 8px;
+  text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+  font-weight: 600; transition: opacity .15s;
+}
+.btn-annonce:hover { opacity: .85; }
+.btn-sm { padding: 6px 12px; font-size: 0.78rem; border-radius: 6px; font-weight: 500; }
+.btn-oui { background: #e8f5e9; color: #2e7d32; }
+.btn-non { background: #fce4ec; color: #c62828; }
+.btn-oui.active { background: #2e7d32; color: white; }
+.btn-non.active { background: #c62828; color: white; }
+.btn-detail { background: #f0f2f5; color: #555; }
+.btn-translate { background: #e3f2fd; color: #1565c0; text-decoration: none;
+  padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 4px; }
+
+.score-breakdown { display: none; margin-top: 12px; }
+.score-breakdown.open { display: block; }
+.score-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; margin-bottom: 6px; }
+.score-label { width: 90px; color: #666; flex-shrink: 0; }
+.score-bar-bg { flex: 1; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
+.score-bar-fill { height: 100%; border-radius: 3px; }
+.score-val { width: 55px; text-align: right; color: #444; font-weight: 500; }
+.prix-barre { text-decoration: line-through; color: #aaa; font-size: 0.78rem; margin-left: 4px; }
+
+/* ── Formulaire ── */
+form { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+form .full { grid-column: 1 / -1; }
+label { display: flex; flex-direction: column; gap: 5px; font-size: 0.88rem; font-weight: 500; color: #333; }
+label .hint { font-size: 0.76rem; color: #888; font-weight: 400; }
+input, select, textarea {
+  padding: 9px 12px; border: 1.5px solid #ddd; border-radius: 8px;
+  font-size: 0.9rem; width: 100%; background: white; color: #222;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: #1a1a2e;
+}
+.checkbox-row { flex-direction: row; align-items: center; gap: 8px; margin-top: 8px; }
+.checkbox-row input { width: auto; }
+details { border: 1px solid #eee; border-radius: 10px; padding: 12px 16px; }
+details summary { cursor: pointer; font-size: 0.85rem; color: #666; font-weight: 500; list-style: none; }
+details summary::before { content: '▶ '; font-size: 0.7rem; }
+details[open] summary::before { content: '▼ '; }
+details > * + * { margin-top: 12px; }
+
+/* ── Parametres ── */
+.param-section { margin-bottom: 28px; }
+.param-section-title {
+  font-size: 0.9rem; font-weight: 700; color: #1a1a2e;
+  margin-bottom: 14px; padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+.canal-options { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.canal-btn {
+  padding: 10px 18px; border: 2px solid #ddd; border-radius: 10px;
+  background: white; color: #555; font-weight: 500; font-size: 0.88rem;
+  cursor: pointer; transition: all .15s;
+}
+.canal-btn:hover { border-color: #1a1a2e; }
+.canal-btn.active { border-color: #1a1a2e; background: #1a1a2e; color: white; }
+.canal-fields { display: none; }
+.canal-fields.active { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.canal-fields.active.single-col { grid-template-columns: 1fr; }
+.info-box {
+  background: #f0f4ff; border-radius: 10px; padding: 14px 16px;
+  font-size: 0.82rem; color: #1a1a2e; line-height: 1.7;
+  grid-column: 1 / -1;
+}
+.info-box strong { display: block; margin-bottom: 4px; }
+.planif-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.planif-row label { flex-direction: row; align-items: center; gap: 8px; font-size: 0.9rem; }
+.planif-row input[type=time] { width: 120px; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: #1a1a2e; color: white;
+  padding: 12px 20px; border-radius: 10px; font-size: 0.88rem;
+  display: none; z-index: 999; max-width: 340px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.2);
+}
+.toast.error { background: #c62828; }
+
+/* ── Loading ── */
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
+<!-- ═══════════════════════════════ HEADER ═══════════════════════════════════ -->
 <header>
-  <span style="font-size:1.5rem">&#128663;</span>
-  <h1>Carveille</h1>
+  <div class="header-left">
+    <span style="font-size:1.6rem">&#128663;</span>
+    <div>
+      <h1>Carveille</h1>
+      <p>Veille automobile sur mobile.de</p>
+    </div>
+  </div>
+  <div class="status-pill" id="status-pill">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">Chargement...</span>
+  </div>
 </header>
 
-<div class="container">
+<!-- ════════════════════════════ NAVIGATION ══════════════════════════════════ -->
+<nav>
+  <div class="nav-tab active" onclick="switchTab('voitures')" id="nav-voitures">&#128269; Mes recherches</div>
+  <div class="nav-tab" onclick="switchTab('resultats')" id="nav-resultats">&#128196; Resultats</div>
+  <div class="nav-tab" onclick="switchTab('form')" id="nav-form">&#43; Nouvelle recherche</div>
+  <div class="nav-tab" onclick="switchTab('params')" id="nav-params">&#9881; Parametres</div>
+</nav>
 
-  <div class="card">
-    <h2>Recherches actives</h2>
-    <div class="run-controls">
-      <label style="flex-direction:row;align-items:center;gap:6px;font-size:0.85rem">
-        Source :
-        <select id="run-source" class="small" onchange="toggleDaySelector()">
-          <option value="mock">Mock</option>
-          <option value="mobile.de">mobile.de</option>
-        </select>
-      </label>
-      <label style="flex-direction:row;align-items:center;gap:6px;font-size:0.85rem" id="day-selector">
-        Jour :
-        <select id="run-day" class="small">
-          <option value="1">Jour 1</option>
-          <option value="2">Jour 2</option>
-        </select>
-      </label>
-      <button class="btn-run" onclick="lancerRun()">&#9654; Lancer un run</button>
+<!-- ══════════════════════════════ CONTENU ═══════════════════════════════════ -->
+<main>
+
+  <!-- ── Onglet 1 : Mes recherches ── -->
+  <div class="tab-content active" id="tab-voitures">
+
+    <div class="card">
+      <button class="btn-chercher" id="btn-chercher" onclick="lancerRun()">
+        <span id="chercher-icon">&#128269;</span>
+        <span id="chercher-label">Chercher maintenant sur mobile.de</span>
+      </button>
+      <p class="run-info" id="run-info"></p>
+      <p class="planif-badge" id="planif-badge"></p>
     </div>
-    <div id="recherches-list"><p class="no-data">Chargement...</p></div>
+
+    <div class="card">
+      <div class="card-title">Mes recherches actives</div>
+      <div id="recherches-list">
+        <div class="empty-state">
+          <div class="icon">&#8987;</div>
+          <p>Chargement...</p>
+        </div>
+      </div>
+    </div>
+
   </div>
 
-  <div class="card">
-    <div class="section-tabs">
-      <div class="tab active" onclick="switchTab('form')">Nouvelle recherche</div>
-      <div class="tab" onclick="switchTab('resultats')">Resultats</div>
+  <!-- ── Onglet 2 : Resultats ── -->
+  <div class="tab-content" id="tab-resultats">
+    <button class="btn-back" onclick="switchTab('voitures')">&#8592; Retour aux recherches</button>
+    <div class="card">
+      <div id="resultats-content">
+        <div class="empty-state">
+          <div class="icon">&#128196;</div>
+          <h3>Aucun resultat a afficher</h3>
+          <p>Cliquez sur "Voir les resultats" d'une recherche.</p>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <div id="tab-form" class="tab-content active">
+  <!-- ── Onglet 3 : Nouvelle recherche ── -->
+  <div class="tab-content" id="tab-form">
+    <div class="card">
+      <div class="card-title">Nouvelle recherche</div>
       <form id="form-recherche" onsubmit="soumettreRecherche(event)">
+
         <label class="full">
-          Nom de la recherche *
-          <input type="text" name="nom_recherche" required placeholder="ex : BMW Serie 1 Auto">
+          Nom de la recherche
+          <span class="hint">Donnez un nom facile a reconnaitre</span>
+          <input type="text" name="nom_recherche" required placeholder="ex : BMW Serie 1 Automatique">
         </label>
-        <label>Marque * <input type="text" name="marque" required placeholder="BMW"></label>
-        <label>Modele * <input type="text" name="modele" required placeholder="Serie 1"></label>
-        <label>Budget max (EUR) * <input type="number" name="budget_max" required placeholder="20000"></label>
-        <label class="checkbox-row" style="margin-top:22px">
-          <input type="checkbox" name="budget_strict"> Budget strict
+
+        <label>
+          Marque
+          <input type="text" name="marque" required placeholder="BMW, Peugeot, Audi...">
         </label>
-        <label>Kilometrage max * <input type="number" name="km_max" required placeholder="100000"></label>
-        <label>Annee min * <input type="number" name="annee_min" required placeholder="2018"></label>
-        <label>Boite de vitesses
+        <label>
+          Modele
+          <input type="text" name="modele" required placeholder="Serie 1, 308, A3...">
+        </label>
+
+        <label>
+          Budget maximum (EUR)
+          <input type="number" name="budget_max" required placeholder="20000" min="1000">
+        </label>
+        <label>
+          Kilometrage maximum
+          <input type="number" name="km_max" required placeholder="100000" min="0">
+        </label>
+
+        <label>
+          Annee minimum
+          <input type="number" name="annee_min" required placeholder="2018" min="2000" max="2025">
+        </label>
+        <label>
+          Boite de vitesses
           <select name="boite">
-            <option value="indifferent">Indifferent</option>
+            <option value="indifferent">Peu importe</option>
             <option value="auto">Automatique</option>
             <option value="manuelle">Manuelle</option>
           </select>
         </label>
-        <label>Carburant
+
+        <label>
+          Carburant
           <select name="carburant">
-            <option value="indifferent">Indifferent</option>
+            <option value="indifferent">Peu importe</option>
             <option value="diesel">Diesel</option>
             <option value="essence">Essence</option>
             <option value="hybride">Hybride</option>
             <option value="electrique">Electrique</option>
           </select>
         </label>
-        <label>Type de vendeur
+        <label>
+          Type de vendeur
           <select name="vendeur_filtre">
-            <option value="indifferent">Indifferent</option>
-            <option value="pro">Professionnel</option>
-            <option value="particulier">Particulier</option>
+            <option value="indifferent">Peu importe</option>
+            <option value="pro">Professionnel uniquement</option>
+            <option value="particulier">Particulier uniquement</option>
           </select>
         </label>
-        <label>Options souhaitees (virgules)
-          <input type="text" name="options_recherchees" placeholder="camera,gps,bluetooth">
-        </label>
-        <label class="full">URL de recherche mobile.de (optionnel)
-          <input type="url" name="mobile_de_url" placeholder="https://suchen.mobile.de/fahrzeuge/search.html?...">
-          <span style="font-size:0.76rem;color:#888;margin-top:2px">Faites votre recherche sur mobile.de, copiez l'URL ici.</span>
+
+        <label class="full">
+          Options souhaitees
+          <span class="hint">Separees par des virgules (optionnel)</span>
+          <input type="text" name="options_recherchees" placeholder="camera, gps, bluetooth, toit ouvrant...">
         </label>
 
-        <details class="full" style="margin-top:4px">
-          <summary style="margin-bottom:12px">Ajuster les poids (avance)</summary>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
-            <label>Prix <input type="number" name="poids_prix" value="30" min="0" max="100"></label>
-            <label>Kilometrage <input type="number" name="poids_km" value="25" min="0" max="100"></label>
-            <label>Annee <input type="number" name="poids_annee" value="20" min="0" max="100"></label>
-            <label>Boite <input type="number" name="poids_boite" value="10" min="0" max="100"></label>
-            <label>Carburant <input type="number" name="poids_carburant" value="10" min="0" max="100"></label>
-            <label>Options <input type="number" name="poids_options" value="5" min="0" max="100"></label>
-            <label>Score min notif <input type="number" name="score_min_notification" value="60" min="0" max="100"></label>
-            <label>Max annonces <input type="number" name="max_annonces" value="3" min="1" max="10"></label>
+        <label class="full">
+          URL de recherche mobile.de
+          <span class="hint">Methode recommandee : faites votre recherche sur mobile.de, copiez l'adresse de la page et collez-la ici</span>
+          <input type="url" name="mobile_de_url" placeholder="https://suchen.mobile.de/fahrzeuge/search.html?...">
+        </label>
+
+        <details class="full">
+          <summary>Reglages avances (facultatif)</summary>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+            <label class="checkbox-row full">
+              <input type="checkbox" name="budget_strict">
+              Budget strict (refuser toute annonce au-dessus du budget, sans tolerance)
+            </label>
+            <label>Score minimum pour etre alerte (0-100)
+              <input type="number" name="score_min_notification" value="60" min="0" max="100">
+            </label>
+            <label>Nombre max d'annonces par alerte
+              <input type="number" name="max_annonces" value="3" min="1" max="10">
+            </label>
+            <label>Importance du prix (0-100) <input type="number" name="poids_prix" value="30" min="0" max="100"></label>
+            <label>Importance du kilometrage <input type="number" name="poids_km" value="25" min="0" max="100"></label>
+            <label>Importance de l'annee <input type="number" name="poids_annee" value="20" min="0" max="100"></label>
+            <label>Importance de la boite <input type="number" name="poids_boite" value="10" min="0" max="100"></label>
+            <label>Importance du carburant <input type="number" name="poids_carburant" value="10" min="0" max="100"></label>
+            <label>Importance des options <input type="number" name="poids_options" value="5" min="0" max="100"></label>
           </div>
         </details>
 
-        <div class="full" style="display:flex;gap:10px;margin-top:8px">
-          <button type="submit" class="btn-primary">Enregistrer</button>
-          <button type="reset" class="btn-secondary">Reinitialiser</button>
+        <div class="full" style="display:flex;gap:10px;margin-top:4px">
+          <button type="submit" class="btn-primary">Enregistrer la recherche</button>
+          <button type="reset" class="btn-secondary">Effacer</button>
         </div>
+
       </form>
     </div>
+  </div>
 
-    <div id="tab-resultats" class="tab-content">
-      <div id="resultats-content">
-        <p class="no-data">Cliquez sur "Voir" dans une recherche pour afficher les resultats.</p>
+  <!-- ── Onglet 4 : Parametres ── -->
+  <div class="tab-content" id="tab-params">
+
+    <div class="card">
+      <div class="param-section">
+        <div class="param-section-title">Comment voulez-vous etre alerte ?</div>
+
+        <div class="canal-options">
+          <button class="canal-btn" data-canal="console" onclick="selectCanal('console')">
+            &#128187; Console seulement
+          </button>
+          <button class="canal-btn" data-canal="telegram" onclick="selectCanal('telegram')">
+            &#128172; Telegram
+          </button>
+          <button class="canal-btn" data-canal="email" onclick="selectCanal('email')">
+            &#128140; Email
+          </button>
+        </div>
+
+        <!-- Telegram -->
+        <div class="canal-fields" id="fields-telegram">
+          <div class="info-box">
+            <strong>Comment configurer Telegram :</strong>
+            1. Ouvrez Telegram et cherchez <strong>@BotFather</strong><br>
+            2. Envoyez <code>/newbot</code> et suivez les instructions — notez le <strong>Token</strong><br>
+            3. Envoyez un message a votre nouveau bot, puis allez sur :<br>
+            &nbsp;&nbsp;&nbsp;<code>https://api.telegram.org/bot<strong>VOTRE_TOKEN</strong>/getUpdates</code><br>
+            4. Notez le <strong>Chat ID</strong> (nombre dans "id")
+          </div>
+          <label>Token du bot Telegram
+            <input type="text" id="telegram-token" placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ">
+          </label>
+          <label>Votre Chat ID
+            <input type="text" id="telegram-chat" placeholder="987654321">
+          </label>
+        </div>
+
+        <!-- Email -->
+        <div class="canal-fields single-col" id="fields-email">
+          <div class="info-box">
+            <strong>Pour Gmail :</strong>
+            Activez la validation en deux etapes, puis creez un <strong>mot de passe d'application</strong>
+            dans les parametres de securite de votre compte Google.
+            Utilisez ce mot de passe (pas votre mot de passe habituel) dans le champ ci-dessous.
+          </div>
+          <label>Votre adresse email (expediteur)
+            <input type="email" id="smtp-user" placeholder="votre.email@gmail.com">
+          </label>
+          <label>Mot de passe d'application Gmail
+            <input type="password" id="smtp-pass" placeholder="xxxx xxxx xxxx xxxx">
+          </label>
+          <label>Adresse email de reception (si differente)
+            <input type="email" id="smtp-dest" placeholder="(meme adresse si vide)">
+          </label>
+        </div>
+
+        <div style="margin-top:20px">
+          <button class="btn-save" onclick="sauvegarderConfig()">Enregistrer les notifications</button>
+        </div>
+      </div>
+
+      <div class="param-section">
+        <div class="param-section-title">Verification automatique</div>
+        <p style="font-size:0.85rem;color:#555;margin-bottom:16px;line-height:1.6">
+          Carveille peut verifier automatiquement les nouvelles annonces tous les jours
+          a une heure que vous choisissez. <strong>Carveille doit etre ouvert</strong> (la fenetre noire)
+          pour que ca fonctionne.
+        </p>
+        <div class="planif-row">
+          <label>
+            <input type="checkbox" id="planif-actif" onchange="togglePlanifHeure()">
+            Activer la verification automatique
+          </label>
+          <label id="planif-heure-label" style="display:none">
+            Tous les jours a :
+            <input type="time" id="planif-heure" value="09:00">
+          </label>
+        </div>
+        <div style="margin-top:20px">
+          <button class="btn-save" onclick="sauvegarderPlanificateur()">Enregistrer le planning</button>
+        </div>
       </div>
     </div>
+
   </div>
-</div>
+
+</main>
 
 <div class="toast" id="toast"></div>
 
+<!-- ═══════════════════════════════ SCRIPTS ═══════════════════════════════════ -->
 <script>
 const API = 'http://localhost:8765';
 let currentSearchId = null;
 let currentSearchNom = '';
+let currentCanal = 'console';
+let pollTimer = null;
 
-function toggleDaySelector() {
-  const src = document.getElementById('run-source').value;
-  document.getElementById('day-selector').style.display = src === 'mock' ? '' : 'none';
-}
+// ── Utilitaires ────────────────────────────────────────────────────────────────
 
 function showToast(msg, ok = true) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.style.background = ok ? '#1a1a2e' : '#c62828';
+  t.className = 'toast' + (ok ? '' : ' error');
   t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 3500);
+  setTimeout(() => t.style.display = 'none', 4000);
 }
 
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t, i) =>
-    t.classList.toggle('active', ['form', 'resultats'][i] === name));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
 }
 
-function scoreColor(pct) {
-  if (pct >= 80) return '#4caf50';
-  if (pct >= 60) return '#ff9800';
-  return '#f44336';
+function scoreColor(score) {
+  if (score >= 80) return '#2e7d32';
+  if (score >= 60) return '#ef6c00';
+  return '#c62828';
 }
+
+function ageBadge(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const h = (Date.now() - new Date(dateStr).getTime()) / 3600000;
+    if (h <= 24)  return '<span class="tag tag-fresh">Moins de 24h</span>';
+    if (h <= 48)  return '<span class="tag tag-fresh">Moins de 48h</span>';
+    if (h <= 168) return '<span class="tag tag-fresh">Cette semaine</span>';
+  } catch {}
+  return '';
+}
+
+// ── Statut du run ───────────────────────────────────────────────────────────────
+
+async function updateStatus() {
+  try {
+    const s = await fetch(`${API}/status`).then(r => r.json());
+    const dot  = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+    if (s.en_cours) {
+      dot.className = 'status-dot running';
+      text.textContent = 'Recherche en cours...';
+    } else if (s.dernier_run) {
+      dot.className = 'status-dot ok';
+      const d = new Date(s.dernier_run);
+      text.textContent = 'Derniere verif : ' + d.toLocaleDateString('fr') + ' a ' + d.toLocaleTimeString('fr', {hour:'2-digit',minute:'2-digit'});
+    } else {
+      dot.className = 'status-dot';
+      text.textContent = 'Aucune recherche effectuee';
+    }
+  } catch {
+    document.getElementById('status-text').textContent = 'Hors ligne';
+  }
+}
+
+function startPolling() {
+  if (pollTimer) return;
+  const btn   = document.getElementById('btn-chercher');
+  const label = document.getElementById('chercher-label');
+  const icon  = document.getElementById('chercher-icon');
+  btn.disabled = true;
+  icon.innerHTML = '<div class="spinner"></div>';
+  label.textContent = 'Recherche en cours...';
+  document.getElementById('run-info').textContent = 'Veuillez patienter, cette operation peut prendre quelques minutes.';
+
+  pollTimer = setInterval(async () => {
+    await updateStatus();
+    try {
+      const s = await fetch(`${API}/status`).then(r => r.json());
+      if (!s.en_cours) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+        btn.disabled = false;
+        icon.textContent = String.fromCodePoint(0x1F50D);
+        label.textContent = 'Chercher maintenant sur mobile.de';
+        document.getElementById('run-info').textContent = 'Recherche terminee !';
+        setTimeout(() => document.getElementById('run-info').textContent = '', 5000);
+        chargerRecherches();
+        if (currentSearchId) voirResultats(currentSearchId, currentSearchNom);
+        showToast('Recherche terminee ! Consultez vos resultats.');
+      }
+    } catch {}
+  }, 3000);
+}
+
+// ── Recherches ─────────────────────────────────────────────────────────────────
+
+async function chargerRecherches() {
+  const el = document.getElementById('recherches-list');
+  try {
+    const data = await fetch(`${API}/recherches`).then(r => r.json());
+
+    if (!data.length) {
+      el.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">&#128663;</div>
+          <h3>Bienvenue dans Carveille !</h3>
+          <p>Vous n'avez pas encore de recherche.<br>
+             Cliquez sur <strong>"Nouvelle recherche"</strong> pour commencer.</p>
+          <div class="arrow">&#8593;</div>
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = data.map(r => {
+      const criteres = [
+        r.marque + ' ' + r.modele,
+        (r.budget_max ? '≤ ' + Math.round(r.budget_max).toLocaleString('fr') + ' EUR' : ''),
+        (r.km_max ? '≤ ' + Math.round(r.km_max).toLocaleString('fr') + ' km' : ''),
+        (r.annee_min ? '≥ ' + r.annee_min : ''),
+        (r.boite && r.boite !== 'indifferent' ? r.boite : ''),
+        (r.carburant && r.carburant !== 'indifferent' ? r.carburant : ''),
+      ].filter(Boolean).join(' · ');
+
+      return `<div class="search-card">
+        <div class="search-info">
+          <div class="search-name">${r.nom_recherche}</div>
+          <div class="search-criteria">${criteres}</div>
+          ${r.mobile_de_url ? '<div style="font-size:0.76rem;color:#1565c0;margin-top:3px">URL mobile.de personnalisee</div>' : ''}
+        </div>
+        <div class="search-actions">
+          <button class="btn-voir" onclick="voirResultats('${r.search_id}', '${r.nom_recherche.replace(/'/g,"\\'")}')">
+            Voir les resultats
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+
+  } catch {
+    el.innerHTML = `<div class="empty-state">
+      <div class="icon">&#9888;</div>
+      <h3>Impossible de se connecter</h3>
+      <p>Verifiez que la fenetre noire "Carveille" est ouverte.</p>
+    </div>`;
+  }
+}
+
+async function lancerRun() {
+  try {
+    const d = await fetch(`${API}/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: 'mobile.de' })
+    }).then(r => r.json());
+
+    if (d.ok) {
+      startPolling();
+    } else {
+      showToast(d.message || 'Impossible de lancer la recherche.', false);
+    }
+  } catch {
+    showToast('Impossible de se connecter. La fenetre Carveille est-elle ouverte ?', false);
+  }
+}
+
+// ── Resultats ──────────────────────────────────────────────────────────────────
 
 function renderBreakdown(detailJson) {
-  let detail;
-  try { detail = JSON.parse(detailJson); } catch { return ''; }
+  let d;
+  try { d = JSON.parse(detailJson); } catch { return ''; }
   const defs = [
-    { key: 'prix', label: 'Prix' }, { key: 'km', label: 'Km' },
-    { key: 'annee', label: 'Annee' }, { key: 'boite', label: 'Boite' },
-    { key: 'carburant', label: 'Carburant' }, { key: 'options', label: 'Options' },
-    { key: 'vendeur', label: 'Vendeur' }, { key: 'penalite', label: 'Penalite' },
-    { key: 'fraicheur', label: 'Fraicheur' },
+    { key:'prix',       label:'Prix' },
+    { key:'km',         label:'Kilometrage' },
+    { key:'annee',      label:'Annee' },
+    { key:'boite',      label:'Boite' },
+    { key:'carburant',  label:'Carburant' },
+    { key:'options',    label:'Options' },
+    { key:'penalite',   label:'Penalite' },
+    { key:'fraicheur',  label:'Fraicheur' },
   ];
   return defs.map(({ key, label }) => {
-    const item = detail[key]; if (!item) return '';
+    const item = d[key];
+    if (!item) return '';
     const score = item.score || 0, max = item.max || 0;
     if (max === 0 && score === 0) return '';
-    const pct = max > 0 ? Math.round((score / max) * 100) : 0;
-    const color = key === 'penalite' ? '#f44336' : key === 'fraicheur' ? '#ff9800' : scoreColor(pct);
-    const val = max > 0 ? `${score}/${max}` : `${score > 0 ? '+' : ''}${score}`;
-    const barW = max > 0 ? pct : Math.min(Math.abs(score) * 4, 100);
+    const pct   = max > 0 ? Math.round((score / max) * 100) : 0;
+    const color = key === 'penalite' ? '#c62828' : key === 'fraicheur' ? '#ef6c00' : scoreColor(pct);
+    const val   = max > 0 ? `${score}/${max}` : `${score > 0 ? '+' : ''}${score}`;
+    const barW  = max > 0 ? pct : Math.min(Math.abs(score) * 4, 100);
     return `<div class="score-row">
       <span class="score-label">${label}</span>
       <div class="score-bar-bg"><div class="score-bar-fill" style="width:${barW}%;background:${color}"></div></div>
@@ -243,67 +687,57 @@ function renderBreakdown(detailJson) {
   }).join('');
 }
 
-function ageBadge(dateStr) {
-  if (!dateStr) return '';
-  try {
-    const h = (Date.now() - new Date(dateStr).getTime()) / 3600000;
-    if (h <= 24) return '<span class="tag tag-fresh">< 24h</span>';
-    if (h <= 48) return '<span class="tag tag-fresh">< 48h</span>';
-    if (h <= 168) return '<span class="tag tag-fresh">Cette semaine</span>';
-  } catch {}
-  return '';
-}
-
 function renderAnnonce(a, searchId) {
-  const score = Math.round(a.score || 0);
-  const color = scoreColor(score);
+  const score  = Math.round(a.score || 0);
+  const color  = scoreColor(score);
   const baisse = a.baisse_prix && a.baisse_prix > 0;
   const classes = ['annonce-card',
     a.interet === 'non' ? 'interet-non' : '',
     a.interet === 'oui' ? 'interet-oui' : '',
-    baisse ? 'baisse-prix' : ''
+    baisse ? 'baisse-prix' : '',
   ].filter(Boolean).join(' ');
 
-  const prixStr = a.prix ? Math.round(a.prix).toLocaleString('fr') + ' EUR' : '?';
-  const prixInit = (baisse && a.prix_initial && a.prix_initial !== a.prix)
-    ? `<span class="prix-initial">${Math.round(a.prix_initial).toLocaleString('fr')} EUR</span>` : '';
-  const baisseTag = baisse
-    ? `<span class="tag tag-baisse">Baisse -${Math.round(a.baisse_prix)} EUR</span>` : '';
-  const kmStr = a.km ? Math.round(a.km).toLocaleString('fr') + ' km' : '?';
-  const anneeStr = a.date_immat || (a.annee ? String(a.annee) : '?');
+  const prixStr  = a.prix ? Math.round(a.prix).toLocaleString('fr') + ' EUR' : 'Prix non renseigne';
+  const prixBarre = (baisse && a.prix_initial)
+    ? `<span class="prix-barre">${Math.round(a.prix_initial).toLocaleString('fr')} EUR</span>` : '';
+  const anneeStr = a.date_immat || (a.annee ? String(a.annee) : 'Annee inconnue');
+  const kmStr    = a.km ? Math.round(a.km).toLocaleString('fr') + ' km' : '';
+  const breakdown = renderBreakdown(a.score_detail || '');
   const translateUrl = a.url
     ? `https://www.deepl.com/translator#de/fr/${encodeURIComponent(a.url)}` : null;
-  const breakdown = renderBreakdown(a.score_detail || '');
+  const seenIdSafe = (a.seen_id || '').replace(/'/g, "\\'");
 
   return `<div class="${classes}" id="card-${a.seen_id}">
-    <div class="annonce-header">
-      <div class="annonce-titre">
-        <a href="${a.url || '#'}" target="_blank">${a.titre || 'Sans titre'}</a>
-        ${a.est_nouvelle ? '<span class="tag tag-new" style="margin-left:6px;font-size:0.72rem">Nouveau</span>' : ''}
-      </div>
-      <span class="annonce-score-badge" style="color:${color}">${score}/100</span>
+    <div class="annonce-top">
+      <div class="annonce-titre">${a.titre || 'Annonce sans titre'}</div>
+      <div class="score-badge" style="color:${color}">${score}/100</div>
     </div>
-    <div class="annonce-meta">
-      <span class="tag">&#128182; ${prixStr}${prixInit}</span>
-      ${baisseTag}
-      <span class="tag">&#128739; ${kmStr}</span>
+
+    <div class="annonce-tags">
+      <span class="tag">&#128182; ${prixStr}${prixBarre}</span>
+      ${baisse ? `<span class="tag tag-baisse">&#8595; Baisse -${Math.round(a.baisse_prix)} EUR</span>` : ''}
+      ${kmStr ? `<span class="tag">&#128739; ${kmStr}</span>` : ''}
       <span class="tag">&#128197; ${anneeStr}</span>
-      ${a.boite ? `<span class="tag">${a.boite}</span>` : ''}
-      ${a.carburant ? `<span class="tag">${a.carburant}</span>` : ''}
+      ${a.boite ? `<span class="tag">${a.boite.charAt(0).toUpperCase()+a.boite.slice(1)}</span>` : ''}
+      ${a.carburant ? `<span class="tag">${a.carburant.charAt(0).toUpperCase()+a.carburant.slice(1)}</span>` : ''}
       ${a.ville ? `<span class="tag">&#128205; ${a.ville}</span>` : ''}
-      ${a.vendeur_type ? `<span class="tag">${a.vendeur_type}</span>` : ''}
+      ${a.vendeur_type ? `<span class="tag">${a.vendeur_type === 'pro' ? 'Professionnel' : 'Particulier'}</span>` : ''}
+      ${a.est_nouvelle ? '<span class="tag tag-new">Nouvelle annonce</span>' : ''}
       ${ageBadge(a.date_publication)}
+      ${a.raison_rejet ? `<span class="tag tag-rejet">&#9888; ${a.raison_rejet}</span>` : ''}
     </div>
-    ${a.raison_rejet ? `<p class="annonce-rejet">&#9888; ${a.raison_rejet}</p>` : ''}
-    ${breakdown ? `<div class="score-breakdown" id="bd-${a.seen_id}">${breakdown}</div>` : ''}
+
     <div class="annonce-actions">
-      ${breakdown ? `<button class="btn-sm btn-detail-toggle" onclick="toggleDetail('${a.seen_id}')">Detail du score</button>` : ''}
-      ${translateUrl ? `<a class="btn-translate" href="${translateUrl}" target="_blank">&#127760; Traduire DeepL</a>` : ''}
+      ${a.url ? `<a class="btn-annonce" href="${a.url}" target="_blank">Voir l'annonce &#8594;</a>` : ''}
+      ${translateUrl ? `<a class="btn-translate" href="${translateUrl}" target="_blank">&#127760; Traduire</a>` : ''}
       <button class="btn-sm btn-oui ${a.interet === 'oui' ? 'active' : ''}"
-        onclick="marquerInteret('${a.seen_id}','oui','${searchId}')">&#128077; Interesse</button>
+        onclick="marquerInteret('${seenIdSafe}','oui','${searchId}')">&#128077; Interesse</button>
       <button class="btn-sm btn-non ${a.interet === 'non' ? 'active' : ''}"
-        onclick="marquerInteret('${a.seen_id}','non','${searchId}')">&#128078; Pas interesse</button>
+        onclick="marquerInteret('${seenIdSafe}','non','${searchId}')">&#128078; Pas interesse</button>
+      ${breakdown ? `<button class="btn-sm btn-detail" onclick="toggleDetail('${seenIdSafe}')">Detail du score</button>` : ''}
     </div>
+
+    ${breakdown ? `<div class="score-breakdown" id="bd-${a.seen_id}">${breakdown}</div>` : ''}
   </div>`;
 }
 
@@ -311,94 +745,172 @@ function toggleDetail(seenId) {
   document.getElementById('bd-' + seenId)?.classList.toggle('open');
 }
 
-async function marquerInteret(seenId, interet, searchId) {
-  try {
-    const r = await fetch(`${API}/interet`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ seen_id: seenId, interet })
-    });
-    if ((await r.json()).ok) {
-      showToast(interet === 'oui' ? 'Marque comme interesse !' : 'Masque.');
-      voirResultats(searchId, currentSearchNom);
-    }
-  } catch { showToast('Erreur connexion', false); }
-}
-
-async function chargerRecherches() {
-  try {
-    const data = await (await fetch(`${API}/recherches`)).json();
-    const el = document.getElementById('recherches-list');
-    if (!data.length) { el.innerHTML = '<p class="no-data">Aucune recherche. Creez-en une ci-dessous.</p>'; return; }
-    el.innerHTML = `<table><thead><tr><th>Nom</th><th>Criteres</th><th>Statut</th><th></th></tr></thead><tbody>
-      ${data.map(r => `<tr>
-        <td><strong>${r.nom_recherche}</strong></td>
-        <td style="font-size:0.82rem;color:#555">
-          ${r.marque} ${r.modele} &middot; &le;${(r.budget_max||0).toLocaleString('fr')} EUR &middot;
-          &le;${(r.km_max||0).toLocaleString('fr')} km &middot; &ge;${r.annee_min}
-          ${r.mobile_de_url ? ' &middot; <span style="color:#1565c0;font-size:0.78rem">URL mobile.de</span>' : ''}
-        </td>
-        <td><span class="badge badge-active">${r.statut}</span></td>
-        <td><button class="btn-run" onclick="voirResultats('${r.search_id}','${r.nom_recherche}')">Voir</button></td>
-      </tr>`).join('')}</tbody></table>`;
-  } catch {
-    document.getElementById('recherches-list').innerHTML =
-      '<p class="no-data" style="color:#c62828">Serveur inaccessible. Lancez : python main.py ui</p>';
-  }
-}
-
-async function lancerRun() {
-  const source = document.getElementById('run-source').value;
-  const day = parseInt(document.getElementById('run-day').value);
-  try {
-    const d = await (await fetch(`${API}/run`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source, day })
-    })).json();
-    showToast('Run lance : ' + d.message);
-    setTimeout(chargerRecherches, 800);
-  } catch { showToast('Erreur connexion', false); }
-}
-
 async function voirResultats(searchId, nom) {
   currentSearchId = searchId;
   currentSearchNom = nom;
   switchTab('resultats');
   const el = document.getElementById('resultats-content');
-  el.innerHTML = '<p class="no-data">Chargement...</p>';
+  el.innerHTML = '<p style="text-align:center;padding:24px;color:#888">Chargement...</p>';
   try {
-    const data = await (await fetch(`${API}/resultats/${searchId}`)).json();
+    const data = await fetch(`${API}/resultats/${searchId}`).then(r => r.json());
     if (!data.length) {
-      el.innerHTML = `<p class="no-data">Aucun resultat pour "${nom}". Lancez un run d'abord.</p>`;
+      el.innerHTML = `<div class="empty-state">
+        <div class="icon">&#128270;</div>
+        <h3>Aucun resultat pour "${nom}"</h3>
+        <p>Lancez une recherche depuis l'onglet "Mes recherches".</p>
+      </div>`;
       return;
     }
     el.innerHTML =
-      `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <span style="font-size:0.95rem;color:#555">Resultats : <strong>${nom}</strong></span>
-        <span style="font-size:0.8rem;color:#888">${data.length} annonce(s)</span>
+      `<div class="resultats-header">
+        <span class="resultats-title">${nom}</span>
+        <span class="resultats-count">${data.length} annonce${data.length > 1 ? 's' : ''} trouvee${data.length > 1 ? 's' : ''}</span>
       </div>` + data.map(a => renderAnnonce(a, searchId)).join('');
-  } catch { el.innerHTML = '<p class="no-data" style="color:#c62828">Erreur de chargement.</p>'; }
+  } catch {
+    el.innerHTML = '<p style="color:#c62828;padding:16px">Erreur de chargement.</p>';
+  }
 }
+
+async function marquerInteret(seenId, interet, searchId) {
+  try {
+    const r = await fetch(`${API}/interet`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seen_id: seenId, interet })
+    }).then(r => r.json());
+    if (r.ok) {
+      showToast(interet === 'oui' ? 'Marque comme interesse !' : 'Annonce masquee.');
+      voirResultats(searchId, currentSearchNom);
+    }
+  } catch { showToast('Erreur de connexion.', false); }
+}
+
+// ── Formulaire nouvelle recherche ───────────────────────────────────────────────
 
 async function soumettreRecherche(e) {
   e.preventDefault();
-  const fd = new FormData(e.target), body = {};
+  const fd = new FormData(e.target);
+  const body = {};
   fd.forEach((v, k) => { body[k] = v === '' ? null : v; });
   body.budget_strict = fd.has('budget_strict');
   ['budget_max','km_max','annee_min','poids_prix','poids_km','poids_annee',
    'poids_boite','poids_carburant','poids_options','score_min_notification','max_annonces']
     .forEach(k => { if (body[k]) body[k] = parseFloat(body[k]); });
   try {
-    const d = await (await fetch(`${API}/recherches`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+    const d = await fetch(`${API}/recherches`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
-    })).json();
-    showToast('Recherche enregistree !');
-    e.target.reset();
-    chargerRecherches();
-  } catch { showToast('Erreur connexion', false); }
+    }).then(r => r.json());
+    if (d.ok) {
+      showToast('Recherche enregistree !');
+      e.target.reset();
+      chargerRecherches();
+      switchTab('voitures');
+    }
+  } catch { showToast('Erreur de connexion.', false); }
 }
 
-chargerRecherches();
+// ── Parametres ─────────────────────────────────────────────────────────────────
+
+function selectCanal(canal) {
+  currentCanal = canal;
+  document.querySelectorAll('.canal-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.canal === canal);
+  });
+  document.getElementById('fields-telegram').classList.toggle('active', canal === 'telegram');
+  document.getElementById('fields-email').classList.toggle('active', canal === 'email');
+}
+
+async function chargerConfig() {
+  try {
+    const cfg = await fetch(`${API}/config`).then(r => r.json());
+    selectCanal(cfg.CANAL_NOTIFICATION || 'console');
+    document.getElementById('telegram-token').value = cfg.TELEGRAM_BOT_TOKEN || '';
+    document.getElementById('telegram-chat').value  = cfg.TELEGRAM_CHAT_ID || '';
+    document.getElementById('smtp-user').value  = cfg.SMTP_USER || '';
+    document.getElementById('smtp-pass').value  = cfg.SMTP_PASSWORD || '';
+    document.getElementById('smtp-dest').value  = cfg.SMTP_DEST || '';
+  } catch {}
+}
+
+async function sauvegarderConfig() {
+  const body = { CANAL_NOTIFICATION: currentCanal };
+  if (currentCanal === 'telegram') {
+    body.TELEGRAM_BOT_TOKEN = document.getElementById('telegram-token').value;
+    body.TELEGRAM_CHAT_ID   = document.getElementById('telegram-chat').value;
+  } else if (currentCanal === 'email') {
+    body.SMTP_USER  = document.getElementById('smtp-user').value;
+    body.SMTP_PASS  = document.getElementById('smtp-pass').value;
+    body.SMTP_DEST  = document.getElementById('smtp-dest').value;
+    body.SMTP_PASSWORD = document.getElementById('smtp-pass').value;
+  }
+  try {
+    await fetch(`${API}/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    showToast('Parametres de notification enregistres !');
+  } catch { showToast('Erreur de connexion.', false); }
+}
+
+function togglePlanifHeure() {
+  const actif = document.getElementById('planif-actif').checked;
+  document.getElementById('planif-heure-label').style.display = actif ? '' : 'none';
+}
+
+async function chargerPlanificateur() {
+  try {
+    const s = await fetch(`${API}/planificateur`).then(r => r.json());
+    document.getElementById('planif-actif').checked = s.actif;
+    document.getElementById('planif-heure').value = s.heure || '09:00';
+    togglePlanifHeure();
+
+    const badge = document.getElementById('planif-badge');
+    if (s.actif) {
+      badge.style.display = 'block';
+      badge.textContent = 'Verification automatique activee a ' + (s.heure || '09:00') + ' tous les jours';
+    }
+  } catch {}
+}
+
+async function sauvegarderPlanificateur() {
+  const actif = document.getElementById('planif-actif').checked;
+  const heure = document.getElementById('planif-heure').value;
+  try {
+    await fetch(`${API}/planificateur`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ actif, heure })
+    });
+    showToast(actif
+      ? `Verification automatique activee a ${heure} !`
+      : 'Verification automatique desactivee.'
+    );
+    chargerPlanificateur();
+  } catch { showToast('Erreur de connexion.', false); }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+
+(async function init() {
+  await Promise.all([
+    chargerRecherches(),
+    updateStatus(),
+    chargerConfig(),
+    chargerPlanificateur(),
+  ]);
+
+  // Verifier si un run est deja en cours au chargement de la page
+  try {
+    const s = await fetch(`${API}/status`).then(r => r.json());
+    if (s.en_cours) startPolling();
+  } catch {}
+
+  // Mise a jour du statut toutes les 30s
+  setInterval(updateStatus, 30000);
+})();
 </script>
 </body>
 </html>

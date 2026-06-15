@@ -1,18 +1,145 @@
 #!/usr/bin/env python3
 """
-Carveille -- Point d'entree CLI
-
-Usage :
-  python main.py init                            Initialise la base de donnees
-  python main.py seed                            Charge les recherches de test
-  python main.py run [--source mock|mobile.de] [--day 1]   Lance un run
-  python main.py ui                              Lance l'interface web
+Carveille -- Point d'entree
+Usage normal : double-clic sur "Lancer Carveille.bat"
+Usage CLI    : python main.py [init | seed | run | ui]
 """
 
 import argparse
+import json
+import os
+import threading
+import time
 import uuid
+import webbrowser
+from datetime import datetime
+
+# ── Chemins ─────────────────────────────────────────────────────────────────────
+_BASE = os.path.dirname(__file__)
+_ENV_PATH = os.path.join(_BASE, ".env")
+_SCHEDULE_PATH = os.path.join(_BASE, "db", "schedule.json")
 
 
+# ── Lecture / ecriture de la configuration (.env) ───────────────────────────────
+def _load_config() -> dict:
+    cfg = {
+        "CANAL_NOTIFICATION": "console",
+        "TELEGRAM_BOT_TOKEN": "",
+        "TELEGRAM_CHAT_ID": "",
+        "SMTP_HOST": "smtp.gmail.com",
+        "SMTP_PORT": "587",
+        "SMTP_USER": "",
+        "SMTP_PASSWORD": "",
+        "SMTP_DEST": "",
+    }
+    if os.path.exists(_ENV_PATH):
+        with open(_ENV_PATH, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    cfg[k.strip()] = v.strip()
+    return cfg
+
+
+def _save_config(data: dict):
+    """Ecrit les cles dans .env et propage immediatement dans os.environ."""
+    lines = []
+    existing_keys = set()
+    if os.path.exists(_ENV_PATH):
+        with open(_ENV_PATH, encoding="utf-8") as f:
+            lines = f.readlines()
+        for line in lines:
+            s = line.strip()
+            if s and not s.startswith("#") and "=" in s:
+                existing_keys.add(s.split("=", 1)[0].strip())
+
+    new_lines = []
+    for line in lines:
+        s = line.strip()
+        if s and not s.startswith("#") and "=" in s:
+            k = s.split("=", 1)[0].strip()
+            new_lines.append(f"{k}={data[k]}\n" if k in data else line)
+        else:
+            new_lines.append(line)
+
+    for k, v in data.items():
+        if k not in existing_keys:
+            new_lines.append(f"{k}={v}\n")
+
+    with open(_ENV_PATH, "w", encoding="utf-8") as f:
+        f.writelines(new_lines)
+
+    for k, v in data.items():
+        os.environ[k] = v
+
+
+# ── Planificateur de runs automatiques ──────────────────────────────────────────
+def _load_schedule() -> dict:
+    if os.path.exists(_SCHEDULE_PATH):
+        try:
+            with open(_SCHEDULE_PATH, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"actif": False, "heure": "09:00", "dernier_run_date": None}
+
+
+def _save_schedule(data: dict):
+    os.makedirs(os.path.dirname(_SCHEDULE_PATH), exist_ok=True)
+    with open(_SCHEDULE_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+# ── Etat du run courant (partagé entre les threads) ─────────────────────────────
+_run_lock = threading.Lock()
+_run_status = {
+    "en_cours": False,
+    "dernier_run": None,   # ISO datetime du dernier run termine
+}
+
+
+def _do_run_with_status(source: str, day: int = 1):
+    """Lance un run et met a jour _run_status."""
+    from src.runner import run
+    with _run_lock:
+        _run_status["en_cours"] = True
+    try:
+        run(source=source, day=day)
+    finally:
+        with _run_lock:
+            _run_status["en_cours"] = False
+        _run_status["dernier_run"] = datetime.now().isoformat()
+
+
+def _scheduler_thread():
+    """Tourne en arriere-plan et declenche les runs automatiques a l'heure prevue."""
+    while True:
+        time.sleep(60)
+        try:
+            sched = _load_schedule()
+            if not sched.get("actif"):
+                continue
+            now = datetime.now()
+            heure_str = sched.get("heure", "09:00")
+            h, m = map(int, heure_str.split(":"))
+            today = now.strftime("%Y-%m-%d")
+            already_ran = sched.get("dernier_run_date") == today
+            if now.hour == h and now.minute == m and not already_ran and not _run_status["en_cours"]:
+                print(f"[RUN] Run automatique declenche a {heure_str}")
+                sched["dernier_run_date"] = today
+                _save_schedule(sched)
+                t = threading.Thread(
+                    target=_do_run_with_status,
+                    kwargs={"source": "mobile.de"},
+                    daemon=True,
+                )
+                t.start()
+        except Exception as e:
+            print(f"[WARN] Erreur planificateur : {e}")
+
+
+# ── Commandes CLI ────────────────────────────────────────────────────────────────
 def cmd_init():
     from src.database import init_db
     init_db()
@@ -21,60 +148,40 @@ def cmd_init():
 def cmd_seed():
     from src.database import init_db, insert_recherche
     init_db()
-
     recherches_test = [
         {
             "search_id": "search_bmw_auto",
             "nom_recherche": "BMW Serie 1 Auto",
             "statut": "active",
-            "marque": "BMW",
-            "modele": "Serie 1",
-            "budget_max": 20000,
-            "budget_strict": 0,
-            "km_max": 100000,
-            "annee_min": 2018,
-            "boite": "auto",
-            "carburant": "diesel",
+            "marque": "BMW", "modele": "Serie 1",
+            "budget_max": 20000, "budget_strict": 0,
+            "km_max": 100000, "annee_min": 2018,
+            "boite": "auto", "carburant": "diesel",
             "vendeur_filtre": "indifferent",
             "options_recherchees": "camera,gps",
             "mobile_de_url": None,
-            "poids_prix": 30,
-            "poids_km": 25,
-            "poids_annee": 20,
-            "poids_boite": 10,
-            "poids_carburant": 10,
-            "poids_options": 5,
+            "poids_prix": 30, "poids_km": 25, "poids_annee": 20,
+            "poids_boite": 10, "poids_carburant": 10, "poids_options": 5,
             "penalite_infos_manquantes": 10,
-            "score_min_notification": 60,
-            "max_annonces": 3,
+            "score_min_notification": 60, "max_annonces": 3,
         },
         {
             "search_id": "search_peugeot_308",
             "nom_recherche": "Peugeot 308 Essence",
             "statut": "active",
-            "marque": "Peugeot",
-            "modele": "308",
-            "budget_max": 15000,
-            "budget_strict": 1,
-            "km_max": 80000,
-            "annee_min": 2019,
-            "boite": "indifferent",
-            "carburant": "essence",
+            "marque": "Peugeot", "modele": "308",
+            "budget_max": 15000, "budget_strict": 1,
+            "km_max": 80000, "annee_min": 2019,
+            "boite": "indifferent", "carburant": "essence",
             "vendeur_filtre": "indifferent",
             "options_recherchees": "bluetooth",
             "mobile_de_url": None,
-            "poids_prix": 30,
-            "poids_km": 25,
-            "poids_annee": 20,
-            "poids_boite": 10,
-            "poids_carburant": 10,
-            "poids_options": 5,
+            "poids_prix": 30, "poids_km": 25, "poids_annee": 20,
+            "poids_boite": 10, "poids_carburant": 10, "poids_options": 5,
             "penalite_infos_manquantes": 10,
-            "score_min_notification": 60,
-            "max_annonces": 3,
+            "score_min_notification": 60, "max_annonces": 3,
         },
     ]
-
     for r in recherches_test:
         insert_recherche(r)
         print(f"[OK] Recherche '{r['nom_recherche']}' inseree.")
@@ -87,18 +194,14 @@ def cmd_run(source: str, day: int):
 
 def cmd_ui():
     import http.server
-    import threading
-    import json
-    import os
     from src.database import (
         init_db, get_recherches_actives, insert_recherche,
-        get_derniers_resultats, marquer_interet
+        get_derniers_resultats, marquer_interet,
     )
-    from src.runner import run as do_run
 
     init_db()
 
-    UI_DIR = os.path.join(os.path.dirname(__file__), "ui")
+    UI_DIR = os.path.join(_BASE, "ui")
 
     class Handler(http.server.BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
@@ -113,11 +216,11 @@ def cmd_ui():
             self.end_headers()
             self.wfile.write(body)
 
-        def _send_file(self, path):
+        def _send_file(self, path, content_type="text/html; charset=utf-8"):
             with open(path, "rb") as f:
                 content = f.read()
             self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", len(content))
             self.end_headers()
             self.wfile.write(content)
@@ -137,6 +240,16 @@ def cmd_ui():
             elif self.path.startswith("/resultats/"):
                 search_id = self.path.split("/resultats/")[1]
                 self._send_json(get_derniers_resultats(search_id))
+            elif self.path == "/config":
+                cfg = _load_config()
+                # Ne jamais renvoyer le mot de passe en clair
+                if cfg.get("SMTP_PASSWORD"):
+                    cfg["SMTP_PASSWORD"] = "***"
+                self._send_json(cfg)
+            elif self.path == "/planificateur":
+                self._send_json(_load_schedule())
+            elif self.path == "/status":
+                self._send_json(dict(_run_status))
             else:
                 self.send_response(404)
                 self.end_headers()
@@ -175,11 +288,18 @@ def cmd_ui():
                 self._send_json({"ok": True, "search_id": data["search_id"]})
 
             elif self.path == "/run":
-                source = body.get("source", "mock")
+                if _run_status["en_cours"]:
+                    self._send_json({"ok": False, "message": "Une recherche est deja en cours, patientez..."})
+                    return
+                source = body.get("source", "mobile.de")
                 day = int(body.get("day", 1))
-                t = threading.Thread(target=do_run, kwargs={"source": source, "day": day})
+                t = threading.Thread(
+                    target=_do_run_with_status,
+                    kwargs={"source": source, "day": day},
+                    daemon=True,
+                )
                 t.start()
-                self._send_json({"ok": True, "message": f"Run lance (source={source}, day={day})"})
+                self._send_json({"ok": True, "message": "Recherche lancee !"})
 
             elif self.path == "/interet":
                 seen_id = body.get("seen_id")
@@ -188,7 +308,24 @@ def cmd_ui():
                     marquer_interet(seen_id, interet if interet != "neutre" else None)
                     self._send_json({"ok": True})
                 else:
-                    self._send_json({"ok": False, "error": "seen_id ou interet invalide"}, 400)
+                    self._send_json({"ok": False, "error": "Parametres invalides"}, 400)
+
+            elif self.path == "/config":
+                allowed = {
+                    "CANAL_NOTIFICATION", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID",
+                    "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_DEST",
+                }
+                # Ignorer "***" (placeholder mot de passe non modifie)
+                to_save = {k: v for k, v in body.items() if k in allowed and v != "***"}
+                _save_config(to_save)
+                self._send_json({"ok": True})
+
+            elif self.path == "/planificateur":
+                sched = _load_schedule()
+                sched["actif"] = bool(body.get("actif", False))
+                sched["heure"] = body.get("heure", "09:00")
+                _save_schedule(sched)
+                self._send_json({"ok": True})
 
             else:
                 self.send_response(404)
@@ -196,29 +333,36 @@ def cmd_ui():
 
     port = 8765
     server = http.server.HTTPServer(("localhost", port), Handler)
-    print(f"[WEB] Interface disponible sur http://localhost:{port}")
-    print("   (Ctrl+C pour arreter)")
+
+    # Demarrer le planificateur en arriere-plan
+    threading.Thread(target=_scheduler_thread, daemon=True).start()
+
+    # Ouvrir le navigateur apres un court delai (laisse le temps au serveur de demarrer)
+    def _open_browser():
+        time.sleep(1.5)
+        webbrowser.open(f"http://localhost:{port}")
+    threading.Thread(target=_open_browser, daemon=True).start()
+
+    print(f"[WEB] Carveille demarre sur http://localhost:{port}")
+    print("      Fermez cette fenetre pour arreter.")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nServeur arrete.")
+        print("\n[OK] Carveille arrete.")
 
 
+# ── Point d'entree ───────────────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(description="Carveille CLI")
+    parser = argparse.ArgumentParser(description="Carveille")
     sub = parser.add_subparsers(dest="cmd")
-
-    sub.add_parser("init", help="Initialise la base de donnees")
-    sub.add_parser("seed", help="Charge les recherches de test")
-
-    run_p = sub.add_parser("run", help="Lance un run")
-    run_p.add_argument("--source", default="mock", help="mock ou mobile.de")
-    run_p.add_argument("--day", type=int, default=1, help="Jour mock (1 ou 2)")
-
-    sub.add_parser("ui", help="Lance l'interface web")
+    sub.add_parser("init")
+    sub.add_parser("seed")
+    run_p = sub.add_parser("run")
+    run_p.add_argument("--source", default="mock", choices=["mock", "mobile.de"])
+    run_p.add_argument("--day", type=int, default=1)
+    sub.add_parser("ui")
 
     args = parser.parse_args()
-
     if args.cmd == "init":
         cmd_init()
     elif args.cmd == "seed":
