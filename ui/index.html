@@ -543,125 +543,8 @@ details > * + * { margin-top: 12px; }
 <div class="aide-overlay" id="aide-overlay" onclick="fermerAide(event)">
   <div class="aide-panel">
     <button class="aide-close" onclick="toggleAide()">&#10005;</button>
-    <div class="aide-titre">&#128218; Guide de Carveille</div>
-
-    <div class="aide-section">
-      <div class="aide-section-title">Les onglets</div>
-      <div class="aide-item">
-        <div class="aide-item-label">&#128269; Mes recherches</div>
-        <div class="aide-item-desc">La page principale. Vous y trouvez toutes vos recherches sauvegardees et le bouton pour lancer une verification sur mobile.de.</div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">&#128196; Resultats</div>
-        <div class="aide-item-desc">Les annonces trouvees pour une recherche. Cliquez sur "Voir les resultats" dans une recherche pour y acceder.</div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">+ Nouvelle recherche</div>
-        <div class="aide-item-desc">Formulaire pour creer une nouvelle recherche : marque, budget, kilometrage, etc.</div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">&#9881; Parametres</div>
-        <div class="aide-item-desc">Configurer comment vous voulez etre alerte (Telegram, email) et activer la verification automatique a une heure fixe.</div>
-      </div>
-    </div>
-
-    <hr class="aide-divider">
-
-    <div class="aide-section">
-      <div class="aide-section-title">La verification automatique</div>
-      <div class="aide-item">
-        <div class="aide-item-label">Bouton "Chercher maintenant"</div>
-        <div class="aide-item-desc">Lance immediatement une recherche sur mobile.de pour toutes vos recherches actives. La fenetre noire doit rester ouverte pendant l'operation.</div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">Planificateur (dans Parametres)</div>
-        <div class="aide-item-desc">Carveille peut verifier automatiquement chaque jour a l'heure que vous choisissez. La fenetre noire doit etre ouverte a ce moment-la.</div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">Statut dans le bandeau en haut</div>
-        <div class="aide-item-desc">Indique si une recherche est en cours (point orange clignotant) ou quand la derniere verification a eu lieu (point vert).</div>
-      </div>
-    </div>
-
-    <hr class="aide-divider">
-
-    <div class="aide-section">
-      <div class="aide-section-title">Les annonces et leur score</div>
-      <div class="aide-item">
-        <div class="aide-item-label">Le score (ex : 85/100)</div>
-        <div class="aide-item-desc">Chaque annonce recoit une note calculee automatiquement selon vos criteres. Plus le score est eleve, mieux l'annonce correspond a ce que vous cherchez.</div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">Couleur du score</div>
-        <div class="aide-item-desc">
-          <div class="aide-score-bar"><div class="fill" style="background:#2e7d32"></div> Vert (80+) : excellente annonce</div>
-          <div class="aide-score-bar"><div class="fill" style="background:#ef6c00"></div> Orange (60-79) : annonce correcte</div>
-          <div class="aide-score-bar"><div class="fill" style="background:#c62828"></div> Rouge (moins de 60) : ne correspond pas bien</div>
-        </div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">Comment est calcule le score</div>
-        <div class="aide-item-desc">
-          Prix : 30 pts &middot; Kilometrage : 25 pts &middot; Annee : 20 pts<br>
-          Boite : 10 pts &middot; Carburant : 10 pts &middot; Options : 5 pts<br>
-          + Bonus si annonce tres recente (&lt;24h, &lt;48h, &lt;7j)<br>
-          &minus; Penalite si des informations sont manquantes
-        </div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">Bouton "Detail du score"</div>
-        <div class="aide-item-desc">Affiche le sous-score de chaque critere pour comprendre pourquoi une annonce a cette note.</div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">Baisse de prix</div>
-        <div class="aide-item-desc">Si le prix d'une annonce deja vue a baisse depuis la derniere fois, un badge orange "Baisse -X EUR" apparait. Carveille conserve toujours le prix initial pour comparaison.</div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">Nouvelle annonce</div>
-        <div class="aide-item-desc">Badge vert visible sur les annonces que vous n'aviez jamais vues avant ce run.</div>
-      </div>
-    </div>
-
-    <hr class="aide-divider">
-
-    <div class="aide-section">
-      <div class="aide-section-title">Les boutons sur chaque annonce</div>
-      <div class="aide-item">
-        <div class="aide-item-label">Voir l'annonce</div>
-        <div class="aide-item-desc">Ouvre la page de l'annonce sur mobile.de dans un nouvel onglet.</div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">Traduire</div>
-        <div class="aide-item-desc">Ouvre la page de l'annonce traduite automatiquement en francais via DeepL.</div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">&#128077; Interesse</div>
-        <div class="aide-item-desc">Marque l'annonce en vert pour la retrouver facilement. Elle restera visible en evidence.</div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">&#128078; Pas interesse</div>
-        <div class="aide-item-desc">Masque l'annonce (elle devient transparente). Elle n'est pas supprimee, juste mise de cote.</div>
-      </div>
-    </div>
-
-    <hr class="aide-divider">
-
-    <div class="aide-section">
-      <div class="aide-section-title">Creer une recherche</div>
-      <div class="aide-item">
-        <div class="aide-item-label">URL mobile.de (recommande)</div>
-        <div class="aide-item-desc">Faites votre recherche directement sur mobile.de avec tous vos filtres, copiez l'adresse de la page et collez-la dans le formulaire. Carveille utilisera exactement cette recherche.</div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">Budget strict</div>
-        <div class="aide-item-desc">Si coche : toute annonce au-dessus du budget est ignoree. Si non coche : une tolerance de 5% est accordee (ex : 21 000 EUR pour un budget de 20 000 EUR).</div>
-      </div>
-      <div class="aide-item">
-        <div class="aide-item-label">Reglages avances</div>
-        <div class="aide-item-desc">Permet de modifier l'importance de chaque critere dans le calcul du score. Par defaut, le prix a le plus d'importance (30 pts), puis le kilometrage (25 pts), etc.</div>
-      </div>
-    </div>
-
+    <div class="aide-titre" id="aide-titre"></div>
+    <div id="aide-corps"></div>
   </div>
 </div>
 
@@ -684,6 +567,7 @@ function showToast(msg, ok = true) {
 }
 
 function switchTab(name) {
+  _tabCourant = name;
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
@@ -1067,10 +951,68 @@ async function sauvegarderPlanificateur() {
   } catch { showToast('Erreur de connexion.', false); }
 }
 
-// ── Aide ───────────────────────────────────────────────────────────────────────
+// ── Aide contextuelle ──────────────────────────────────────────────────────────
+
+const AIDE_CONTENU = {
+  voitures: {
+    titre: '&#128269; Mes recherches',
+    items: [
+      { label: 'Bouton "Chercher maintenant"', desc: 'Lance une verification sur mobile.de pour toutes vos recherches. La fenetre noire doit rester ouverte pendant l\'operation (peut prendre quelques minutes).' },
+      { label: 'Statut en haut a droite', desc: 'Point vert = tout va bien, derniere verification affichee. Point orange clignotant = recherche en cours.' },
+      { label: 'Verification automatique', desc: 'Si vous l\'avez activee dans les Parametres, Carveille cherche automatiquement chaque jour a l\'heure choisie, sans que vous ayez a cliquer.' },
+      { label: 'Voir les resultats', desc: 'Affiche les annonces trouvees pour cette recherche. Cliquez dessus apres une verification pour voir ce qui a ete trouve.' },
+    ]
+  },
+  resultats: {
+    titre: '&#128196; Resultats',
+    items: [
+      { label: 'Le score (ex : 85/100)', desc: 'Note automatique calculee selon vos criteres. Plus c\'est eleve, mieux l\'annonce correspond.' },
+      { label: 'Couleur du score', desc: '<div class="aide-score-bar"><div class="fill" style="background:#2e7d32"></div> Vert (80+) : excellente annonce</div><div class="aide-score-bar"><div class="fill" style="background:#ef6c00"></div> Orange (60-79) : annonce correcte</div><div class="aide-score-bar"><div class="fill" style="background:#c62828"></div> Rouge (-60) : ne correspond pas bien</div>' },
+      { label: 'Baisse de prix', desc: 'Badge orange "Baisse -X EUR" : le prix a diminue depuis la derniere fois que cette annonce a ete vue. Le prix d\'origine est affiche barre.' },
+      { label: 'Nouvelle annonce', desc: 'Badge vert : cette annonce n\'existait pas lors de la verification precedente.' },
+      { label: 'Voir l\'annonce', desc: 'Ouvre la page de l\'annonce sur mobile.de dans un nouvel onglet.' },
+      { label: 'Traduire', desc: 'Ouvre l\'annonce traduite automatiquement en francais via DeepL.' },
+      { label: '&#128077; Interesse / &#128078; Pas interesse', desc: 'Interesse : met l\'annonce en evidence (bordure verte). Pas interesse : la masque (transparente). Rien n\'est supprime.' },
+      { label: 'Detail du score', desc: 'Affiche la note de chaque critere (prix, km, annee...) pour comprendre pourquoi l\'annonce a ce score.' },
+    ]
+  },
+  form: {
+    titre: '+ Nouvelle recherche',
+    items: [
+      { label: 'Nom de la recherche', desc: 'Un nom pour vous reperer, ex : "BMW Serie 1 Auto" ou "Voiture papa".' },
+      { label: 'URL mobile.de (recommande)', desc: 'La methode la plus precise : faites votre recherche sur mobile.de avec tous vos filtres, copiez l\'adresse de la page et collez-la ici. Carveille utilisera exactement ces criteres.' },
+      { label: 'Budget strict', desc: 'Coche = toute annonce au-dessus du budget est ignoree. Non coche = une tolerance de 5% est accordee (ex : 21 000 EUR pour un budget de 20 000 EUR).' },
+      { label: 'Reglages avances (facultatif)', desc: 'Permet de changer l\'importance de chaque critere. Par defaut : Prix 30 pts, Kilometrage 25 pts, Annee 20 pts, Boite 10 pts, Carburant 10 pts, Options 5 pts.' },
+    ]
+  },
+  params: {
+    titre: '&#9881; Parametres',
+    items: [
+      { label: 'Console seulement', desc: 'Les resultats s\'affichent uniquement dans la fenetre noire. Aucune configuration necessaire.' },
+      { label: 'Telegram', desc: 'Vous recevez un message Telegram a chaque verification. Necessite de creer un bot via @BotFather et de renseigner le Token et le Chat ID.' },
+      { label: 'Email', desc: 'Vous recevez un email a chaque verification. Pour Gmail, utilisez un mot de passe d\'application (pas votre mot de passe habituel).' },
+      { label: 'Verification automatique', desc: 'Activez et choisissez une heure : Carveille lancera une recherche chaque jour a cette heure. La fenetre noire doit etre ouverte.' },
+    ]
+  },
+};
+
+let _tabCourant = 'voitures';
 
 function toggleAide() {
-  document.getElementById('aide-overlay').classList.toggle('open');
+  const overlay = document.getElementById('aide-overlay');
+  const estOuvert = overlay.classList.contains('open');
+  if (estOuvert) {
+    overlay.classList.remove('open');
+  } else {
+    const contenu = AIDE_CONTENU[_tabCourant];
+    document.getElementById('aide-titre').innerHTML = contenu.titre;
+    document.getElementById('aide-corps').innerHTML = contenu.items.map(item => `
+      <div class="aide-item">
+        <div class="aide-item-label">${item.label}</div>
+        <div class="aide-item-desc">${item.desc}</div>
+      </div>`).join('<hr class="aide-divider">');
+    overlay.classList.add('open');
+  }
 }
 
 function fermerAide(e) {
