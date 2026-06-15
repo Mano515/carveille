@@ -2,14 +2,6 @@
 chcp 65001 >nul
 title Carveille - Mise a jour
 
-:: Empecher plusieurs instances simultanees
-tasklist /fi "WINDOWTITLE eq Carveille - Mise a jour" 2>nul | findstr /i "cmd.exe" >nul
-if not errorlevel 1 (
-    echo Une mise a jour est deja en cours.
-    timeout /t 3 /nobreak >nul
-    exit
-)
-
 cd /d "%~dp0"
 
 echo.
@@ -18,9 +10,9 @@ echo    Carveille - Mise a jour
 echo  =========================================
 echo.
 
-:: Arreter Carveille s'il est en cours
+:: Arreter Carveille s'il est en cours (tuer le processus en ecoute sur le port 8765)
 echo  Arret de Carveille en cours...
-for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":8765 "') do (
+for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":8765 " ^| findstr "LISTENING"') do (
     taskkill /f /pid %%a >nul 2>&1
 )
 echo  Carveille arrete.
@@ -29,6 +21,7 @@ echo.
 :: Mise a jour depuis GitHub
 echo  Telechargement de la mise a jour...
 set GIT_TERMINAL_PROMPT=0
+set GIT_ASKPASS=echo
 git pull origin master
 if errorlevel 1 (
     echo.
