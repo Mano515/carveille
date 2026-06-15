@@ -412,14 +412,25 @@ details > * + * { margin-top: 12px; }
 .toast {
   position: fixed; bottom: 24px; right: 24px;
   background: #1a1a2e; color: white;
-  padding: 12px 20px; border-radius: 10px; font-size: 0.88rem;
-  display: none; z-index: 999; max-width: 340px;
-  box-shadow: 0 4px 20px rgba(0,0,0,.2);
+  padding: 13px 22px; border-radius: 10px; font-size: 0.88rem;
+  z-index: 999; max-width: 340px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.25);
+  display: flex; align-items: center; gap: 10px;
+  transform: translateY(80px); opacity: 0;
+  transition: transform .25s ease, opacity .25s ease;
+  pointer-events: none;
 }
+.toast.visible { transform: translateY(0); opacity: 1; }
 .toast.error { background: #c62828; }
+.toast-icon { font-size: 1rem; flex-shrink: 0; }
+
+/* ── Feedback clic bouton ── */
+button { transition: transform .1s ease, opacity .1s ease; }
+button:active:not(:disabled) { transform: scale(0.94); opacity: 0.85; }
+button.btn-loading { opacity: 0.6; cursor: wait; pointer-events: none; }
 
 /* ── Loading ── */
-.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 4px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
@@ -778,7 +789,7 @@ details > * + * { margin-top: 12px; }
 
 </main>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast"><span class="toast-icon"></span><span class="toast-msg"></span></div>
 
 <!-- ── Modal nouveau client ── -->
 <div class="modal-overlay" id="modal-client" onclick="fermerModal(event,'modal-client')">
@@ -821,12 +832,27 @@ let pollTimer = null;
 
 // ── Utilitaires ────────────────────────────────────────────────────────────────
 
+let _toastTimer = null;
 function showToast(msg, ok = true) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
+  t.querySelector('.toast-icon').textContent = ok ? '✓' : '✕';
+  t.querySelector('.toast-msg').textContent = msg;
   t.className = 'toast' + (ok ? '' : ' error');
-  t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 4000);
+  // Forcer reflow pour relancer l'animation si toast déjà visible
+  void t.offsetWidth;
+  t.classList.add('visible');
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('visible'), 3500);
+}
+
+function btnLoad(btn, label = '…') {
+  btn.disabled = true;
+  btn._origHtml = btn.innerHTML;
+  btn.innerHTML = `<span class="spinner"></span>${label}`;
+}
+function btnReset(btn) {
+  btn.disabled = false;
+  if (btn._origHtml !== undefined) btn.innerHTML = btn._origHtml;
 }
 
 function switchTab(name) {
@@ -945,13 +971,14 @@ async function creerClient(e) {
   } catch { showToast('Erreur de connexion.', false); }
 }
 
-async function archiverClient(clientId, nom) {
+async function archiverClient(clientId, nom, btn) {
   if (!confirm(`Archiver le dossier de ${nom} ?`)) return;
+  if (btn) btnLoad(btn, 'Archivage…');
   try {
     await fetch(`${API}/clients/${clientId}/archiver`, { method: 'POST' });
     showToast(`${nom} archivé.`);
     chargerClients();
-  } catch { showToast('Erreur de connexion.', false); }
+  } catch { if (btn) btnReset(btn); showToast('Erreur de connexion.', false); }
 }
 
 async function voirHistoriqueClient(clientId, nom) {
@@ -992,7 +1019,7 @@ function renderClientCard(c) {
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button class="btn-voir btn-sm" onclick="voirResultats('${r.search_id}', '${nomSafe}')">Résultats</button>
         <button class="btn-sm btn-edit" onclick="editerRecherche('${r.search_id}')">✏️</button>
-        <button class="btn-sm btn-delete" onclick="supprimerRecherche('${r.search_id}', '${nomSafe}')">🗑️</button>
+        <button class="btn-sm btn-delete" onclick="supprimerRecherche('${r.search_id}', '${nomSafe}', this)">🗑️</button>
       </div>
     </div>`;
   }).join('');
@@ -1009,8 +1036,8 @@ function renderClientCard(c) {
         ${favorisBtn}
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="btn-sm-ghost" onclick="ouvrirDossierClient('${c.client_id}')">&#128193; Dossier</button>
-        <button class="btn-sm-ghost danger" onclick="archiverClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}')">Archiver</button>
+        <button class="btn-sm-ghost" onclick="ouvrirDossierClient('${c.client_id}', this)">&#128193; Dossier</button>
+        <button class="btn-sm-ghost danger" onclick="archiverClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}', this)">Archiver</button>
       </div>
     </div>
     ${c.notes ? `<div class="client-notes">${c.notes}</div>` : ''}
@@ -1073,7 +1100,7 @@ async function chargerClients() {
           </select>` : ''}
           <button class="btn-voir btn-sm" onclick="voirResultats('${r.search_id}', '${nomSafe}')">Résultats</button>
           <button class="btn-sm btn-edit" onclick="editerRecherche('${r.search_id}')">✏️</button>
-          <button class="btn-sm btn-delete" onclick="supprimerRecherche('${r.search_id}', '${nomSafe}')">🗑️</button>
+          <button class="btn-sm btn-delete" onclick="supprimerRecherche('${r.search_id}', '${nomSafe}', this)">🗑️</button>
         </div>
       </div>`;
     }).join('');
@@ -1108,8 +1135,8 @@ async function chargerArchives() {
               <span class="client-nom">${c.nom}</span>
               ${c.contact ? `<span class="client-contact">${c.contact}</span>` : ''}
             </div>
-            <button class="btn-sm-ghost" onclick="reactiverClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}')">Réactiver</button>
-            <button class="btn-sm-ghost danger" onclick="supprimerClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}')">Supprimer</button>
+            <button class="btn-sm-ghost" onclick="reactiverClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}', this)">Réactiver</button>
+            <button class="btn-sm-ghost danger" onclick="supprimerClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}', this)">Supprimer</button>
           </div>
         </div>`).join('');
     }
@@ -1170,28 +1197,33 @@ function annulerEdition() {
   document.getElementById('form-submit-btn').textContent = 'Enregistrer la recherche';
 }
 
-async function supprimerRecherche(searchId, nom) {
+async function supprimerRecherche(searchId, nom, btn) {
   if (!confirm(`Supprimer la recherche "${nom}" ? Les annonces déjà trouvées seront conservées.`)) return;
+  if (btn) btnLoad(btn, '');
   try {
     await fetch(`${API}/recherches/${searchId}`, { method: 'DELETE' });
     showToast(`Recherche "${nom}" supprimée.`);
     chargerClients();
-  } catch { showToast('Erreur de connexion.', false); }
+  } catch { if (btn) btnReset(btn); showToast('Erreur de connexion.', false); }
 }
 
-async function supprimerClient(clientId, nom) {
+async function supprimerClient(clientId, nom, btn) {
   if (!confirm(`Supprimer définitivement le dossier "${nom}" ?\n\nToutes ses recherches et annonces seront effacées. Cette action est irréversible.`)) return;
-  await fetch(`${API}/clients/${clientId}`, { method: 'DELETE' });
-  showToast(`${nom} supprimé.`);
-  chargerClients();
+  if (btn) btnLoad(btn, 'Suppression…');
+  try {
+    await fetch(`${API}/clients/${clientId}`, { method: 'DELETE' });
+    showToast(`${nom} supprimé.`);
+    chargerClients();
+  } catch { if (btn) btnReset(btn); showToast('Erreur de connexion.', false); }
 }
 
-async function reactiverClient(clientId, nom) {
+async function reactiverClient(clientId, nom, btn) {
+  if (btn) btnLoad(btn, 'Réactivation…');
   try {
     await fetch(`${API}/clients/${clientId}/reactiver`, { method: 'POST' });
     showToast(`${nom} réactivé.`);
     chargerClients();
-  } catch { showToast('Erreur de connexion.', false); }
+  } catch { if (btn) btnReset(btn); showToast('Erreur de connexion.', false); }
 }
 
 async function rattacherRechercheClient(searchId, selectEl) {
@@ -1701,15 +1733,19 @@ function fermerAide(e) {
 
 // ── Outils — Dossiers clients ──────────────────────────────────────────────────
 
-async function ouvrirDossierClient(clientId) {
+async function ouvrirDossierClient(clientId, btn) {
+  if (btn) btnLoad(btn, 'Ouverture…');
   try {
     await fetch(`${API}/clients/${clientId}/ouvrir-dossier`, { method: 'POST' });
+    showToast('Dossier ouvert dans l\'explorateur.');
   } catch { showToast('Impossible d\'ouvrir le dossier.', false); }
+  finally { if (btn) btnReset(btn); }
 }
 
 async function ouvrirDossierRacine() {
   try {
     await fetch(`${API}/ouvrir-dossier-racine`, { method: 'POST' });
+    showToast('Dossier ouvert dans l\'explorateur.');
   } catch { showToast('Impossible d\'ouvrir le dossier.', false); }
 }
 
