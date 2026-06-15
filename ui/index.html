@@ -320,6 +320,28 @@ details > * + * { margin-top: 12px; }
 .btn-lien-del { background: none; border: none; color: #bbb; cursor: pointer; font-size: 1rem; padding: 0 2px; flex-shrink: 0; }
 .btn-lien-del:hover { color: #c62828; }
 
+/* ── Modifier client modal ── */
+.modal-edit-client { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; align-items:center; justify-content:center; }
+.modal-edit-client.open { display:flex; }
+.modal-edit-client .modal-box { background:#fff; border-radius:14px; padding:28px; width:100%; max-width:420px; box-shadow:0 8px 40px rgba(0,0,0,.18); }
+.modal-edit-client h3 { margin:0 0 18px; font-size:1.05rem; }
+
+/* ── Doublon badge ── */
+.badge-doublon { display:inline-block; background:#fff3e0; color:#e65100; border:1px solid #ffcc80; border-radius:6px; font-size:0.73rem; padding:2px 7px; margin-left:6px; font-weight:500; }
+
+/* ── Note annonce ── */
+.note-annonce { margin-top:8px; }
+.note-annonce textarea { width:100%; box-sizing:border-box; border:1px solid #e0e0e0; border-radius:6px; padding:7px 10px; font-size:0.82rem; resize:vertical; min-height:52px; font-family:inherit; }
+.note-annonce textarea:focus { outline:none; border-color:#1565c0; }
+.note-save-btn { margin-top:5px; font-size:0.78rem; }
+
+/* ── Filtre résultats ── */
+.resultats-filtres { display:flex; gap:8px; flex-wrap:wrap; padding:10px 0 4px; border-bottom:1px solid #eee; margin-bottom:10px; }
+.filtre-input { padding:6px 10px; border:1px solid #ddd; border-radius:6px; font-size:0.82rem; }
+.filtre-input:focus { outline:none; border-color:#1565c0; }
+.filtre-reset { background:none; border:none; color:#999; font-size:0.82rem; cursor:pointer; padding:6px 4px; }
+.filtre-reset:hover { color:#333; }
+
 .sans-client-section { margin-top: 8px; }
 .sans-client-toggle {
   width: 100%; text-align: left; background: none; border: none;
@@ -520,6 +542,12 @@ button.btn-loading { opacity: 0.6; cursor: wait; pointer-events: none; }
   <div class="tab-content" id="tab-resultats">
     <button class="btn-back" onclick="switchTab('voitures')">&#8592; Retour aux recherches</button>
     <div class="card">
+      <div id="resultats-filtres-bar" style="display:none" class="resultats-filtres">
+        <input class="filtre-input" id="filtre-texte" placeholder="🔍 Rechercher…" oninput="filtrerResultats()" style="flex:2;min-width:140px">
+        <input class="filtre-input" id="filtre-prix-max" type="number" placeholder="Prix max (€)" oninput="filtrerResultats()" style="width:120px">
+        <input class="filtre-input" id="filtre-km-max" type="number" placeholder="Km max" oninput="filtrerResultats()" style="width:110px">
+        <button class="filtre-reset" onclick="reinitialiserFiltres()">✕ Effacer</button>
+      </div>
       <div id="resultats-content">
         <div class="empty-state">
           <div class="icon">&#128196;</div>
@@ -824,6 +852,29 @@ button.btn-loading { opacity: 0.6; cursor: wait; pointer-events: none; }
   </div>
 </div>
 
+<!-- ── Modal modifier client ── -->
+<div class="modal-edit-client" id="modal-edit-client" onclick="if(event.target===this)fermerModalEditClient()">
+  <div class="modal-box">
+    <h3>✏️ Modifier le dossier client</h3>
+    <form onsubmit="sauvegarderModifClient(event)">
+      <input type="hidden" id="edit-client-id">
+      <label style="display:block;margin-bottom:10px">Nom *
+        <input type="text" id="edit-client-nom" required style="width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem">
+      </label>
+      <label style="display:block;margin-bottom:10px">Téléphone ou email
+        <input type="text" id="edit-client-contact" style="width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem">
+      </label>
+      <label style="display:block;margin-bottom:16px">Notes
+        <textarea id="edit-client-notes" rows="3" style="width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;resize:vertical;font-family:inherit"></textarea>
+      </label>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button type="submit" class="btn-primary">Sauvegarder</button>
+        <button type="button" class="btn-secondary" onclick="fermerModalEditClient()">Annuler</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <button class="btn-aide" onclick="toggleAide()" title="Aide">?</button>
 
 <div class="aide-overlay" id="aide-overlay" onclick="fermerAide(event)">
@@ -1047,6 +1098,7 @@ function renderClientCard(c) {
         ${favorisBtn}
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn-sm-ghost" onclick="ouvrirModalEditClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}', '${(c.contact||'').replace(/'/g,"\\'")}', '${(c.notes||'').replace(/'/g,"\\'").replace(/\n/g,"\\n")}')">✏️</button>
         <button class="btn-sm-ghost" onclick="ouvrirDossierClient('${c.client_id}', this)">&#128193; Dossier</button>
         <button class="btn-sm-ghost danger" onclick="archiverClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}', this)">Archiver</button>
       </div>
@@ -1412,10 +1464,13 @@ function renderAnnonce(a, searchId, historique = false) {
 
   const sourceBadge = historique && a.nom_recherche
     ? `<span class="tag tag-source">&#128269; ${a.nom_recherche}</span>` : '';
+  const doublonBadge = (a.autres_clients && a.autres_clients.length)
+    ? `<span class="badge-doublon">⚠️ Vu aussi pour : ${a.autres_clients.join(', ')}</span>` : '';
+  const noteSafe = (a.note || '').replace(/`/g, '\\`').replace(/\\/g, '\\\\');
 
-  return `<div class="${classes}" id="card-${a.seen_id}">
+  return `<div class="${classes}" id="card-${a.seen_id}" data-prix="${a.prix||0}" data-km="${a.km||0}" data-titre="${(a.titre||'').toLowerCase()}">
     <div class="annonce-top">
-      <div class="annonce-titre">${a.titre || 'Annonce sans titre'}</div>
+      <div class="annonce-titre">${a.titre || 'Annonce sans titre'}${doublonBadge}</div>
       <div class="score-badge" style="color:${color}">${score}/100</div>
     </div>
 
@@ -1444,6 +1499,11 @@ function renderAnnonce(a, searchId, historique = false) {
       ${breakdown ? `<button class="btn-sm btn-detail" onclick="toggleDetail('${seenIdSafe}')">Detail du score</button>` : ''}
     </div>
 
+    <div class="note-annonce">
+      <textarea id="note-${a.seen_id}" placeholder="Note personnelle (à rappeler, vu en vrai, négociable…)">${a.note || ''}</textarea>
+      <button class="btn-sm note-save-btn" onclick="sauvegarderNote('${seenIdSafe}','${searchId}',this)">Sauvegarder la note</button>
+    </div>
+
     ${breakdown ? `<div class="score-breakdown" id="bd-${a.seen_id}">${breakdown}</div>` : ''}
   </div>`;
 }
@@ -1452,15 +1512,21 @@ function toggleDetail(seenId) {
   document.getElementById('bd-' + seenId)?.classList.toggle('open');
 }
 
+let _resultatsData = [];
+let _resultatsSearchId = null;
+
 async function voirResultats(searchId, nom) {
   currentSearchId = searchId;
   currentSearchNom = nom;
+  _resultatsSearchId = searchId;
   switchTab('resultats');
   const el = document.getElementById('resultats-content');
   el.innerHTML = '<p style="text-align:center;padding:24px;color:#888">Chargement...</p>';
+  reinitialiserFiltres();
   try {
-    const data = await fetch(`${API}/resultats/${searchId}`).then(r => r.json());
-    if (!data.length) {
+    _resultatsData = await fetch(`${API}/resultats/${searchId}`).then(r => r.json());
+    if (!_resultatsData.length) {
+      document.getElementById('resultats-filtres-bar').style.display = 'none';
       el.innerHTML = `<div class="empty-state">
         <div class="icon">&#128270;</div>
         <h3>Aucun resultat pour "${nom}"</h3>
@@ -1468,14 +1534,88 @@ async function voirResultats(searchId, nom) {
       </div>`;
       return;
     }
-    el.innerHTML =
-      `<div class="resultats-header">
-        <span class="resultats-title">${nom}</span>
-        <span class="resultats-count">${data.length} annonce${data.length > 1 ? 's' : ''} trouvee${data.length > 1 ? 's' : ''}</span>
-      </div>` + data.map(a => renderAnnonce(a, searchId)).join('');
+    document.getElementById('resultats-filtres-bar').style.display = 'flex';
+    _afficherResultats(nom);
   } catch {
     el.innerHTML = '<p style="color:#c62828;padding:16px">Erreur de chargement.</p>';
   }
+}
+
+function _afficherResultats(nom) {
+  const texte = (document.getElementById('filtre-texte')?.value || '').toLowerCase();
+  const prixMax = parseFloat(document.getElementById('filtre-prix-max')?.value) || Infinity;
+  const kmMax = parseFloat(document.getElementById('filtre-km-max')?.value) || Infinity;
+  const filtered = _resultatsData.filter(a =>
+    (!texte || (a.titre||'').toLowerCase().includes(texte) || (a.ville||'').toLowerCase().includes(texte)) &&
+    (!a.prix || a.prix <= prixMax) &&
+    (!a.km || a.km <= kmMax)
+  );
+  const el = document.getElementById('resultats-content');
+  const nom2 = nom || currentSearchNom;
+  el.innerHTML = `<div class="resultats-header">
+    <span class="resultats-title">${nom2}</span>
+    <span class="resultats-count">${filtered.length} / ${_resultatsData.length} annonce${_resultatsData.length > 1 ? 's' : ''}</span>
+  </div>` + (filtered.length
+    ? filtered.map(a => renderAnnonce(a, _resultatsSearchId)).join('')
+    : '<p style="color:#888;padding:16px;text-align:center">Aucune annonce ne correspond aux filtres.</p>');
+}
+
+function filtrerResultats() { _afficherResultats(); }
+
+function reinitialiserFiltres() {
+  const f = document.getElementById('filtre-texte');
+  const p = document.getElementById('filtre-prix-max');
+  const k = document.getElementById('filtre-km-max');
+  if (f) f.value = '';
+  if (p) p.value = '';
+  if (k) k.value = '';
+}
+
+async function sauvegarderNote(seenId, searchId, btn) {
+  const note = document.getElementById(`note-${seenId}`)?.value || '';
+  btnLoad(btn, '…');
+  try {
+    await fetch(`${API}/note`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seen_id: seenId, note })
+    });
+    showToast('Note sauvegardée.');
+  } catch { showToast('Erreur de connexion.', false); }
+  finally { btnReset(btn); }
+}
+
+function ouvrirModalEditClient(clientId, nom, contact, notes) {
+  document.getElementById('edit-client-id').value = clientId;
+  document.getElementById('edit-client-nom').value = nom;
+  document.getElementById('edit-client-contact').value = contact;
+  document.getElementById('edit-client-notes').value = notes.replace(/\\n/g, '\n');
+  document.getElementById('modal-edit-client').classList.add('open');
+}
+
+function fermerModalEditClient() {
+  document.getElementById('modal-edit-client').classList.remove('open');
+}
+
+async function sauvegarderModifClient(e) {
+  e.preventDefault();
+  const clientId = document.getElementById('edit-client-id').value;
+  const nom = document.getElementById('edit-client-nom').value.trim();
+  const contact = document.getElementById('edit-client-contact').value.trim();
+  const notes = document.getElementById('edit-client-notes').value.trim();
+  const btn = e.target.querySelector('button[type=submit]');
+  btnLoad(btn, 'Sauvegarde…');
+  try {
+    const d = await fetch(`${API}/clients/${clientId}/modifier`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nom, contact, notes })
+    }).then(r => r.json());
+    if (d.ok) {
+      fermerModalEditClient();
+      showToast('Dossier client mis à jour.');
+      chargerClients();
+    } else { showToast(d.error || 'Erreur.', false); }
+  } catch { showToast('Erreur de connexion.', false); }
+  finally { btnReset(btn); }
 }
 
 async function marquerInteret(seenId, interet, searchId) {

@@ -112,12 +112,16 @@ def init_db():
             added_at  TEXT
         );
         """)
-    # Migration : ajouter client_id à recherches si la table existait déjà sans cette colonne
+    # Migrations pour bases existantes
     with get_conn() as conn:
-        try:
-            conn.execute("ALTER TABLE recherches ADD COLUMN client_id TEXT REFERENCES clients(client_id)")
-        except Exception:
-            pass  # colonne déjà présente
+        for sql in [
+            "ALTER TABLE recherches ADD COLUMN client_id TEXT REFERENCES clients(client_id)",
+            "ALTER TABLE annonces_vues ADD COLUMN note TEXT",
+        ]:
+            try:
+                conn.execute(sql)
+            except Exception:
+                pass
 
     print("[OK] Base de donnees initialisee.")
 
@@ -139,6 +143,15 @@ def get_recherche_by_id(search_id: str) -> dict | None:
 
 
 # ── Clients ─────────────────────────────────────────────────────────────────────
+
+def modifier_client(client_id: str, data: dict):
+    now = _now()
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE clients SET nom=?, contact=?, notes=?, updated_at=? WHERE client_id=?",
+            (data["nom"], data.get("contact", ""), data.get("notes", ""), now, client_id)
+        )
+
 
 def client_nom_existe(nom: str) -> bool:
     with get_conn() as conn:
@@ -404,6 +417,24 @@ def save_run(run_data: dict):
                 :nb_annonces_lues, :nb_annonces_nouvelles, :nb_annonces_notifiees
             )
         """, run_data)
+
+
+def sauvegarder_note_annonce(seen_id: str, note: str):
+    with get_conn() as conn:
+        conn.execute("UPDATE annonces_vues SET note=? WHERE seen_id=?", (note or None, seen_id))
+
+
+def get_autres_clients_pour_listing(listing_id: str, current_search_id: str) -> list[str]:
+    """Retourne les noms des autres clients qui ont la même annonce."""
+    with get_conn() as conn:
+        rows = conn.execute("""
+            SELECT DISTINCT c.nom FROM annonces_vues av
+            JOIN recherches r ON av.search_id = r.search_id
+            JOIN clients c ON r.client_id = c.client_id
+            WHERE av.listing_id = ? AND av.search_id != ?
+              AND r.client_id IS NOT NULL
+        """, (listing_id, current_search_id)).fetchall()
+    return [r[0] for r in rows]
 
 
 def get_derniers_resultats(search_id: str, limit: int = 20) -> list[dict]:

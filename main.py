@@ -304,6 +304,7 @@ def cmd_ui():
         get_derniers_resultats, marquer_interet,
         insert_client, get_clients, get_client_by_id, archiver_client, reactiver_client, supprimer_client, client_nom_existe,
         ajouter_lien_client, get_liens_client, supprimer_lien_client,
+        modifier_client, sauvegarder_note_annonce, get_autres_clients_pour_listing,
         get_historique_client, get_recherches_sans_client,
         desactiver_recherche, rattacher_recherche_client,
         get_derniers_runs, get_resume_hebdo,
@@ -386,7 +387,10 @@ def cmd_ui():
                 self._send_json({"path": str(_dossier_clients_root())})
             elif self.path.startswith("/resultats/"):
                 search_id = self.path.split("/resultats/")[1]
-                self._send_json(get_derniers_resultats(search_id))
+                annonces = get_derniers_resultats(search_id)
+                for a in annonces:
+                    a["autres_clients"] = get_autres_clients_pour_listing(a["listing_id"], search_id)
+                self._send_json(annonces)
             elif self.path == "/config":
                 cfg = _load_config()
                 # Ne jamais renvoyer le mot de passe en clair
@@ -547,6 +551,24 @@ def cmd_ui():
                 )
                 t.start()
                 self._send_json({"ok": True, "message": "Recherche lancee !"})
+
+            elif self.path == "/note":
+                seen_id = body.get("seen_id")
+                note = body.get("note", "")
+                if seen_id:
+                    sauvegarder_note_annonce(seen_id, note)
+                    self._send_json({"ok": True})
+                else:
+                    self._send_json({"ok": False}, 400)
+
+            elif self.path.startswith("/clients/") and self.path.endswith("/modifier"):
+                client_id = self.path.split("/clients/")[1].replace("/modifier", "")
+                nom = body.get("nom", "").strip()
+                if not nom:
+                    self._send_json({"ok": False, "error": "Le nom est obligatoire"}, 400)
+                    return
+                modifier_client(client_id, {"nom": nom, "contact": body.get("contact", ""), "notes": body.get("notes", "")})
+                self._send_json({"ok": True})
 
             elif self.path == "/interet":
                 seen_id = body.get("seen_id")
