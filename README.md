@@ -11,32 +11,32 @@ Carveille scrape mobile.de selon tes critères, score chaque annonce, détecte l
 1. [Ce que ça fait](#ce-que-ça-fait)
 2. [Prérequis](#prérequis)
 3. [Installation](#installation)
-4. [Configuration](#configuration)
-5. [Utilisation](#utilisation)
-6. [Comprendre le score](#comprendre-le-score)
-7. [Notifications](#notifications)
-8. [Structure du projet](#structure-du-projet)
-9. [Tests automatisés](#tests-automatisés)
+4. [Utilisation quotidienne](#utilisation-quotidienne)
+5. [Créer une recherche](#créer-une-recherche)
+6. [Configurer les notifications](#configurer-les-notifications)
+7. [Vérification automatique](#vérification-automatique)
+8. [Comprendre le score](#comprendre-le-score)
+9. [Structure du projet](#structure-du-projet)
+10. [Tests automatisés](#tests-automatisés)
 
 ---
 
 ## Ce que ça fait
 
-- **Scraping mobile.de** — récupère les annonces en fonction de ta recherche (marque, modèle, budget, km, boîte, carburant…)
+- **Scraping mobile.de** — récupère les annonces selon tes critères (marque, modèle, budget, km, boîte, carburant…)
 - **Scoring sur 100** — chaque annonce reçoit un score pondéré selon tes critères
-- **Détection de baisses de prix** — si une annonce que tu as déjà vue baisse de prix, tu en es informé
-- **Filtre vendeur** — pro, particulier, ou indifférent
+- **Détection de baisses de prix** — si une annonce déjà vue baisse de prix, tu en es informé
 - **Bonus fraîcheur** — les annonces très récentes (<24h, <48h, <7j) gagnent quelques points
-- **Anti-doublon** — une annonce vue ne remonte pas comme nouvelle lors du run suivant
-- **Interface web** — tableau de bord local pour voir les résultats, marquer l'intérêt, lancer des runs
-- **Notifications** — console (défaut), Telegram, ou email SMTP
+- **Anti-doublon** — une annonce vue ne remonte pas comme nouvelle au run suivant
+- **Vérification automatique** — choisir une heure dans l'interface, Carveille vérifie tous les jours sans action manuelle
+- **Interface web** — tableau de bord local pour voir les résultats, marquer l'intérêt, configurer les alertes
+- **Notifications** — console (défaut), Telegram, ou email SMTP, configurables depuis l'interface
 
 ---
 
 ## Prérequis
 
-- Python 3.11 ou plus récent
-- pip
+- Python 3.11 ou plus récent ([télécharger](https://www.python.org/downloads/) — cocher "Add Python to PATH" lors de l'installation)
 
 Pas de base de données externe, pas de serveur cloud — tout tourne en local avec SQLite.
 
@@ -47,209 +47,145 @@ Pas de base de données externe, pas de serveur cloud — tout tourne en local a
 ### 1. Cloner le projet
 
 ```bash
-git clone https://github.com/VOTRE_PSEUDO/carveille.git
+git clone https://github.com/Mano515/carveille.git
 cd carveille
 ```
 
-### 2. Créer un environnement virtuel (recommandé)
+### 2. Lancer
 
-```bash
-python -m venv .venv
-```
+Double-clic sur **`Lancer Carveille.bat`**.
 
-Activer l'environnement :
+À la première utilisation, le script installe automatiquement tout ce dont Python a besoin (1-2 minutes). Ensuite, le navigateur s'ouvre tout seul sur l'interface.
 
-- **Windows** : `.venv\Scripts\activate`
-- **Mac / Linux** : `source .venv/bin/activate`
-
-### 3. Installer les dépendances
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Configurer les variables d'environnement
-
-```bash
-cp .env.example .env
-```
-
-Ouvre le fichier `.env` et remplis les valeurs dont tu as besoin (voir section [Notifications](#notifications)).
-
-### 5. Initialiser la base de données
-
-```bash
-python main.py init
-```
-
-Cela crée le fichier `db/carveille.db` avec toutes les tables nécessaires.
+> La fenêtre noire qui s'ouvre doit rester ouverte pendant toute l'utilisation de Carveille. La fermer arrête l'application.
 
 ---
 
-## Configuration
+## Utilisation quotidienne
 
-### .env
+1. Double-clic sur **`Lancer Carveille.bat`**
+2. Le navigateur s'ouvre automatiquement sur l'interface
+3. Cliquer sur **"Chercher maintenant sur mobile.de"** pour lancer une vérification
+4. Consulter les résultats dans l'onglet **Résultats**
+5. Marquer les annonces intéressantes avec 👍 ou les masquer avec 👎
 
-```env
-# Canal de notification : console (défaut), telegram ou email
-CANAL_NOTIFICATION=console
-
-# Telegram (si CANAL_NOTIFICATION=telegram)
-TELEGRAM_BOT_TOKEN=ton_token_ici
-TELEGRAM_CHAT_ID=ton_chat_id_ici
-
-# Email SMTP (si CANAL_NOTIFICATION=email)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=ton.email@gmail.com
-SMTP_PASSWORD=ton_mot_de_passe_app
-SMTP_DEST=destinataire@email.com
-```
-
-### config.py
-
-Tu peux ajuster les valeurs dans `config.py` sans toucher au reste du code :
-
-| Paramètre | Défaut | Description |
-|---|---|---|
-| `POIDS_DEFAUT["prix"]` | 30 | Poids du prix dans le score |
-| `POIDS_DEFAUT["km"]` | 25 | Poids du kilométrage |
-| `POIDS_DEFAUT["annee"]` | 20 | Poids de l'année |
-| `POIDS_DEFAUT["boite"]` | 10 | Poids de la boîte de vitesses |
-| `POIDS_DEFAUT["carburant"]` | 10 | Poids du carburant |
-| `POIDS_DEFAUT["options"]` | 5 | Poids des options |
-| `SCORE_MIN_NOTIFICATION` | 60 | Score minimum pour être notifié |
-| `MAX_ANNONCES` | 3 | Nombre max d'annonces remontées par run |
-| `TOLERANCE_PRIX_SOUPLE` | 1.05 | Tolérance budget si non strict (+5%) |
-| `TOLERANCE_KM_SOUPLE` | 1.10 | Tolérance km (+10%) |
-| `PENALITE_PAR_CHAMP` | 10 | Pénalité par champ manquant |
-| `PENALITE_MAX` | 30 | Plafond des pénalités |
-| `BONUS_FRAICHEUR` | 5/3/1 pts | Bonus pour annonces <24h / <48h / <7j |
+> Le bouton **?** en bas à droite de l'interface affiche une aide contextuelle selon l'onglet ouvert.
 
 ---
 
-## Utilisation
+## Créer une recherche
 
-### Commandes disponibles
+Dans l'onglet **"Nouvelle recherche"**, remplir le formulaire avec tes critères.
 
-```bash
-# Initialiser la base de données (une seule fois)
-python main.py init
+### Méthode recommandée : URL mobile.de
 
-# Charger des données de démonstration
-python main.py seed
+La méthode la plus précise et la plus simple :
 
-# Lancer un run avec les données de démo (jour 1)
-python main.py run --source mock --day 1
+1. Aller sur [mobile.de](https://www.mobile.de)
+2. Faire sa recherche avec tous les filtres souhaités
+3. Copier l'adresse de la page de résultats
+4. La coller dans le champ **"URL de recherche mobile.de"** du formulaire
 
-# Lancer un run avec les données de démo (jour 2, avec baisse de prix)
-python main.py run --source mock --day 2
+Carveille utilisera exactement cette URL et appliquera son scoring sur les résultats.
 
-# Lancer un vrai scraping sur mobile.de
-python main.py run --source mobile.de
+### Options du formulaire
 
-# Ouvrir l'interface web
-python main.py ui
-# Puis ouvre http://localhost:8765 dans ton navigateur
-```
+| Champ | Description |
+|---|---|
+| Nom de la recherche | Nom libre pour s'y retrouver (ex : "BMW Papa") |
+| Marque / Modèle | La voiture recherchée |
+| Budget maximum | Prix au-dessus duquel les annonces sont pénalisées |
+| Budget strict | Si coché : toute annonce au-dessus du budget est ignorée (sans tolérance) |
+| Kilométrage maximum | Au-delà, l'annonce est pénalisée |
+| Année minimum | En dessous de cette année, l'annonce est exclue (tolérance de 1 an à 50%) |
+| Boîte de vitesses | Automatique, manuelle, ou peu importe |
+| Carburant | Diesel, essence, hybride, électrique, ou peu importe |
+| Type de vendeur | Pro, particulier, ou peu importe |
+| Options souhaitées | Mots-clés séparés par des virgules (ex : camera, gps) |
+| Réglages avancés | Modifier l'importance de chaque critère dans le score |
 
-### Workflow typique
+---
 
-1. `python main.py init` — initialiser (première fois)
-2. Créer une recherche via l'interface web (`python main.py ui`)
-3. `python main.py run --source mobile.de` — lancer le scraping
-4. Recevoir la notification avec les meilleures annonces
-5. Répéter le step 3 régulièrement (cron, alarme, manuellement)
+## Configurer les notifications
 
-### Créer une recherche via l'URL mobile.de
+Dans l'onglet **"Paramètres"** de l'interface, choisir comment être alerté.
 
-La méthode la plus simple et la plus précise :
+### Console (défaut)
 
-1. Va sur [mobile.de](https://www.mobile.de), fais ta recherche avec tous tes filtres
-2. Copie l'URL de la page de résultats
-3. Dans l'interface web, colle cette URL dans le champ **URL mobile.de**
+Aucune configuration. Les résultats s'affichent dans la fenêtre noire.
 
-Carveille utilisera cette URL directement et appliquera quand même son propre scoring sur les résultats.
+### Telegram
+
+1. Ouvrir Telegram, chercher **@BotFather**
+2. Envoyer `/newbot` et suivre les instructions — noter le **Token**
+3. Envoyer un message au bot, puis aller sur :
+   `https://api.telegram.org/bot<TOKEN>/getUpdates`
+4. Noter le **Chat ID** (le nombre dans le champ `"id"`)
+5. Renseigner Token et Chat ID dans l'onglet Paramètres
+
+### Email (Gmail)
+
+1. Activer la validation en deux étapes sur le compte Google
+2. Générer un [mot de passe d'application](https://myaccount.google.com/apppasswords)
+3. Renseigner l'adresse email et ce mot de passe (pas le mot de passe habituel) dans l'onglet Paramètres
+
+> La configuration est sauvegardée dans le fichier `.env` à la racine du projet. Ce fichier ne doit jamais être partagé (il contient les tokens/mots de passe).
+
+---
+
+## Vérification automatique
+
+Dans l'onglet **"Paramètres"**, activer la vérification automatique et choisir une heure.
+
+Carveille lancera une recherche chaque jour à cette heure — sans action manuelle.
+
+> **Important** : la fenêtre noire (`Lancer Carveille.bat`) doit être ouverte à ce moment-là. Pour que ça fonctionne tous les jours, laisser la fenêtre ouverte en permanence ou s'assurer qu'elle est ouverte avant l'heure configurée.
 
 ---
 
 ## Comprendre le score
 
-Chaque annonce reçoit un **score de 0 à 100** calculé ainsi :
+Chaque annonce reçoit un **score de 0 à 100** :
 
 ```
 Score = prix(30) + km(25) + annee(20) + boite(10) + carburant(10) + options(5)
-      + bonus_fraicheur (jusqu'à +5)
-      - penalites_champs_manquants (jusqu'à -30)
+      + bonus fraîcheur (jusqu'à +5)
+      − pénalités champs manquants (jusqu'à −30)
 ```
 
-### Paliers de score par critère
+### Couleurs
+
+| Couleur | Score | Signification |
+|---|---|---|
+| Vert | 80+ | Excellente annonce |
+| Orange | 60–79 | Annonce correcte |
+| Rouge | < 60 | Ne correspond pas bien |
+
+### Paliers par critère
 
 **Prix (30 pts)**
-- ≤ 90% du budget → 30 pts (plein)
+- ≤ 90% du budget → 30 pts
 - ≤ 100% → 21 pts
-- ≤ 105% (budget non strict uniquement) → 12 pts
-- > 105% ou budget strict dépassé → 0 pts + rejet
+- ≤ 105% (si budget non strict) → 12 pts
+- Au-delà → 0 pts
 
 **Kilométrage (25 pts)**
 - ≤ 80% du km max → 25 pts
-- ≤ 100% → 17.5 pts
+- ≤ 100% → 17,5 pts
 - ≤ 110% → 10 pts
-- > 110% → 0 pts + rejet
+- Au-delà → 0 pts
 
 **Année (20 pts)**
 - ≥ année minimum → 20 pts
-- = année minimum - 1 → 10 pts
-- < année minimum - 1 → 0 pts + rejet
+- = année minimum − 1 → 10 pts
+- < année minimum − 1 → 0 pts (annonce exclue)
 
-**Boîte de vitesses (10 pts)**
-- Correspond → 10 pts
-- Ne correspond pas → 0 pts
-
-**Carburant (10 pts)**
-- Correspond → 10 pts
+**Boîte / Carburant (10 pts chacun)**
+- Correspond → plein score
 - Ne correspond pas → 0 pts
 
 **Options (5 pts)**
-- Toutes les options trouvées → 5 pts
-- 2 options trouvées → 3.5 pts
-- 1 option trouvée → 2 pts
-- Aucune → 0 pts
-
-Les annonces avec un score inférieur à `SCORE_MIN_NOTIFICATION` (60 par défaut) ne sont pas notifiées.
-
----
-
-## Notifications
-
-### Console (défaut)
-
-Aucune configuration requise. Les résultats s'affichent dans le terminal à chaque run.
-
-### Telegram
-
-1. Crée un bot via [@BotFather](https://t.me/BotFather) et récupère le token
-2. Envoie un message au bot, puis va sur `https://api.telegram.org/bot<TOKEN>/getUpdates` pour trouver ton `chat_id`
-3. Renseigne dans `.env` :
-   ```env
-   CANAL_NOTIFICATION=telegram
-   TELEGRAM_BOT_TOKEN=123456:ABCdef...
-   TELEGRAM_CHAT_ID=987654321
-   ```
-
-### Email (Gmail)
-
-1. Active l'authentification à deux facteurs sur ton compte Google
-2. Génère un [mot de passe d'application](https://myaccount.google.com/apppasswords)
-3. Renseigne dans `.env` :
-   ```env
-   CANAL_NOTIFICATION=email
-   SMTP_HOST=smtp.gmail.com
-   SMTP_PORT=587
-   SMTP_USER=ton.email@gmail.com
-   SMTP_PASSWORD=xxxx xxxx xxxx xxxx
-   SMTP_DEST=destinataire@email.com
-   ```
+- Toutes présentes → 5 pts / 2 présentes → 3,5 pts / 1 présente → 2 pts / aucune → 0 pt
 
 ---
 
@@ -257,41 +193,44 @@ Aucune configuration requise. Les résultats s'affichent dans le terminal à cha
 
 ```
 carveille/
-├── main.py              # Point d'entrée CLI + serveur HTTP pour l'UI
-├── config.py            # Tous les paramètres ajustables
-├── test.py              # Tests automatisés (python test.py)
-├── requirements.txt     # Dépendances Python
-├── .env.example         # Modèle de configuration
+├── Lancer Carveille.bat   # Double-clic pour tout démarrer
+├── main.py                # Point d'entrée CLI + serveur HTTP
+├── config.py              # Paramètres ajustables (poids, seuils, mappings mobile.de)
+├── test.py                # Tests automatisés (python test.py)
+├── requirements.txt       # Dépendances Python
+├── .env                   # Configuration locale (créé automatiquement, ne pas partager)
+├── .env.example           # Modèle de configuration
 │
 ├── src/
-│   ├── database.py      # Toutes les fonctions SQLite
-│   ├── scoring.py       # Moteur de score (scorer_annonce)
-│   ├── runner.py        # Orchestrateur principal (un run = charger + scorer + notifier)
-│   ├── dedup.py         # Anti-doublon contre la base de données
-│   ├── notifier.py      # Envoi des notifications (console / Telegram / email)
+│   ├── database.py        # Toutes les fonctions SQLite
+│   ├── scoring.py         # Moteur de score
+│   ├── runner.py          # Orchestrateur (charger → scorer → notifier)
+│   ├── dedup.py           # Anti-doublon
+│   ├── notifier.py        # Envoi des notifications
 │   └── sources/
-│       ├── mobile_de.py # Scraper mobile.de (extrait __NEXT_DATA__ Next.js)
-│       └── mock.py      # Source de test locale (data/mock_dayN.json)
+│       ├── mobile_de.py   # Scraper mobile.de
+│       └── mock.py        # Source de test locale
 │
 ├── data/
-│   ├── mock_day1.json   # 15 annonces de démo (jour 1)
-│   └── mock_day2.json   # 20 annonces (dont baisse de prix sur ann_001)
+│   ├── mock_day1.json     # 15 annonces de démonstration
+│   └── mock_day2.json     # 20 annonces (avec baisse de prix pour tester)
 │
 ├── db/
-│   └── carveille.db     # Base SQLite (créée par `python main.py init`)
+│   ├── carveille.db       # Base SQLite (créée au premier lancement)
+│   └── schedule.json      # Planning de vérification automatique
 │
 └── ui/
-    └── index.html       # Interface web (servie par main.py sur :8765)
+    └── index.html         # Interface web (servie sur http://localhost:8765)
 ```
 
 ### Tables SQLite
 
 | Table | Rôle |
 |---|---|
-| `recherches` | Tes critères de recherche |
-| `annonces_vues` | Toutes les annonces scrappées avec leur score, `prix_initial`, `baisse_prix` |
-| `historique_prix` | Historique des prix constatés à chaque run |
-| `runs` | Bilan de chaque run (nb lues, nouvelles, notifiées) |
+| `recherches` | Les critères de recherche sauvegardés |
+| `annonces_vues` | Toutes les annonces trouvées avec score, `prix_initial`, `baisse_prix` |
+| `historique_prix` | Historique des prix à chaque run |
+| `runs` | Bilan de chaque run |
 
 ---
 
@@ -301,19 +240,18 @@ carveille/
 python test.py
 ```
 
-Lance 23 vérifications couvrant tous les comportements critiques :
+Lance 23 vérifications automatiques sans framework externe :
 
 - Scoring correct sur une annonce idéale
 - Budget strict / souple
 - Filtres boîte, carburant, année + tolérance
 - Pénalités champs manquants + plafond
 - Sélection et tri du top annonces
-- Anti-doublon (annonce déjà vue exclue)
-- Détection baisse de prix + montant correct + pas de fausse alarme
+- Anti-doublon
+- Détection de baisse de prix + montant correct + pas de fausse alarme
 
-Utilise une base de données temporaire isolée — aucun impact sur tes données.
+Utilise une base de données temporaire isolée — aucun impact sur les données réelles.
 
-Sortie attendue :
 ```
 ========================================
   23/23 tests passés
@@ -326,6 +264,6 @@ Exit code 0 si tout passe, 1 si un test échoue (compatible CI).
 
 ## Remarques
 
-- **Encodage Windows** : si tu vois des erreurs d'encodage dans le terminal, lance `$env:PYTHONIOENCODING="utf-8"` avant la commande Python (PowerShell) ou `set PYTHONIOENCODING=utf-8` (cmd).
-- **mobile.de peut bloquer** : si le scraping retourne zéro résultat avec un message `__NEXT_DATA__ introuvable`, mobile.de a probablement bloqué la requête. Attends quelques minutes et réessaie.
-- **Le fichier `.env` ne doit jamais être committé** — il est dans `.gitignore`.
+- **Encodage Windows** : si des caractères s'affichent mal dans la fenêtre noire, lancer `$env:PYTHONIOENCODING="utf-8"` avant la commande Python.
+- **mobile.de peut bloquer** : si le scraping retourne zéro résultat avec un message `__NEXT_DATA__ introuvable`, mobile.de a probablement bloqué la requête. Attendre quelques minutes et réessayer.
+- **Le fichier `.env`** est dans `.gitignore` et ne sera jamais envoyé sur GitHub.
