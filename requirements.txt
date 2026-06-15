@@ -1,4 +1,4 @@
-requests
+curl_cffi
 python-dotenv
 pillow
 pillow-heif

@@ -15,7 +15,8 @@ import time
 import random
 from urllib.parse import urlencode, urljoin
 
-import requests
+# curl_cffi imite le fingerprint TLS de Chrome, ce qui contourne le blocage 403 de mobile.de
+from curl_cffi import requests
 
 from config import (
     MAKES_MOBILE_DE, MODELS_MOBILE_DE,
@@ -51,8 +52,8 @@ def _build_url(recherche: dict, page: int = 1) -> str:
     marque = recherche.get("marque", "")
     modele = recherche.get("modele", "")
 
-    make_code = MAKES_MOBILE_DE.get(marque, marque.upper().replace(" ", "_"))
-    model_code = MODELS_MOBILE_DE.get(modele, modele.upper().replace(" ", "_"))
+    make_code = MAKES_MOBILE_DE.get(marque, marque.upper().replace(" ", "_")) if marque else ""
+    model_code = MODELS_MOBILE_DE.get(modele, modele.upper().replace(" ", "_")) if modele else ""
 
     if make_code:
         params["makeModelVariant1.make"] = make_code
@@ -235,7 +236,8 @@ def charger(recherche: dict, max_pages: int = 3) -> list:
     Charge les annonces depuis mobile.de.
     Utilise `mobile_de_url` si fourni, sinon construit l'URL automatiquement.
     """
-    session = requests.Session()
+    # impersonate="chrome124" : curl_cffi imite le TLS/JA3 de Chrome pour passer la détection de bot
+    session = requests.Session(impersonate="chrome124")
     session.headers.update(HEADERS)
 
     base_url = recherche.get("mobile_de_url") or _build_url(recherche, page=1)
