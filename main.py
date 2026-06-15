@@ -456,8 +456,11 @@ def cmd_ui():
                 client_id = self.path.split("/clients/")[1].replace("/ouvrir-dossier", "")
                 client = get_client_by_id(client_id)
                 if client:
-                    _ouvrir_dossier(_dossier_client(client["nom"]))
-                    self._send_json({"ok": True})
+                    dossier = _dossier_client(client["nom"])
+                    recree = not dossier.exists()
+                    _creer_dossier_client(client["nom"])  # recrée dossier + voitures/ + documents/
+                    _ouvrir_dossier(dossier)
+                    self._send_json({"ok": True, "recree": recree})
                 else:
                     self._send_json({"ok": False}, 404)
 

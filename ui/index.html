@@ -2051,8 +2051,12 @@ async function supprimerLien(lienId, clientId, btn) {
 async function ouvrirDossierClient(clientId, btn) {
   if (btn) btnLoad(btn, 'Ouverture…');
   try {
-    await fetch(`${API}/clients/${clientId}/ouvrir-dossier`, { method: 'POST' });
-    showToast('Dossier ouvert dans l\'explorateur.');
+    const d = await fetch(`${API}/clients/${clientId}/ouvrir-dossier`, { method: 'POST' }).then(r => r.json());
+    if (d.recree) {
+      showToast('Dossier recréé (il avait été supprimé) — voitures/ et documents/ sont de retour.');
+    } else {
+      showToast('Dossier ouvert dans l\'explorateur.');
+    }
   } catch { showToast('Impossible d\'ouvrir le dossier.', false); }
   finally { if (btn) btnReset(btn); }
 }
