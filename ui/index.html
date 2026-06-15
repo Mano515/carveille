@@ -702,23 +702,6 @@ button.btn-loading { opacity: 0.6; cursor: wait; pointer-events: none; }
       <div id="conv-result" style="display:none;margin-top:16px"></div>
     </div>
 
-    <!-- Dossier clients -->
-    <div class="card">
-      <div class="card-title">&#128193; Dossier de stockage des clients</div>
-      <p style="font-size:0.85rem;color:#555;margin-bottom:12px;line-height:1.6">
-        Tous les dossiers clients sont créés automatiquement ici. Laissez vide pour utiliser l'emplacement par défaut.
-      </p>
-      <label style="font-size:0.82rem;font-weight:600;color:#333">
-        Chemin du dossier
-        <input type="text" id="dossier-clients-path" placeholder="Laisser vide = dossier Clients/ à côté de Carveille" style="margin-top:6px">
-      </label>
-      <div style="display:flex;gap:10px;margin-top:12px;align-items:center;flex-wrap:wrap">
-        <button class="btn-save" onclick="sauvegarderDossier()">Sauvegarder</button>
-        <button class="btn-secondary" onclick="ouvrirDossierRacine()">&#128193; Ouvrir dans l'explorateur</button>
-        <span id="dossier-path-actuel" style="font-size:0.78rem;color:#999"></span>
-      </div>
-    </div>
-
   </div>
 
   <!-- ── Onglet 5 : Parametres ── -->
@@ -815,6 +798,23 @@ button.btn-loading { opacity: 0.6; cursor: wait; pointer-events: none; }
 
         <button class="btn-save" onclick="sauvegarderPlanificateur()">Sauvegarder le planning</button>
 
+      </div>
+    </div>
+
+    <!-- Dossier clients -->
+    <div class="card">
+      <div class="param-section-title">&#128193; Dossier de stockage des clients</div>
+      <p style="font-size:0.85rem;color:#555;margin-bottom:12px;line-height:1.6">
+        Tous les dossiers clients sont créés automatiquement ici. Laissez vide pour utiliser l'emplacement par défaut.
+      </p>
+      <label style="font-size:0.82rem;font-weight:600;color:#333">
+        Chemin du dossier
+        <input type="text" id="dossier-clients-path" placeholder="Laisser vide = dossier Clients/ à côté de Carveille" style="margin-top:6px">
+      </label>
+      <div style="display:flex;gap:10px;margin-top:12px;align-items:center;flex-wrap:wrap">
+        <button class="btn-save" onclick="sauvegarderDossier()">Sauvegarder</button>
+        <button class="btn-secondary" onclick="ouvrirDossierRacine()">&#128193; Ouvrir dans l'explorateur</button>
+        <span id="dossier-path-actuel" style="font-size:0.78rem;color:#999"></span>
       </div>
     </div>
 
@@ -1932,14 +1932,6 @@ const AIDE_CONTENU = {
           { label: 'Sans client sélectionné', desc: 'Si aucun client n\'est choisi, les JPG sont enregistrés dans un dossier "Non classé" dans le dossier racine Carveille.' },
         ]
       },
-      {
-        titre: 'Dossier de stockage',
-        items: [
-          { label: 'Emplacement par défaut', desc: 'Tous les dossiers clients sont créés dans le dossier Clients/ situé à côté de Carveille. Chaque client a son propre sous-dossier avec "voitures/" et "documents/".' },
-          { label: 'Changer l\'emplacement', desc: 'Saisissez un nouveau chemin et cliquez "Sauvegarder". Utile si vous préférez stocker sur un disque externe ou un dossier réseau partagé. Les dossiers existants ne sont pas déplacés automatiquement.' },
-          { label: 'Ouvrir dans l\'explorateur', desc: 'Ouvre le dossier racine Carveille directement dans l\'explorateur Windows pour accéder à tous les dossiers clients en un clic.' },
-        ]
-      },
     ]
   },
   params: {
@@ -1967,6 +1959,14 @@ const AIDE_CONTENU = {
           { label: 'Nouvelles annonces', desc: 'Envoie un email dès que de nouvelles annonces correspondent à vos critères.' },
           { label: 'Baisses de prix', desc: 'Envoie un email quand le prix d\'une annonce déjà vue a diminué, avec le montant de la baisse.' },
           { label: 'Résumé du dimanche', desc: 'Envoie chaque dimanche un email récapitulatif par client : nouvelles annonces de la semaine et total des favoris.' },
+        ]
+      },
+      {
+        titre: 'Dossier de stockage',
+        items: [
+          { label: 'Emplacement par défaut', desc: 'Tous les dossiers clients sont créés dans le dossier Clients/ situé à côté de Carveille. Chaque client a son propre sous-dossier avec "voitures/" et "documents/".' },
+          { label: 'Changer l\'emplacement', desc: 'Saisissez un nouveau chemin et cliquez "Sauvegarder". Utile si vous préférez stocker sur un disque externe ou un dossier réseau partagé. Les dossiers existants ne sont pas déplacés automatiquement.' },
+          { label: 'Ouvrir dans l\'explorateur', desc: 'Ouvre le dossier racine Carveille directement dans l\'explorateur Windows pour accéder à tous les dossiers clients en un clic.' },
         ]
       },
       {
