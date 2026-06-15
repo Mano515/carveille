@@ -1,0 +1,22 @@
+INSTALLER GIT POUR LES MISES A JOUR AUTOMATIQUES
+=================================================
+
+Git permet a Carveille de se mettre a jour automatiquement
+chaque fois que vous le lancez. A installer une seule fois.
+
+1. Ouvrez votre navigateur internet
+
+2. Allez sur : https://git-scm.com/download/win
+
+3. Le telechargement demarre automatiquement.
+   Sinon cliquez sur "Click here to download"
+
+4. Ouvrez le fichier telecharge (Git-x.xx.x-64-bit.exe)
+
+5. Cliquez sur "Next" a chaque etape sans rien changer
+   (les options par defaut conviennent parfaitement)
+
+6. Cliquez sur "Install" puis "Finish"
+
+Git est installe. La prochaine fois que vous lancez
+Carveille, les mises a jour se feront automatiquement.

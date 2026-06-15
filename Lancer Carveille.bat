@@ -15,11 +15,23 @@ python --version >nul 2>&1
 if errorlevel 1 (
     echo  [ERREUR] Python n'est pas installe sur cet ordinateur.
     echo.
-    echo  Installez Python depuis : https://www.python.org/downloads/
-    echo  Cochez bien "Add Python to PATH" lors de l'installation.
+    echo  Consultez le fichier "Installer Python.txt" pour les instructions.
     echo.
     pause
     exit /b 1
+)
+
+:: Mise a jour automatique depuis Internet (si Git est installe)
+git --version >nul 2>&1
+if not errorlevel 1 (
+    echo  Verification des mises a jour...
+    git pull --quiet origin master
+    if errorlevel 1 (
+        echo  [INFO] Mise a jour impossible (pas de connexion internet ?). Carveille demarre avec la version actuelle.
+    ) else (
+        echo  Carveille est a jour.
+    )
+    echo.
 )
 
 :: Creer l'environnement virtuel si necessaire (premiere utilisation)
@@ -35,8 +47,7 @@ if not exist ".venv\Scripts\python.exe" (
     echo.
 )
 
-:: Installer / mettre a jour les dependances a chaque lancement
-:: (rapide si tout est deja installe, installe les nouveaux modules sinon)
+:: Installer / mettre a jour les dependances
 echo  Verification des modules Python...
 .venv\Scripts\pip install -r requirements.txt --quiet --disable-pip-version-check
 if errorlevel 1 (

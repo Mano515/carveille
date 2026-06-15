@@ -1,0 +1,39 @@
+INSTALLER CARVEILLE SUR CET ORDINATEUR
+=======================================
+
+A faire une seule fois, dans l'ordre.
+
+
+ETAPE 1 — Installer Python
+---------------------------
+Suivez les instructions dans le fichier "Installer Python.txt"
+
+
+ETAPE 2 — Installer Git
+------------------------
+Suivez les instructions dans le fichier "Installer Git.txt"
+
+
+ETAPE 3 — Telecharger Carveille
+--------------------------------
+1. Ouvrez le menu Demarrer
+2. Tapez "cmd" et appuyez sur Entree
+3. Une fenetre noire s'ouvre. Tapez exactement cette commande
+   et appuyez sur Entree :
+
+   cd %USERPROFILE%\Documents && git clone https://github.com/Mano515/carveille.git
+
+4. Attendez que le telechargement se termine
+5. Fermez la fenetre noire
+
+
+ETAPE 4 — Lancer Carveille
+---------------------------
+1. Ouvrez le dossier Documents
+2. Ouvrez le dossier "carveille"
+3. Double-cliquez sur "Lancer Carveille.bat"
+4. Le navigateur s'ouvre automatiquement
+
+C'est pret ! Pour les prochaines utilisations,
+double-cliquez simplement sur "Lancer Carveille.bat".
+Les mises a jour se font automatiquement.
