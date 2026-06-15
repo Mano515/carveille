@@ -306,14 +306,14 @@ def insert_recherche(data: dict):
                 boite, carburant, vendeur_filtre, options_recherchees, mobile_de_url,
                 poids_prix, poids_km, poids_annee, poids_boite, poids_carburant, poids_options,
                 penalite_infos_manquantes, score_min_notification, max_annonces,
-                created_at, updated_at
+                client_id, created_at, updated_at
             ) VALUES (
                 :search_id, :nom_recherche, :statut, :marque, :modele,
                 :budget_max, :budget_strict, :km_max, :annee_min,
                 :boite, :carburant, :vendeur_filtre, :options_recherchees, :mobile_de_url,
                 :poids_prix, :poids_km, :poids_annee, :poids_boite, :poids_carburant, :poids_options,
                 :penalite_infos_manquantes, :score_min_notification, :max_annonces,
-                :created_at, :updated_at
+                :client_id, :created_at, :updated_at
             )
         """, {**data, "created_at": now, "updated_at": now})
 
