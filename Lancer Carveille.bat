@@ -1,14 +1,15 @@
 @echo off
+
+:: Astuce pour se relancer en fenetre minimisee
+if not "%1"=="min" (
+    start "Carveille" /min cmd /c "%~f0" min
+    exit
+)
+
 chcp 65001 >nul
 title Carveille - Veille Automobile
 
 cd /d "%~dp0"
-
-echo.
-echo  =========================================
-echo    Carveille - Veille Automobile
-echo  =========================================
-echo.
 
 :: Verifier que Python est installe
 python --version >nul 2>&1
@@ -47,7 +48,6 @@ echo  Modules OK.
 echo.
 
 echo  Carveille demarre...
-echo  Votre navigateur va s'ouvrir automatiquement dans quelques secondes.
 echo.
 echo  -------------------------------------------
 echo  IMPORTANT : Laissez cette fenetre ouverte

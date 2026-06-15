@@ -566,6 +566,26 @@ def cmd_ui():
                 self.end_headers()
 
     port = 8765
+    url = f"http://localhost:{port}"
+
+    def _open_chrome(u):
+        if sys.platform == "win32":
+            import subprocess
+            result = subprocess.run(["cmd", "/c", "start", "chrome", u], capture_output=True)
+            if result.returncode != 0:
+                webbrowser.open(u)
+        else:
+            webbrowser.open(u)
+
+    # Si Carveille est deja lance, ouvrir un onglet sur l'instance existante et quitter
+    import socket as _socket
+    with _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM) as _s:
+        if _s.connect_ex(("localhost", port)) == 0:
+            print(f"[WEB] Carveille est deja en cours d'execution sur http://localhost:{port}")
+            print("      Ouverture d'un onglet sur l'instance existante...")
+            _open_chrome(url)
+            return
+
     server = http.server.HTTPServer(("localhost", port), Handler)
 
     # Demarrer le planificateur en arriere-plan
@@ -574,18 +594,7 @@ def cmd_ui():
     # Ouvrir Chrome apres un court delai (laisse le temps au serveur de demarrer)
     def _open_browser():
         time.sleep(1.5)
-        url = f"http://localhost:{port}"
-        if sys.platform == "win32":
-            # Ouvre un nouvel onglet dans Chrome s'il est installe, sinon navigateur par defaut
-            import subprocess
-            result = subprocess.run(
-                ["cmd", "/c", "start", "chrome", url],
-                capture_output=True
-            )
-            if result.returncode != 0:
-                webbrowser.open(url)
-        else:
-            webbrowser.open(url)
+        _open_chrome(url)
     threading.Thread(target=_open_browser, daemon=True).start()
 
     print(f"[WEB] Carveille demarre sur http://localhost:{port}")
