@@ -209,45 +209,47 @@ def _parse_html(html: str, url: str) -> tuple[list, int]:
     return annonces, nb_total
 
 
+def _chrome_user_data_dir() -> str | None:
+    """Retourne le chemin du profil Chrome de l'utilisateur Windows, ou None si introuvable."""
+    import pathlib
+    candidate = pathlib.Path.home() / "AppData" / "Local" / "Google" / "Chrome" / "User Data"
+    return str(candidate) if candidate.exists() else None
+
+
 def _scrape_avec_playwright(urls: list[str]) -> list[tuple[list, int]]:
     """
-    Scrape plusieurs pages via Playwright.
-    Essaie d'abord avec Chrome installé sur le PC (moins détectable),
-    puis avec Chromium en fallback.
+    Scrape plusieurs pages via Playwright avec le vrai Chrome de l'utilisateur
+    (profil réel = cookies + historique = indétectable par mobile.de).
+    Chrome s'ouvre en arrière-plan le temps du scraping puis se ferme.
     """
     from playwright.sync_api import sync_playwright
 
+    user_data_dir = _chrome_user_data_dir()
+
     resultats = []
     with sync_playwright() as p:
-        # Chrome installé sur le PC passe mieux la détection de bot que Chromium headless
-        try:
-            browser = p.chromium.launch(channel="chrome", headless=True)
-        except Exception:
+        if user_data_dir:
+            # Lance Chrome avec le profil réel de l'utilisateur
+            print("  [WEB] Lancement de Chrome (peut prendre quelques secondes)...")
+            context = p.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
+                channel="chrome",
+                headless=False,   # doit être visible pour passer la détection
+                args=["--window-position=-32000,-32000"],  # fenêtre hors écran
+            )
+            owns_browser = False  # launch_persistent_context gère lui-même le cycle de vie
+        else:
+            # Fallback : Chromium headless si Chrome n'est pas trouvé
+            print("  [WEB] Chrome non trouve, utilisation de Chromium...")
             browser = p.chromium.launch(headless=True)
-
-        context = browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/124.0.0.0 Safari/537.36"
-            ),
-            locale="fr-FR",
-            viewport={"width": 1280, "height": 800},
-            # Masquer les indices de navigateur automatisé
-            java_script_enabled=True,
-        )
-
-        # Masquer la propriété webdriver qui trahit Playwright
-        context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            context = browser.new_context(locale="fr-FR", viewport={"width": 1280, "height": 800})
+            owns_browser = True
 
         page = context.new_page()
-
-        # Bloquer images et polices pour aller plus vite
         page.route("**/*.{png,jpg,jpeg,gif,webp,avif,svg,woff,woff2,ttf}", lambda r: r.abort())
 
         for i, url in enumerate(urls):
             try:
-                # networkidle attend que toutes les requêtes JS soient terminées
                 page.goto(url, wait_until="networkidle", timeout=45000)
                 html = page.content()
                 resultats.append(_parse_html(html, url))
@@ -258,7 +260,10 @@ def _scrape_avec_playwright(urls: list[str]) -> list[tuple[list, int]]:
             if i < len(urls) - 1:
                 time.sleep(random.uniform(2.0, 3.5))
 
-        browser.close()
+        context.close()
+        if owns_browser:
+            browser.close()
+
     return resultats
 
 
