@@ -51,6 +51,9 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+
+:: Installer Chromium pour Playwright si pas encore fait
+.venv\Scripts\playwright install chromium --with-deps >nul 2>&1
 echo  Modules OK.
 echo.
 

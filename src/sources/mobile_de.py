@@ -1,11 +1,10 @@
 """
 Scraper mobile.de
 
-Construit l'URL de recherche à partir des critères de la recherche,
-récupère la page (SSR Next.js) et extrait les annonces depuis __NEXT_DATA__.
+Utilise Playwright (vrai navigateur Chromium) pour contourner la protection
+Cloudflare de mobile.de, qui bloque les requêtes HTTP simples.
 
-Si la recherche a un champ `mobile_de_url`, cette URL est utilisée directement
-(pratique : l'utilisateur fait sa recherche sur mobile.de, copie l'URL, la colle).
+Si la recherche a un champ `mobile_de_url`, cette URL est utilisée directement.
 Sinon, l'URL est construite automatiquement depuis les champs marque/modele/budget...
 """
 
@@ -15,9 +14,6 @@ import time
 import random
 from urllib.parse import urlencode, urljoin
 
-# curl_cffi imite le fingerprint TLS de Chrome, ce qui contourne le blocage 403 de mobile.de
-from curl_cffi import requests
-
 from config import (
     MAKES_MOBILE_DE, MODELS_MOBILE_DE,
     TRANSMISSION_MOBILE_DE, FUEL_MOBILE_DE,
@@ -25,20 +21,6 @@ from config import (
 
 BASE_URL = "https://suchen.mobile.de/fahrzeuge/search.html"
 BASE_DETAIL_URL = "https://www.mobile.de"
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "fr-FR,fr;q=0.9,de;q=0.8,en;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
-    "DNT": "1",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-}
 
 
 def _build_url(recherche: dict, page: int = 1) -> str:
@@ -81,7 +63,6 @@ def _build_url(recherche: dict, page: int = 1) -> str:
 
     vendeur = (recherche.get("vendeur_filtre") or "indifferent").lower()
     if vendeur == "pro":
-        params["isSearchRequest"] = "true"
         params["damageUnrepaired"] = "NO_DAMAGE_UNREPAIRED"
         params["seller"] = "dealer"
     elif vendeur == "particulier":
@@ -160,7 +141,6 @@ def _parse_item(item: dict) -> dict | None:
         image_url = images[0].get("uri") if images else None
 
         titre = item.get("title") or item.get("name") or ""
-
         creation = item.get("creationDate") or item.get("firstActivationDate") or ""
 
         features = item.get("features") or []
@@ -194,16 +174,9 @@ def _parse_item(item: dict) -> dict | None:
         return None
 
 
-def _scrape_page(session: requests.Session, url: str) -> tuple[list, int]:
-    """Retourne (annonces, nb_total)."""
-    try:
-        resp = session.get(url, timeout=15)
-        resp.raise_for_status()
-    except requests.RequestException as e:
-        print(f"  [ERR] Erreur HTTP : {e}")
-        return [], 0
-
-    data = _extract_next_data(resp.text)
+def _parse_html(html: str, url: str) -> tuple[list, int]:
+    """Extrait les annonces depuis le HTML d'une page de résultats mobile.de."""
+    data = _extract_next_data(html)
     if not data:
         print("  [ERR] __NEXT_DATA__ introuvable. mobile.de a peut-etre bloque la requete.")
         print(f"        URL tentee : {url}")
@@ -231,41 +204,90 @@ def _scrape_page(session: requests.Session, url: str) -> tuple[list, int]:
     return annonces, nb_total
 
 
+def _scrape_avec_playwright(urls: list[str]) -> list[tuple[list, int]]:
+    """
+    Scrape plusieurs pages via Playwright (vrai Chromium).
+    Retourne une liste de (annonces, nb_total) dans le même ordre que urls.
+    """
+    from playwright.sync_api import sync_playwright
+
+    resultats = []
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+            locale="fr-FR",
+            viewport={"width": 1280, "height": 800},
+        )
+        page = context.new_page()
+
+        # Bloquer images et polices pour aller plus vite
+        page.route("**/*.{png,jpg,jpeg,gif,webp,avif,svg,woff,woff2,ttf}", lambda r: r.abort())
+
+        for i, url in enumerate(urls):
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                # Attendre que __NEXT_DATA__ soit dans le DOM
+                page.wait_for_function(
+                    "() => !!document.getElementById('__NEXT_DATA__')",
+                    timeout=15000
+                )
+                html = page.content()
+                resultats.append(_parse_html(html, url))
+            except Exception as e:
+                print(f"  [ERR] Playwright : {e}")
+                resultats.append(([], 0))
+
+            if i < len(urls) - 1:
+                time.sleep(random.uniform(1.5, 2.5))
+
+        browser.close()
+    return resultats
+
+
 def charger(recherche: dict, max_pages: int = 3) -> list:
     """
-    Charge les annonces depuis mobile.de.
+    Charge les annonces depuis mobile.de via Playwright (vrai navigateur Chromium).
     Utilise `mobile_de_url` si fourni, sinon construit l'URL automatiquement.
     """
-    # impersonate="chrome124" : curl_cffi imite le TLS/JA3 de Chrome pour passer la détection de bot
-    session = requests.Session(impersonate="chrome124")
-    session.headers.update(HEADERS)
-
     base_url = recherche.get("mobile_de_url") or _build_url(recherche, page=1)
     print(f"  [WEB] Scraping : {base_url[:80]}...")
 
-    toutes = []
-    for page in range(1, max_pages + 1):
-        if page == 1:
-            url = base_url
-        else:
-            # Remplace ou ajoute pageNumber dans l'URL
-            if "pageNumber" in base_url:
-                url = re.sub(r"pageNumber=\d+", f"pageNumber={page}", base_url)
-            else:
-                sep = "&" if "?" in base_url else "?"
-                url = f"{base_url}{sep}pageNumber={page}"
+    # Construire la liste des URLs à scraper (on commence par la page 1)
+    urls_a_scraper = [base_url]
 
-        annonces, nb_total = _scrape_page(session, url)
+    # Scraper la première page pour connaître le total avant de planifier la suite
+    resultats_p1 = _scrape_avec_playwright([base_url])
+    annonces_p1, nb_total = resultats_p1[0]
+
+    if not annonces_p1:
+        print(f"  [WEB] Total scrape : 0 annonces")
+        return []
+
+    print(f"  [WEB] Page 1 : {len(annonces_p1)} annonces ({nb_total} au total)")
+    toutes = list(annonces_p1)
+
+    # Scraper les pages suivantes si nécessaire
+    page = 2
+    while len(toutes) < nb_total and page <= max_pages:
+        if "pageNumber" in base_url:
+            url_page = re.sub(r"pageNumber=\d+", f"pageNumber={page}", base_url)
+        else:
+            sep = "&" if "?" in base_url else "?"
+            url_page = f"{base_url}{sep}pageNumber={page}"
+
+        resultats = _scrape_avec_playwright([url_page])
+        annonces, _ = resultats[0]
         if not annonces:
             break
 
         toutes.extend(annonces)
-        print(f"  [WEB] Page {page} : {len(annonces)} annonces ({nb_total} au total)")
-
-        if len(toutes) >= nb_total:
-            break
-
-        time.sleep(random.uniform(1.5, 3.0))
+        print(f"  [WEB] Page {page} : {len(annonces)} annonces")
+        page += 1
 
     print(f"  [WEB] Total scrape : {len(toutes)} annonces")
     return toutes

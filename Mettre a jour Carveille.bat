@@ -30,7 +30,22 @@ if errorlevel 1 (
     exit /b 1
 )
 
+:: Installer / mettre a jour les dependances Python
 echo.
+echo  Verification des modules Python...
+.venv\Scripts\pip install -r requirements.txt --quiet --disable-pip-version-check
+if errorlevel 1 (
+    echo  [ERREUR] Impossible d'installer les dependances.
+    pause
+    exit /b 1
+)
+
+:: Installer le navigateur Chromium pour Playwright (necessaire une seule fois)
+echo  Verification du navigateur Chromium...
+.venv\Scripts\playwright install chromium --with-deps >nul 2>&1
+echo  Modules OK.
+echo.
+
 echo  Mise a jour terminee ! Relancement de Carveille...
 echo.
 timeout /t 2 /nobreak >nul
