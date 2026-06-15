@@ -10,26 +10,29 @@ echo    Carveille - Mise a jour
 echo  =========================================
 echo.
 
-git --version >nul 2>&1
-if errorlevel 1 (
-    echo  [ERREUR] Git n'est pas installe.
-    echo  Consultez le fichier "Installer Git.txt".
-    pause
-    exit /b 1
+:: Arreter Carveille s'il est en cours
+echo  Arret de Carveille en cours...
+for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":8765 "') do (
+    taskkill /f /pid %%a >nul 2>&1
 )
+echo  Carveille arrete.
+echo.
 
+:: Mise a jour depuis GitHub
 echo  Telechargement de la mise a jour...
 set GIT_TERMINAL_PROMPT=0
 git pull origin master
 if errorlevel 1 (
     echo.
-    echo  [ERREUR] Mise a jour impossible.
-    echo  Verifiez votre connexion internet.
-) else (
-    echo.
-    echo  Carveille est a jour !
-    echo  Vous pouvez maintenant lancer "Lancer Carveille.bat".
+    echo  [ERREUR] Mise a jour impossible. Verifiez votre connexion internet.
+    pause
+    exit /b 1
 )
 
 echo.
-pause
+echo  Mise a jour terminee ! Relancement de Carveille...
+echo.
+timeout /t 2 /nobreak >nul
+
+start "" "%~dp0Lancer Carveille.bat"
+exit
