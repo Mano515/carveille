@@ -303,6 +303,7 @@ def cmd_ui():
         init_db, get_recherches_actives, insert_recherche, get_recherche_by_id,
         get_derniers_resultats, marquer_interet,
         insert_client, get_clients, get_client_by_id, archiver_client, reactiver_client, supprimer_client, client_nom_existe,
+        ajouter_lien_client, get_liens_client, supprimer_lien_client,
         get_historique_client, get_recherches_sans_client,
         desactiver_recherche, rattacher_recherche_client,
         get_derniers_runs, get_resume_hebdo,
@@ -339,6 +340,10 @@ def cmd_ui():
                 search_id = self.path.split("/recherches/")[1]
                 desactiver_recherche(search_id)
                 self._send_json({"ok": True})
+            elif self.path.startswith("/liens/"):
+                lien_id = self.path.split("/liens/")[1]
+                supprimer_lien_client(lien_id)
+                self._send_json({"ok": True})
             elif self.path.startswith("/clients/"):
                 client_id = self.path.split("/clients/")[1]
                 supprimer_client(client_id)
@@ -364,6 +369,9 @@ def cmd_ui():
             elif self.path.startswith("/historique-client/"):
                 client_id = self.path.split("/historique-client/")[1]
                 self._send_json(get_historique_client(client_id))
+            elif self.path.startswith("/clients/") and self.path.endswith("/liens"):
+                client_id = self.path.split("/clients/")[1].replace("/liens", "")
+                self._send_json(get_liens_client(client_id))
             elif self.path == "/recherches-sans-client":
                 self._send_json(get_recherches_sans_client())
             elif self.path == "/recherches":
@@ -427,6 +435,16 @@ def cmd_ui():
             elif self.path == "/ouvrir-dossier-racine":
                 _ouvrir_dossier(_dossier_clients_root())
                 self._send_json({"ok": True})
+
+            elif self.path.startswith("/clients/") and self.path.endswith("/liens"):
+                client_id = self.path.split("/clients/")[1].replace("/liens", "")
+                url = body.get("url", "").strip()
+                titre = body.get("titre", "").strip()
+                if not url:
+                    self._send_json({"ok": False, "error": "URL manquante"}, 400)
+                    return
+                lien_id = ajouter_lien_client(client_id, url, titre)
+                self._send_json({"ok": True, "lien_id": lien_id})
 
             elif self.path.startswith("/clients/") and self.path.endswith("/ouvrir-dossier"):
                 client_id = self.path.split("/clients/")[1].replace("/ouvrir-dossier", "")

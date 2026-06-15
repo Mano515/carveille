@@ -103,6 +103,14 @@ def init_db():
             nb_annonces_nouvelles INTEGER DEFAULT 0,
             nb_annonces_notifiees INTEGER DEFAULT 0
         );
+
+        CREATE TABLE IF NOT EXISTS liens_client (
+            lien_id   TEXT PRIMARY KEY,
+            client_id TEXT REFERENCES clients(client_id),
+            url       TEXT NOT NULL,
+            titre     TEXT,
+            added_at  TEXT
+        );
         """)
     # Migration : ajouter client_id à recherches si la table existait déjà sans cette colonne
     with get_conn() as conn:
@@ -417,3 +425,28 @@ def get_historique_prix(search_id: str, listing_id: str) -> list[dict]:
             ORDER BY date_constatee ASC
         """, (search_id, listing_id)).fetchall()
     return [dict(r) for r in rows]
+
+
+def ajouter_lien_client(client_id: str, url: str, titre: str) -> str:
+    import uuid
+    lien_id = str(uuid.uuid4())
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO liens_client (lien_id, client_id, url, titre, added_at) VALUES (?,?,?,?,?)",
+            (lien_id, client_id, url, titre or None, _now())
+        )
+    return lien_id
+
+
+def get_liens_client(client_id: str) -> list[dict]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM liens_client WHERE client_id=? ORDER BY added_at DESC",
+            (client_id,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def supprimer_lien_client(lien_id: str):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM liens_client WHERE lien_id=?", (lien_id,))

@@ -309,6 +309,17 @@ details > * + * { margin-top: 12px; }
 }
 .btn-add-search:hover { background: #f0f4ff; }
 
+.liens-section { border-top: 1px dashed #e0e0e0; padding: 10px 0 4px; }
+.liens-add { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.liens-url-input { flex: 2; min-width: 160px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.82rem; }
+.liens-titre-input { flex: 1; min-width: 100px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.82rem; }
+.lien-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f5f5f5; font-size: 0.83rem; }
+.lien-row:last-child { border-bottom: none; }
+.lien-row a { color: #1565c0; text-decoration: none; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lien-row a:hover { text-decoration: underline; }
+.btn-lien-del { background: none; border: none; color: #bbb; cursor: pointer; font-size: 1rem; padding: 0 2px; flex-shrink: 0; }
+.btn-lien-del:hover { color: #c62828; }
+
 .sans-client-section { margin-top: 8px; }
 .sans-client-toggle {
   width: 100%; text-align: left; background: none; border: none;
@@ -1045,6 +1056,14 @@ function renderClientCard(c) {
       ${recherches || '<div class="recherche-vide">Aucune recherche — créez-en une dans l\'onglet "Nouvelle recherche"</div>'}
     </div>
     <button class="btn-add-search" onclick="prefillClientRecherche('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}')">+ Nouvelle recherche pour ce client</button>
+    <div class="liens-section" id="liens-${c.client_id}">
+      <div class="liens-add">
+        <input type="url" class="liens-url-input" id="lien-url-${c.client_id}" placeholder="Coller un lien mobile.de…" />
+        <input type="text" class="liens-titre-input" id="lien-titre-${c.client_id}" placeholder="Titre (optionnel)" />
+        <button class="btn-sm" onclick="ajouterLien('${c.client_id}', this)">+ Ajouter</button>
+      </div>
+      <div class="liens-list" id="liens-list-${c.client_id}"></div>
+    </div>
   </div>`;
 }
 
@@ -1077,6 +1096,7 @@ async function chargerClients() {
       </div>`;
     } else {
       el.innerHTML = data.map(renderClientCard).join('');
+      data.forEach(c => chargerLiens(c.client_id));
     }
 
     // Recherches sans client
@@ -1732,6 +1752,50 @@ function fermerAide(e) {
 }
 
 // ── Outils — Dossiers clients ──────────────────────────────────────────────────
+
+async function ajouterLien(clientId, btn) {
+  const urlInput = document.getElementById(`lien-url-${clientId}`);
+  const titreInput = document.getElementById(`lien-titre-${clientId}`);
+  const url = urlInput.value.trim();
+  if (!url) { showToast('Collez un lien avant d\'ajouter.', false); return; }
+  btnLoad(btn, '…');
+  try {
+    const d = await fetch(`${API}/clients/${clientId}/liens`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, titre: titreInput.value.trim() })
+    }).then(r => r.json());
+    if (d.ok) {
+      urlInput.value = ''; titreInput.value = '';
+      showToast('Lien ajouté !');
+      chargerLiens(clientId);
+    } else { showToast(d.error || 'Erreur.', false); }
+  } catch { showToast('Erreur de connexion.', false); }
+  finally { btnReset(btn); }
+}
+
+async function chargerLiens(clientId) {
+  const el = document.getElementById(`liens-list-${clientId}`);
+  if (!el) return;
+  try {
+    const liens = await fetch(`${API}/clients/${clientId}/liens`).then(r => r.json());
+    if (!liens.length) { el.innerHTML = ''; return; }
+    el.innerHTML = liens.map(l => {
+      const label = l.titre || l.url;
+      return `<div class="lien-row">
+        <a href="${l.url}" target="_blank" title="${l.url}">${label}</a>
+        <button class="btn-lien-del" onclick="supprimerLien('${l.lien_id}', '${clientId}', this)" title="Supprimer">✕</button>
+      </div>`;
+    }).join('');
+  } catch {}
+}
+
+async function supprimerLien(lienId, clientId, btn) {
+  btnLoad(btn, '');
+  try {
+    await fetch(`${API}/liens/${lienId}`, { method: 'DELETE' });
+    chargerLiens(clientId);
+  } catch { btnReset(btn); showToast('Erreur de connexion.', false); }
+}
 
 async function ouvrirDossierClient(clientId, btn) {
   if (btn) btnLoad(btn, 'Ouverture…');
