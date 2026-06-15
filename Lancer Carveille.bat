@@ -29,8 +29,14 @@ if errorlevel 1 (
     echo  [INFO] Git non installe, mise a jour ignoree.
 ) else (
     echo  Git OK. Tentative de mise a jour...
-    git -c credential.helper= pull --no-rebase origin master
-    echo  Fin git pull (code : %ERRORLEVEL%)
+    set GIT_TERMINAL_PROMPT=0
+    set GIT_ASKPASS=echo
+    git -c credential.helper= pull --no-rebase origin master >nul 2>&1
+    if errorlevel 1 (
+        echo  [INFO] Mise a jour ignoree (pas de connexion ou acces non configure).
+    ) else (
+        echo  Carveille est a jour.
+    )
 )
 pause
 
