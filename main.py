@@ -571,19 +571,17 @@ def cmd_ui():
     def _open_chrome(u):
         if sys.platform == "win32":
             import subprocess
-            result = subprocess.run(["cmd", "/c", "start", "chrome", u], capture_output=True)
+            result = subprocess.run(["cmd", "/c", "start", "chrome", "--app=" + u], capture_output=True)
             if result.returncode != 0:
                 webbrowser.open(u)
         else:
             webbrowser.open(u)
 
-    # Si Carveille est deja lance, ouvrir un onglet sur l'instance existante et quitter
+    # Si Carveille est deja lance, ne rien ouvrir et quitter
     import socket as _socket
     with _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM) as _s:
         if _s.connect_ex(("localhost", port)) == 0:
             print(f"[WEB] Carveille est deja en cours d'execution sur http://localhost:{port}")
-            print("      Ouverture d'un onglet sur l'instance existante...")
-            _open_chrome(url)
             return
 
     server = http.server.HTTPServer(("localhost", port), Handler)
