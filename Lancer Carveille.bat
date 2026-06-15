@@ -9,61 +9,55 @@ echo  =========================================
 echo    Carveille - Veille Automobile
 echo  =========================================
 echo.
-echo  Dossier courant : %CD%
-echo.
-pause
 
-echo  [1/5] Verification de Python...
-python --version
+:: Verifier que Python est installe
+python --version >nul 2>&1
 if errorlevel 1 (
-    echo  [ERREUR] Python introuvable dans le PATH.
+    echo  [ERREUR] Python n'est pas installe sur cet ordinateur.
+    echo.
+    echo  Consultez le fichier "Installer Python.txt" pour les instructions.
+    echo.
     pause
     exit /b 1
 )
-echo  Python OK.
-pause
 
-echo  [2/5] Verification de Git...
-git --version
-if errorlevel 1 (
-    echo  [INFO] Git non installe, mise a jour ignoree.
-) else (
-    echo  Git OK. Tentative de mise a jour...
-    set GIT_TERMINAL_PROMPT=0
-    set GIT_ASKPASS=echo
-    git -c credential.helper= pull --no-rebase origin master >nul 2>&1
-    if errorlevel 1 (
-        echo  [INFO] Mise a jour ignoree (pas de connexion ou acces non configure).
-    ) else (
-        echo  Carveille est a jour.
-    )
-)
-pause
-
-echo  [3/5] Verification de l'environnement Python (.venv)...
+:: Creer l'environnement virtuel si necessaire (premiere utilisation)
 if not exist ".venv\Scripts\python.exe" (
-    echo  Creation du .venv...
+    echo  Premiere utilisation - Creation de l'environnement Python...
     python -m venv .venv
     if errorlevel 1 (
-        echo  [ERREUR] Impossible de creer le .venv.
+        echo  [ERREUR] Impossible de creer l'environnement Python.
         pause
         exit /b 1
     )
-    echo  .venv cree.
-) else (
-    echo  .venv deja present.
+    echo  Environnement cree.
+    echo.
 )
-pause
 
-echo  [4/5] Installation des dependances...
-.venv\Scripts\pip install -r requirements.txt --disable-pip-version-check
-echo  Fin pip install (code : %ERRORLEVEL%)
-pause
-
-echo  [5/5] Lancement de Carveille...
+:: Installer / mettre a jour les dependances
+echo  Verification des modules Python...
+.venv\Scripts\pip install -r requirements.txt --quiet --disable-pip-version-check
+if errorlevel 1 (
+    echo  [ERREUR] Impossible d'installer les dependances.
+    echo  Verifiez votre connexion internet et relancez.
+    pause
+    exit /b 1
+)
+echo  Modules OK.
 echo.
+
+echo  Carveille demarre...
+echo  Votre navigateur va s'ouvrir automatiquement dans quelques secondes.
+echo.
+echo  -------------------------------------------
+echo  IMPORTANT : Laissez cette fenetre ouverte
+echo  pendant toute votre utilisation de Carveille.
+echo  Pour fermer Carveille, fermez cette fenetre.
+echo  -------------------------------------------
+echo.
+
 .venv\Scripts\python main.py ui
 
 echo.
-echo  Carveille arrete.
+echo  Carveille est arrete. Vous pouvez fermer cette fenetre.
 pause
