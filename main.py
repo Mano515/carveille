@@ -224,6 +224,8 @@ def cmd_ui():
     from src.database import (
         init_db, get_recherches_actives, insert_recherche,
         get_derniers_resultats, marquer_interet,
+        insert_client, get_clients, archiver_client,
+        get_historique_client, get_recherches_sans_client,
     )
 
     init_db()
@@ -262,6 +264,15 @@ def cmd_ui():
         def do_GET(self):
             if self.path in ("/", "/index.html"):
                 self._send_file(os.path.join(UI_DIR, "index.html"))
+            elif self.path == "/clients":
+                self._send_json(get_clients("actif"))
+            elif self.path == "/clients-archives":
+                self._send_json(get_clients("archive"))
+            elif self.path.startswith("/historique-client/"):
+                client_id = self.path.split("/historique-client/")[1]
+                self._send_json(get_historique_client(client_id))
+            elif self.path == "/recherches-sans-client":
+                self._send_json(get_recherches_sans_client())
             elif self.path == "/recherches":
                 self._send_json(get_recherches_actives())
             elif self.path.startswith("/resultats/"):
@@ -285,7 +296,25 @@ def cmd_ui():
             length = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(length)) if length else {}
 
-            if self.path == "/recherches":
+            if self.path == "/clients":
+                data = {
+                    "client_id": body.get("client_id") or str(uuid.uuid4()),
+                    "nom": body.get("nom", "").strip(),
+                    "contact": body.get("contact", "").strip(),
+                    "notes": body.get("notes", "").strip(),
+                }
+                if not data["nom"]:
+                    self._send_json({"ok": False, "error": "Le nom est obligatoire"}, 400)
+                    return
+                insert_client(data)
+                self._send_json({"ok": True, "client_id": data["client_id"]})
+
+            elif self.path.startswith("/clients/") and self.path.endswith("/archiver"):
+                client_id = self.path.split("/clients/")[1].replace("/archiver", "")
+                archiver_client(client_id)
+                self._send_json({"ok": True})
+
+            elif self.path == "/recherches":
                 data = {
                     "search_id": body.get("search_id") or str(uuid.uuid4()),
                     "nom_recherche": body.get("nom_recherche", ""),
@@ -300,6 +329,7 @@ def cmd_ui():
                     "carburant": body.get("carburant", "indifferent"),
                     "vendeur_filtre": body.get("vendeur_filtre", "indifferent"),
                     "options_recherchees": body.get("options_recherchees", ""),
+                    "client_id": body.get("client_id") or None,
                     "mobile_de_url": body.get("mobile_de_url") or None,
                     "poids_prix": body.get("poids_prix", 30),
                     "poids_km": body.get("poids_km", 25),

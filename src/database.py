@@ -14,8 +14,19 @@ def get_conn() -> sqlite3.Connection:
 def init_db():
     with get_conn() as conn:
         conn.executescript("""
+        CREATE TABLE IF NOT EXISTS clients (
+            client_id   TEXT PRIMARY KEY,
+            nom         TEXT NOT NULL,
+            contact     TEXT,
+            notes       TEXT,
+            statut      TEXT DEFAULT 'actif',
+            created_at  TEXT,
+            updated_at  TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS recherches (
             search_id TEXT PRIMARY KEY,
+            client_id TEXT REFERENCES clients(client_id),
             nom_recherche TEXT,
             statut TEXT DEFAULT 'active',
             marque TEXT,
@@ -91,6 +102,13 @@ def init_db():
             nb_annonces_notifiees INTEGER DEFAULT 0
         );
         """)
+    # Migration : ajouter client_id à recherches si la table existait déjà sans cette colonne
+    with get_conn() as conn:
+        try:
+            conn.execute("ALTER TABLE recherches ADD COLUMN client_id TEXT REFERENCES clients(client_id)")
+        except Exception:
+            pass  # colonne déjà présente
+
     print("[OK] Base de donnees initialisee.")
 
 
@@ -108,6 +126,68 @@ def get_recherche_by_id(search_id: str) -> dict | None:
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM recherches WHERE search_id = ?", (search_id,)).fetchone()
     return dict(row) if row else None
+
+
+# ── Clients ─────────────────────────────────────────────────────────────────────
+
+def insert_client(data: dict):
+    now = _now()
+    with get_conn() as conn:
+        conn.execute("""
+            INSERT OR REPLACE INTO clients (client_id, nom, contact, notes, statut, created_at, updated_at)
+            VALUES (:client_id, :nom, :contact, :notes, 'actif', :now, :now)
+        """, {**data, "now": now})
+
+
+def get_clients(statut: str = "actif") -> list[dict]:
+    """Retourne les clients avec leurs recherches et le nombre d'annonces retenues."""
+    with get_conn() as conn:
+        clients = [dict(r) for r in conn.execute(
+            "SELECT * FROM clients WHERE statut=? ORDER BY nom COLLATE NOCASE",
+            (statut,)
+        ).fetchall()]
+        for c in clients:
+            c["recherches"] = [dict(r) for r in conn.execute(
+                "SELECT * FROM recherches WHERE client_id=? AND statut='active' ORDER BY nom_recherche",
+                (c["client_id"],)
+            ).fetchall()]
+            c["nb_retenues"] = conn.execute("""
+                SELECT COUNT(*) FROM annonces_vues av
+                JOIN recherches r ON av.search_id = r.search_id
+                WHERE r.client_id = ? AND av.interet = 'oui'
+            """, (c["client_id"],)).fetchone()[0]
+    return clients
+
+
+def archiver_client(client_id: str):
+    now = _now()
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE clients SET statut='archive', updated_at=? WHERE client_id=?",
+            (now, client_id)
+        )
+
+
+def get_historique_client(client_id: str) -> list[dict]:
+    """Annonces marquées 'intéressé' sur toutes les recherches de ce client, triées par score."""
+    with get_conn() as conn:
+        rows = conn.execute("""
+            SELECT av.*, r.nom_recherche
+            FROM annonces_vues av
+            JOIN recherches r ON av.search_id = r.search_id
+            WHERE r.client_id = ? AND av.interet = 'oui'
+            ORDER BY av.score DESC, av.date_premiere_vue DESC
+        """, (client_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_recherches_sans_client() -> list[dict]:
+    """Recherches non rattachées à un client."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM recherches WHERE (client_id IS NULL OR client_id='') AND statut='active'"
+        ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def insert_recherche(data: dict):
