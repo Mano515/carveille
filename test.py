@@ -18,6 +18,10 @@ import sys
 import shutil
 import tempfile
 
+# Force UTF-8 sur la console Windows (évite les UnicodeEncodeError avec les flèches/accents)
+if sys.stdout.encoding != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 # ── Isolation : base de données temporaire pour les tests ──────────────────────
 _tmp_dir = tempfile.mkdtemp()
 _db_test = os.path.join(_tmp_dir, "test.db")
@@ -64,6 +68,7 @@ RECHERCHE = {
     "vendeur_filtre": "indifferent",
     "options_recherchees": "camera,gps",
     "mobile_de_url": None,
+    "client_id": None,
     "poids_prix": 30, "poids_km": 25, "poids_annee": 20,
     "poids_boite": 10, "poids_carburant": 10, "poids_options": 5,
     "penalite_infos_manquantes": 10,
