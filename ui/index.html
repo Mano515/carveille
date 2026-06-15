@@ -896,6 +896,11 @@ let pollTimer = null;
 
 // ── Utilitaires ────────────────────────────────────────────────────────────────
 
+// Échappe les caractères HTML spéciaux pour injecter du texte brut dans du HTML
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 let _toastTimer = null;
 function showToast(msg, ok = true) {
   const t = document.getElementById('toast');
@@ -999,7 +1004,8 @@ function startPolling() {
 
 // ── Clients ────────────────────────────────────────────────────────────────────
 
-let _clientsData = [];  // cache pour le sélecteur de recherche
+let _clientsData = [];       // cache pour le sélecteur de recherche
+let _clientsMap  = new Map(); // index client_id → objet client (évite l'injection dans onclick)
 
 function toggleModalClient() {
   const m = document.getElementById('modal-client');
@@ -1100,7 +1106,7 @@ function renderClientCard(c) {
         ${favorisBtn}
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="btn-sm-ghost" onclick="ouvrirModalEditClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}', '${(c.contact||'').replace(/'/g,"\\'")}', '${(c.notes||'').replace(/'/g,"\\'").replace(/\n/g,"\\n")}')">✏️</button>
+        <button class="btn-sm-ghost" onclick="ouvrirModalEditClient('${c.client_id}')">✏️</button>
         <button class="btn-sm-ghost" onclick="ouvrirDossierClient('${c.client_id}', this)">&#128193; Dossier</button>
         <button class="btn-sm-ghost danger" onclick="archiverClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}', this)">Archiver</button>
       </div>
@@ -1132,6 +1138,7 @@ async function chargerClients() {
   try {
     const data = await fetch(`${API}/clients`).then(r => r.json());
     _clientsData = data;
+    _clientsMap  = new Map(data.map(c => [c.client_id, c]));
 
     // Mettre à jour le sélecteur dans le formulaire
     const sel = document.getElementById('form-client-id');
@@ -1468,7 +1475,6 @@ function renderAnnonce(a, searchId, historique = false) {
     ? `<span class="tag tag-source">&#128269; ${a.nom_recherche}</span>` : '';
   const doublonBadge = (a.autres_clients && a.autres_clients.length)
     ? `<span class="badge-doublon">⚠️ Vu aussi pour : ${a.autres_clients.join(', ')}</span>` : '';
-  const noteSafe = (a.note || '').replace(/`/g, '\\`').replace(/\\/g, '\\\\');
 
   return `<div class="${classes}" id="card-${a.seen_id}" data-prix="${a.prix||0}" data-km="${a.km||0}" data-titre="${(a.titre||'').toLowerCase()}">
     <div class="annonce-top">
@@ -1502,7 +1508,7 @@ function renderAnnonce(a, searchId, historique = false) {
     </div>
 
     <div class="note-annonce">
-      <textarea id="note-${a.seen_id}" placeholder="Note personnelle (à rappeler, vu en vrai, négociable…)">${a.note || ''}</textarea>
+      <textarea id="note-${a.seen_id}" placeholder="Note personnelle (à rappeler, vu en vrai, négociable…)">${escHtml(a.note)}</textarea>
       <button class="btn-sm note-save-btn" onclick="sauvegarderNote('${seenIdSafe}','${searchId}',this)">Sauvegarder la note</button>
     </div>
 
@@ -1549,8 +1555,8 @@ function _afficherResultats(nom) {
   const kmMax = parseFloat(document.getElementById('filtre-km-max')?.value) || Infinity;
   const filtered = _resultatsData.filter(a =>
     (!texte || (a.titre||'').toLowerCase().includes(texte) || (a.ville||'').toLowerCase().includes(texte)) &&
-    (!a.prix || a.prix <= prixMax) &&
-    (!a.km || a.km <= kmMax)
+    (prixMax === Infinity || (a.prix && a.prix <= prixMax)) &&
+    (kmMax === Infinity || (a.km && a.km <= kmMax))
   );
   const el = document.getElementById('resultats-content');
   const nom2 = nom || currentSearchNom;
@@ -1586,11 +1592,13 @@ async function sauvegarderNote(seenId, searchId, btn) {
   finally { btnReset(btn); }
 }
 
-function ouvrirModalEditClient(clientId, nom, contact, notes) {
+function ouvrirModalEditClient(clientId) {
+  const c = _clientsMap.get(clientId);
+  if (!c) return;
   document.getElementById('edit-client-id').value = clientId;
-  document.getElementById('edit-client-nom').value = nom;
-  document.getElementById('edit-client-contact').value = contact;
-  document.getElementById('edit-client-notes').value = notes.replace(/\\n/g, '\n');
+  document.getElementById('edit-client-nom').value = c.nom;
+  document.getElementById('edit-client-contact').value = c.contact || '';
+  document.getElementById('edit-client-notes').value = c.notes || '';
   document.getElementById('modal-edit-client').classList.add('open');
 }
 
