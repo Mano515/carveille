@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carveille</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #222; }
+  header { background: #1a1a2e; color: white; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 1.4rem; letter-spacing: .5px; }
+  .container { max-width: 980px; margin: 24px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 24px; }
+  .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  h2 { font-size: 1.05rem; margin-bottom: 16px; color: #1a1a2e; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th { text-align: left; padding: 8px 12px; background: #f0f0f0; border-bottom: 2px solid #ddd; }
+  td { padding: 8px 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+  .badge-active { background: #d4edda; color: #155724; }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  form .full { grid-column: 1 / -1; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 0.88rem; font-weight: 500; }
+  input, select { padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.9rem; width: 100%; }
+  input:focus, select:focus { outline: 2px solid #1a1a2e; border-color: transparent; }
+  .checkbox-row { flex-direction: row; align-items: center; gap: 8px; }
+  .checkbox-row input { width: auto; }
+  button { padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: opacity .15s; }
+  button:hover { opacity: 0.85; }
+  .btn-primary { background: #1a1a2e; color: white; }
+  .btn-secondary { background: #e8e8e8; color: #333; }
+  .btn-run { background: #4caf50; color: white; font-size: 0.8rem; padding: 6px 12px; border-radius: 6px; }
+  .btn-sm { padding: 5px 10px; font-size: 0.78rem; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; }
+  .btn-oui { background: #d4edda; color: #155724; }
+  .btn-non { background: #f8d7da; color: #721c24; }
+  .btn-oui.active { background: #155724; color: white; }
+  .btn-non.active { background: #721c24; color: white; }
+  .run-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  select.small { width: auto; padding: 6px 8px; font-size: 0.8rem; }
+  .annonce-card { border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+  .annonce-card.interet-non { opacity: 0.35; }
+  .annonce-card.interet-oui { border-color: #4caf50; border-width: 2px; }
+  .annonce-card.baisse-prix { border-color: #ff9800; border-width: 2px; }
+  .annonce-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .annonce-titre { font-size: 0.95rem; font-weight: 600; }
+  .annonce-titre a { color: #1a1a2e; text-decoration: none; }
+  .annonce-titre a:hover { text-decoration: underline; }
+  .annonce-score-badge { font-size: 1.15rem; font-weight: 800; white-space: nowrap; }
+  .annonce-meta { font-size: 0.82rem; color: #555; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .tag { background: #f0f0f0; padding: 2px 8px; border-radius: 10px; }
+  .tag-new { background: #d4edda; color: #155724; }
+  .tag-fresh { background: #fff3cd; color: #856404; }
+  .tag-baisse { background: #fff3cd; color: #e65100; font-weight: 600; }
+  .annonce-rejet { font-size: 0.8rem; color: #c62828; margin-bottom: 8px; }
+  .score-breakdown { border-top: 1px solid #f0f0f0; padding-top: 10px; margin-top: 4px; display: none; }
+  .score-breakdown.open { display: block; }
+  .score-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; margin-bottom: 5px; }
+  .score-label { width: 80px; color: #666; flex-shrink: 0; }
+  .score-bar-bg { flex: 1; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 3px; }
+  .score-val { width: 55px; text-align: right; color: #333; font-weight: 500; }
+  .annonce-actions { display: flex; gap: 6px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .btn-detail-toggle { background: #f0f0f0; color: #333; }
+  .btn-translate { background: #e8f4fd; color: #1565c0; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; padding: 5px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 500; }
+  .section-tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; }
+  .tab { padding: 10px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500; font-size: 0.9rem; color: #666; }
+  .tab.active { border-bottom-color: #1a1a2e; color: #1a1a2e; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: #1a1a2e; color: white; padding: 12px 20px; border-radius: 8px; font-size: 0.9rem; display: none; z-index: 100; max-width: 320px; }
+  .no-data { color: #888; font-size: 0.9rem; text-align: center; padding: 24px; }
+  .prix-initial { font-size: 0.78rem; color: #aaa; text-decoration: line-through; margin-left: 4px; }
+  details summary { cursor: pointer; font-size: 0.85rem; color: #555; }
+</style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:1.5rem">&#128663;</span>
+  <h1>Carveille</h1>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>Recherches actives</h2>
+    <div class="run-controls">
+      <label style="flex-direction:row;align-items:center;gap:6px;font-size:0.85rem">
+        Source :
+        <select id="run-source" class="small" onchange="toggleDaySelector()">
+          <option value="mock">Mock</option>
+          <option value="mobile.de">mobile.de</option>
+        </select>
+      </label>
+      <label style="flex-direction:row;align-items:center;gap:6px;font-size:0.85rem" id="day-selector">
+        Jour :
+        <select id="run-day" class="small">
+          <option value="1">Jour 1</option>
+          <option value="2">Jour 2</option>
+        </select>
+      </label>
+      <button class="btn-run" onclick="lancerRun()">&#9654; Lancer un run</button>
+    </div>
+    <div id="recherches-list"><p class="no-data">Chargement...</p></div>
+  </div>
+
+  <div class="card">
+    <div class="section-tabs">
+      <div class="tab active" onclick="switchTab('form')">Nouvelle recherche</div>
+      <div class="tab" onclick="switchTab('resultats')">Resultats</div>
+    </div>
+
+    <div id="tab-form" class="tab-content active">
+      <form id="form-recherche" onsubmit="soumettreRecherche(event)">
+        <label class="full">
+          Nom de la recherche *
+          <input type="text" name="nom_recherche" required placeholder="ex : BMW Serie 1 Auto">
+        </label>
+        <label>Marque * <input type="text" name="marque" required placeholder="BMW"></label>
+        <label>Modele * <input type="text" name="modele" required placeholder="Serie 1"></label>
+        <label>Budget max (EUR) * <input type="number" name="budget_max" required placeholder="20000"></label>
+        <label class="checkbox-row" style="margin-top:22px">
+          <input type="checkbox" name="budget_strict"> Budget strict
+        </label>
+        <label>Kilometrage max * <input type="number" name="km_max" required placeholder="100000"></label>
+        <label>Annee min * <input type="number" name="annee_min" required placeholder="2018"></label>
+        <label>Boite de vitesses
+          <select name="boite">
+            <option value="indifferent">Indifferent</option>
+            <option value="auto">Automatique</option>
+            <option value="manuelle">Manuelle</option>
+          </select>
+        </label>
+        <label>Carburant
+          <select name="carburant">
+            <option value="indifferent">Indifferent</option>
+            <option value="diesel">Diesel</option>
+            <option value="essence">Essence</option>
+            <option value="hybride">Hybride</option>
+            <option value="electrique">Electrique</option>
+          </select>
+        </label>
+        <label>Type de vendeur
+          <select name="vendeur_filtre">
+            <option value="indifferent">Indifferent</option>
+            <option value="pro">Professionnel</option>
+            <option value="particulier">Particulier</option>
+          </select>
+        </label>
+        <label>Options souhaitees (virgules)
+          <input type="text" name="options_recherchees" placeholder="camera,gps,bluetooth">
+        </label>
+        <label class="full">URL de recherche mobile.de (optionnel)
+          <input type="url" name="mobile_de_url" placeholder="https://suchen.mobile.de/fahrzeuge/search.html?...">
+          <span style="font-size:0.76rem;color:#888;margin-top:2px">Faites votre recherche sur mobile.de, copiez l'URL ici.</span>
+        </label>
+
+        <details class="full" style="margin-top:4px">
+          <summary style="margin-bottom:12px">Ajuster les poids (avance)</summary>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+            <label>Prix <input type="number" name="poids_prix" value="30" min="0" max="100"></label>
+            <label>Kilometrage <input type="number" name="poids_km" value="25" min="0" max="100"></label>
+            <label>Annee <input type="number" name="poids_annee" value="20" min="0" max="100"></label>
+            <label>Boite <input type="number" name="poids_boite" value="10" min="0" max="100"></label>
+            <label>Carburant <input type="number" name="poids_carburant" value="10" min="0" max="100"></label>
+            <label>Options <input type="number" name="poids_options" value="5" min="0" max="100"></label>
+            <label>Score min notif <input type="number" name="score_min_notification" value="60" min="0" max="100"></label>
+            <label>Max annonces <input type="number" name="max_annonces" value="3" min="1" max="10"></label>
+          </div>
+        </details>
+
+        <div class="full" style="display:flex;gap:10px;margin-top:8px">
+          <button type="submit" class="btn-primary">Enregistrer</button>
+          <button type="reset" class="btn-secondary">Reinitialiser</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="tab-resultats" class="tab-content">
+      <div id="resultats-content">
+        <p class="no-data">Cliquez sur "Voir" dans une recherche pour afficher les resultats.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://localhost:8765';
+let currentSearchId = null;
+let currentSearchNom = '';
+
+function toggleDaySelector() {
+  const src = document.getElementById('run-source').value;
+  document.getElementById('day-selector').style.display = src === 'mock' ? '' : 'none';
+}
+
+function showToast(msg, ok = true) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = ok ? '#1a1a2e' : '#c62828';
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3500);
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) =>
+    t.classList.toggle('active', ['form', 'resultats'][i] === name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+function scoreColor(pct) {
+  if (pct >= 80) return '#4caf50';
+  if (pct >= 60) return '#ff9800';
+  return '#f44336';
+}
+
+function renderBreakdown(detailJson) {
+  let detail;
+  try { detail = JSON.parse(detailJson); } catch { return ''; }
+  const defs = [
+    { key: 'prix', label: 'Prix' }, { key: 'km', label: 'Km' },
+    { key: 'annee', label: 'Annee' }, { key: 'boite', label: 'Boite' },
+    { key: 'carburant', label: 'Carburant' }, { key: 'options', label: 'Options' },
+    { key: 'vendeur', label: 'Vendeur' }, { key: 'penalite', label: 'Penalite' },
+    { key: 'fraicheur', label: 'Fraicheur' },
+  ];
+  return defs.map(({ key, label }) => {
+    const item = detail[key]; if (!item) return '';
+    const score = item.score || 0, max = item.max || 0;
+    if (max === 0 && score === 0) return '';
+    const pct = max > 0 ? Math.round((score / max) * 100) : 0;
+    const color = key === 'penalite' ? '#f44336' : key === 'fraicheur' ? '#ff9800' : scoreColor(pct);
+    const val = max > 0 ? `${score}/${max}` : `${score > 0 ? '+' : ''}${score}`;
+    const barW = max > 0 ? pct : Math.min(Math.abs(score) * 4, 100);
+    return `<div class="score-row">
+      <span class="score-label">${label}</span>
+      <div class="score-bar-bg"><div class="score-bar-fill" style="width:${barW}%;background:${color}"></div></div>
+      <span class="score-val">${val}</span>
+    </div>`;
+  }).join('');
+}
+
+function ageBadge(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const h = (Date.now() - new Date(dateStr).getTime()) / 3600000;
+    if (h <= 24) return '<span class="tag tag-fresh">< 24h</span>';
+    if (h <= 48) return '<span class="tag tag-fresh">< 48h</span>';
+    if (h <= 168) return '<span class="tag tag-fresh">Cette semaine</span>';
+  } catch {}
+  return '';
+}
+
+function renderAnnonce(a, searchId) {
+  const score = Math.round(a.score || 0);
+  const color = scoreColor(score);
+  const baisse = a.baisse_prix && a.baisse_prix > 0;
+  const classes = ['annonce-card',
+    a.interet === 'non' ? 'interet-non' : '',
+    a.interet === 'oui' ? 'interet-oui' : '',
+    baisse ? 'baisse-prix' : ''
+  ].filter(Boolean).join(' ');
+
+  const prixStr = a.prix ? Math.round(a.prix).toLocaleString('fr') + ' EUR' : '?';
+  const prixInit = (baisse && a.prix_initial && a.prix_initial !== a.prix)
+    ? `<span class="prix-initial">${Math.round(a.prix_initial).toLocaleString('fr')} EUR</span>` : '';
+  const baisseTag = baisse
+    ? `<span class="tag tag-baisse">Baisse -${Math.round(a.baisse_prix)} EUR</span>` : '';
+  const kmStr = a.km ? Math.round(a.km).toLocaleString('fr') + ' km' : '?';
+  const anneeStr = a.date_immat || (a.annee ? String(a.annee) : '?');
+  const translateUrl = a.url
+    ? `https://www.deepl.com/translator#de/fr/${encodeURIComponent(a.url)}` : null;
+  const breakdown = renderBreakdown(a.score_detail || '');
+
+  return `<div class="${classes}" id="card-${a.seen_id}">
+    <div class="annonce-header">
+      <div class="annonce-titre">
+        <a href="${a.url || '#'}" target="_blank">${a.titre || 'Sans titre'}</a>
+        ${a.est_nouvelle ? '<span class="tag tag-new" style="margin-left:6px;font-size:0.72rem">Nouveau</span>' : ''}
+      </div>
+      <span class="annonce-score-badge" style="color:${color}">${score}/100</span>
+    </div>
+    <div class="annonce-meta">
+      <span class="tag">&#128182; ${prixStr}${prixInit}</span>
+      ${baisseTag}
+      <span class="tag">&#128739; ${kmStr}</span>
+      <span class="tag">&#128197; ${anneeStr}</span>
+      ${a.boite ? `<span class="tag">${a.boite}</span>` : ''}
+      ${a.carburant ? `<span class="tag">${a.carburant}</span>` : ''}
+      ${a.ville ? `<span class="tag">&#128205; ${a.ville}</span>` : ''}
+      ${a.vendeur_type ? `<span class="tag">${a.vendeur_type}</span>` : ''}
+      ${ageBadge(a.date_publication)}
+    </div>
+    ${a.raison_rejet ? `<p class="annonce-rejet">&#9888; ${a.raison_rejet}</p>` : ''}
+    ${breakdown ? `<div class="score-breakdown" id="bd-${a.seen_id}">${breakdown}</div>` : ''}
+    <div class="annonce-actions">
+      ${breakdown ? `<button class="btn-sm btn-detail-toggle" onclick="toggleDetail('${a.seen_id}')">Detail du score</button>` : ''}
+      ${translateUrl ? `<a class="btn-translate" href="${translateUrl}" target="_blank">&#127760; Traduire DeepL</a>` : ''}
+      <button class="btn-sm btn-oui ${a.interet === 'oui' ? 'active' : ''}"
+        onclick="marquerInteret('${a.seen_id}','oui','${searchId}')">&#128077; Interesse</button>
+      <button class="btn-sm btn-non ${a.interet === 'non' ? 'active' : ''}"
+        onclick="marquerInteret('${a.seen_id}','non','${searchId}')">&#128078; Pas interesse</button>
+    </div>
+  </div>`;
+}
+
+function toggleDetail(seenId) {
+  document.getElementById('bd-' + seenId)?.classList.toggle('open');
+}
+
+async function marquerInteret(seenId, interet, searchId) {
+  try {
+    const r = await fetch(`${API}/interet`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seen_id: seenId, interet })
+    });
+    if ((await r.json()).ok) {
+      showToast(interet === 'oui' ? 'Marque comme interesse !' : 'Masque.');
+      voirResultats(searchId, currentSearchNom);
+    }
+  } catch { showToast('Erreur connexion', false); }
+}
+
+async function chargerRecherches() {
+  try {
+    const data = await (await fetch(`${API}/recherches`)).json();
+    const el = document.getElementById('recherches-list');
+    if (!data.length) { el.innerHTML = '<p class="no-data">Aucune recherche. Creez-en une ci-dessous.</p>'; return; }
+    el.innerHTML = `<table><thead><tr><th>Nom</th><th>Criteres</th><th>Statut</th><th></th></tr></thead><tbody>
+      ${data.map(r => `<tr>
+        <td><strong>${r.nom_recherche}</strong></td>
+        <td style="font-size:0.82rem;color:#555">
+          ${r.marque} ${r.modele} &middot; &le;${(r.budget_max||0).toLocaleString('fr')} EUR &middot;
+          &le;${(r.km_max||0).toLocaleString('fr')} km &middot; &ge;${r.annee_min}
+          ${r.mobile_de_url ? ' &middot; <span style="color:#1565c0;font-size:0.78rem">URL mobile.de</span>' : ''}
+        </td>
+        <td><span class="badge badge-active">${r.statut}</span></td>
+        <td><button class="btn-run" onclick="voirResultats('${r.search_id}','${r.nom_recherche}')">Voir</button></td>
+      </tr>`).join('')}</tbody></table>`;
+  } catch {
+    document.getElementById('recherches-list').innerHTML =
+      '<p class="no-data" style="color:#c62828">Serveur inaccessible. Lancez : python main.py ui</p>';
+  }
+}
+
+async function lancerRun() {
+  const source = document.getElementById('run-source').value;
+  const day = parseInt(document.getElementById('run-day').value);
+  try {
+    const d = await (await fetch(`${API}/run`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source, day })
+    })).json();
+    showToast('Run lance : ' + d.message);
+    setTimeout(chargerRecherches, 800);
+  } catch { showToast('Erreur connexion', false); }
+}
+
+async function voirResultats(searchId, nom) {
+  currentSearchId = searchId;
+  currentSearchNom = nom;
+  switchTab('resultats');
+  const el = document.getElementById('resultats-content');
+  el.innerHTML = '<p class="no-data">Chargement...</p>';
+  try {
+    const data = await (await fetch(`${API}/resultats/${searchId}`)).json();
+    if (!data.length) {
+      el.innerHTML = `<p class="no-data">Aucun resultat pour "${nom}". Lancez un run d'abord.</p>`;
+      return;
+    }
+    el.innerHTML =
+      `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <span style="font-size:0.95rem;color:#555">Resultats : <strong>${nom}</strong></span>
+        <span style="font-size:0.8rem;color:#888">${data.length} annonce(s)</span>
+      </div>` + data.map(a => renderAnnonce(a, searchId)).join('');
+  } catch { el.innerHTML = '<p class="no-data" style="color:#c62828">Erreur de chargement.</p>'; }
+}
+
+async function soumettreRecherche(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target), body = {};
+  fd.forEach((v, k) => { body[k] = v === '' ? null : v; });
+  body.budget_strict = fd.has('budget_strict');
+  ['budget_max','km_max','annee_min','poids_prix','poids_km','poids_annee',
+   'poids_boite','poids_carburant','poids_options','score_min_notification','max_annonces']
+    .forEach(k => { if (body[k]) body[k] = parseFloat(body[k]); });
+  try {
+    const d = await (await fetch(`${API}/recherches`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })).json();
+    showToast('Recherche enregistree !');
+    e.target.reset();
+    chargerRecherches();
+  } catch { showToast('Erreur connexion', false); }
+}
+
+chargerRecherches();
+</script>
+</body>
+</html>

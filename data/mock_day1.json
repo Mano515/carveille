@@ -1,0 +1,166 @@
+[
+  {
+    "listing_id": "ann_001",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=001",
+    "titre": "BMW 116d 2019 Automatique",
+    "prix": 17500, "km": 68000, "annee": 2019, "date_immat": "2019-06",
+    "boite": "auto", "carburant": "diesel", "couleur": "noir",
+    "vendeur_type": "pro", "ville": "München",
+    "image_url": "https://exemple.com/img/001.jpg",
+    "options_texte": "camera recul, gps, sieges chauffants",
+    "date_publication": "2026-06-14T08:30:00Z"
+  },
+  {
+    "listing_id": "ann_002",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=002",
+    "titre": "BMW 118d 2020 Automatique",
+    "prix": 19000, "km": 45000, "annee": 2020, "date_immat": "2020-03",
+    "boite": "auto", "carburant": "diesel", "couleur": "blanc",
+    "vendeur_type": "pro", "ville": "Stuttgart",
+    "image_url": "https://exemple.com/img/002.jpg",
+    "options_texte": "gps, camera recul, apple carplay",
+    "date_publication": "2026-06-13T14:00:00Z"
+  },
+  {
+    "listing_id": "ann_003",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=003",
+    "titre": "BMW 120d 2021 Automatique",
+    "prix": 18200, "km": 32000, "annee": 2021, "date_immat": "2021-01",
+    "boite": "auto", "carburant": "diesel", "couleur": "gris",
+    "vendeur_type": "pro", "ville": "Frankfurt",
+    "image_url": "https://exemple.com/img/003.jpg",
+    "options_texte": "camera recul, gps, toit ouvrant, sieges chauffants",
+    "date_publication": "2026-06-15T06:00:00Z"
+  },
+  {
+    "listing_id": "ann_004",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=004",
+    "titre": "BMW 116d 2018 Automatique",
+    "prix": 15500, "km": 88000, "annee": 2018, "date_immat": "2018-11",
+    "boite": "auto", "carburant": "diesel", "couleur": "bleu",
+    "vendeur_type": "particulier", "ville": "Hamburg",
+    "image_url": "https://exemple.com/img/004.jpg",
+    "options_texte": "gps, bluetooth",
+    "date_publication": "2026-06-10T10:00:00Z"
+  },
+  {
+    "listing_id": "ann_005",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=005",
+    "titre": "BMW 116d 2019 Manuelle",
+    "prix": 14900, "km": 72000, "annee": 2019, "date_immat": "2019-04",
+    "boite": "manuelle", "carburant": "diesel", "couleur": "rouge",
+    "vendeur_type": "particulier", "ville": "Köln",
+    "image_url": "https://exemple.com/img/005.jpg",
+    "options_texte": "bluetooth, cruise control",
+    "date_publication": "2026-06-08T09:00:00Z"
+  },
+  {
+    "listing_id": "ann_006",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=006",
+    "titre": "BMW 118i 2019 Automatique",
+    "prix": 19500, "km": 55000, "annee": 2019, "date_immat": "2019-09",
+    "boite": "auto", "carburant": "essence", "couleur": "noir",
+    "vendeur_type": "pro", "ville": "München",
+    "image_url": "https://exemple.com/img/006.jpg",
+    "options_texte": "gps, camera recul",
+    "date_publication": "2026-06-12T11:00:00Z"
+  },
+  {
+    "listing_id": "ann_007",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=007",
+    "titre": "BMW 116d 2020 Automatique",
+    "prix": 20500, "km": 41000, "annee": 2020, "date_immat": "2020-07",
+    "boite": "auto", "carburant": "diesel", "couleur": "gris",
+    "vendeur_type": "pro", "ville": "Berlin",
+    "image_url": "https://exemple.com/img/007.jpg",
+    "options_texte": "camera recul, gps",
+    "date_publication": "2026-06-09T15:00:00Z"
+  },
+  {
+    "listing_id": "ann_008",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=008",
+    "titre": "Peugeot 308 2020 Essence",
+    "prix": 14500, "km": 62000, "annee": 2020, "date_immat": "2020-05",
+    "boite": "manuelle", "carburant": "essence", "couleur": "blanc",
+    "vendeur_type": "pro", "ville": "Strasbourg",
+    "image_url": "https://exemple.com/img/008.jpg",
+    "options_texte": "bluetooth, camera recul",
+    "date_publication": "2026-06-14T16:00:00Z"
+  },
+  {
+    "listing_id": "ann_009",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=009",
+    "titre": "Peugeot 308 2021 Essence",
+    "prix": 13800, "km": 48000, "annee": 2021, "date_immat": "2021-02",
+    "boite": "auto", "carburant": "essence", "couleur": "gris",
+    "vendeur_type": "pro", "ville": "Metz",
+    "image_url": "https://exemple.com/img/009.jpg",
+    "options_texte": "bluetooth, gps, apple carplay",
+    "date_publication": "2026-06-15T07:30:00Z"
+  },
+  {
+    "listing_id": "ann_010",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=010",
+    "titre": "BMW 116d 2016 Automatique",
+    "prix": 12000, "km": 110000, "annee": 2016, "date_immat": "2016-08",
+    "boite": "auto", "carburant": "diesel", "couleur": "noir",
+    "vendeur_type": "particulier", "ville": "Düsseldorf",
+    "image_url": "https://exemple.com/img/010.jpg",
+    "options_texte": "bluetooth",
+    "date_publication": "2026-06-01T10:00:00Z"
+  },
+  {
+    "listing_id": "ann_011",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=011",
+    "titre": "BMW 116d 2019 Automatique prix ferme",
+    "prix": 22000, "km": 60000, "annee": 2019, "date_immat": "2019-03",
+    "boite": "auto", "carburant": "diesel", "couleur": "blanc",
+    "vendeur_type": "pro", "ville": "Nürnberg",
+    "image_url": "https://exemple.com/img/011.jpg",
+    "options_texte": "camera recul, gps, sieges chauffants",
+    "date_publication": "2026-06-07T09:00:00Z"
+  },
+  {
+    "listing_id": "ann_012",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=012",
+    "titre": "BMW 118i 2017 Manuelle",
+    "prix": 13500, "km": 95000, "annee": 2017, "date_immat": "2017-06",
+    "boite": "manuelle", "carburant": "essence", "couleur": "rouge",
+    "vendeur_type": "particulier", "ville": "Dresden",
+    "image_url": "https://exemple.com/img/012.jpg",
+    "options_texte": "bluetooth",
+    "date_publication": "2026-05-20T10:00:00Z"
+  },
+  {
+    "listing_id": "ann_013",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=013",
+    "titre": "BMW 116d Automatique (infos incompletes)",
+    "prix": null, "km": 75000, "annee": 2019, "date_immat": "2019-05",
+    "boite": "auto", "carburant": null, "couleur": "noir",
+    "vendeur_type": "pro", "ville": "München",
+    "image_url": "https://exemple.com/img/013.jpg",
+    "options_texte": "gps",
+    "date_publication": "2026-06-14T12:00:00Z"
+  },
+  {
+    "listing_id": "ann_014",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=014",
+    "titre": "BMW Serie 1 2019 (km non renseigne)",
+    "prix": 17000, "km": null, "annee": 2019, "date_immat": null,
+    "boite": null, "carburant": "diesel", "couleur": "gris",
+    "vendeur_type": "particulier", "ville": "Leipzig",
+    "image_url": "https://exemple.com/img/014.jpg",
+    "options_texte": "camera recul",
+    "date_publication": "2026-06-13T08:00:00Z"
+  },
+  {
+    "listing_id": "ann_015",
+    "url": "https://www.mobile.de/fahrzeuge/details.html?id=015",
+    "titre": "BMW 116 (annonce tres incomplete)",
+    "prix": null, "km": null, "annee": null, "date_immat": null,
+    "boite": null, "carburant": null, "couleur": null,
+    "vendeur_type": "particulier", "ville": "Bremen",
+    "image_url": null, "options_texte": null,
+    "date_publication": "2026-06-10T10:00:00Z"
+  }
+]
