@@ -423,7 +423,9 @@ details > * + * { margin-top: 12px; }
 .aide-score-bar .fill {
   width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;
 }
-.aide-divider { border: none; border-top: 1px solid #eee; margin: 18px 0; }
+.aide-divider { border: none; border-top: 1px solid #eee; margin: 12px 0; }
+.aide-section-titre { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #1565c0; margin: 0 0 12px; }
+.aide-section-divider { border: none; border-top: 2px solid #e8eaf0; margin: 20px 0; }
 
 /* ── Convertisseur AVIF ── */
 .avif-drop-zone {
@@ -1804,66 +1806,164 @@ async function sauvegarderPlanificateur() {
 
 const AIDE_CONTENU = {
   voitures: {
-    titre: '&#128100; Dossiers clients',
-    items: [
-      { label: 'Chercher pour tous les clients', desc: 'Lance une vérification sur mobile.de pour toutes les recherches actives. La fenêtre noire doit rester ouverte pendant l\'opération (quelques minutes). Les résultats sont envoyés par email.' },
-      { label: 'Créer un dossier client', desc: 'Cliquez sur "+ Nouveau client" pour créer un dossier. Un dossier est automatiquement créé sur votre ordinateur dans Documents/Carveille/Clients.' },
-      { label: '📂 Dossier', desc: 'Ouvre directement le dossier de ce client dans l\'explorateur Windows. Vous y trouverez les sous-dossiers "voitures" et "documents" pour ranger les fichiers du client.' },
-      { label: '⭐ Favoris', desc: 'Affiche toutes les annonces que vous avez marquées 👍 pour ce client, classées par score. Pratique pour retrouver rapidement les voitures retenues.' },
-      { label: 'Résultats d\'une recherche', desc: 'Cliquez sur "Résultats" à côté d\'une recherche pour voir les annonces trouvées. Le nombre d\'annonces trouvées est affiché en bleu à côté du nom.' },
-      { label: '✏️ Modifier une recherche', desc: 'Modifie les critères d\'une recherche existante (budget, kilométrage, modèle…). Le formulaire se pré-remplit automatiquement.' },
-      { label: '🗑️ Supprimer une recherche', desc: 'Désactive la recherche. Elle ne sera plus incluse dans les vérifications. Les annonces déjà trouvées sont conservées.' },
-      { label: 'Recherches sans client', desc: 'Recherches non rattachées à un dossier client. Utilisez le menu déroulant "Rattacher à…" pour les associer au bon client.' },
-      { label: 'Dossiers archivés', desc: 'Clients archivés — plus visibles dans la liste principale mais conservés. Cliquez sur "Réactiver" pour les remettre actifs.' },
+    titre: '👥 Dossiers clients',
+    sections: [
+      {
+        titre: 'Actions globales',
+        items: [
+          { label: 'Chercher pour tous les clients', desc: 'Lance une vérification sur mobile.de pour toutes les recherches actives en même temps. La fenêtre noire doit rester ouverte pendant l\'opération (quelques minutes). Un email est envoyé si de nouvelles annonces sont trouvées.' },
+        ]
+      },
+      {
+        titre: 'Gérer un dossier client',
+        items: [
+          { label: '+ Nouveau client', desc: 'Crée un dossier client avec nom, téléphone/email et notes libres. Un dossier Windows est automatiquement créé dans Documents/Carveille/Clients/[Nom du client]/ avec deux sous-dossiers : "voitures" et "documents".' },
+          { label: '✏️ Modifier le client', desc: 'Modifie le nom, les coordonnées ou les notes d\'un client existant. Cliquez sur le bouton ✏️ en haut à droite de la carte du client.' },
+          { label: '📂 Dossier', desc: 'Ouvre le dossier Windows du client directement dans l\'explorateur — pratique pour y déposer des photos ou des documents.' },
+          { label: '⭐ Favoris', desc: 'Badge cliquable qui apparaît quand vous avez marqué des annonces 👍 pour ce client. Cliquez dessus pour voir toutes les annonces retenues, classées par score.' },
+          { label: 'Archiver / Réactiver', desc: 'Archiver retire le client de la liste principale sans rien supprimer. Il reste accessible dans "Dossiers archivés" en bas de page et peut être réactivé à tout moment.' },
+          { label: 'Supprimer (depuis les archives)', desc: 'Supprime définitivement un client archivé et toutes ses données (recherches, annonces). Action irréversible — à utiliser uniquement si le dossier n\'est plus utile du tout.' },
+        ]
+      },
+      {
+        titre: 'Liens sauvegardés',
+        items: [
+          { label: 'Ajouter un lien', desc: 'Collez l\'URL d\'une annonce mobile.de que vous avez trouvée vous-même en naviguant. Ajoutez un titre pour vous souvenir de quoi il s\'agit (ex : "BMW break blanc, à appeler"). Le lien reste cliquable directement depuis la carte client.' },
+          { label: 'Supprimer un lien (✕)', desc: 'Retire le lien de la liste. L\'annonce sur mobile.de n\'est pas affectée.' },
+        ]
+      },
+      {
+        titre: 'Recherches',
+        items: [
+          { label: 'Résultats', desc: 'Ouvre les annonces trouvées pour cette recherche. Le nombre en bleu indique combien d\'annonces ont été trouvées au total.' },
+          { label: '✏️ Modifier une recherche', desc: 'Modifie les critères (budget, km, modèle…). Le formulaire se pré-remplit automatiquement avec les valeurs actuelles.' },
+          { label: '🗑️ Supprimer une recherche', desc: 'Désactive la recherche — elle ne sera plus incluse dans les vérifications. Les annonces déjà trouvées sont conservées et restent consultables.' },
+          { label: '+ Nouvelle recherche pour ce client', desc: 'Raccourci qui ouvre le formulaire de nouvelle recherche en pré-sélectionnant ce client.' },
+          { label: 'Recherches sans client', desc: 'Section en bas de page listant les recherches non rattachées à un dossier. Utilisez le menu "Rattacher à…" pour les associer au bon client.' },
+        ]
+      },
     ]
   },
   resultats: {
-    titre: '&#128196; Résultats',
-    items: [
-      { label: 'Le score (ex : 85/100)', desc: 'Note automatique calculée selon vos critères. Plus c\'est élevé, mieux l\'annonce correspond à ce que vous cherchez.' },
-      { label: 'Couleur du score', desc: '<div class="aide-score-bar"><div class="fill" style="background:#2e7d32"></div> Vert (80+) : excellente annonce</div><div class="aide-score-bar"><div class="fill" style="background:#ef6c00"></div> Orange (60–79) : annonce correcte</div><div class="aide-score-bar"><div class="fill" style="background:#c62828"></div> Rouge (moins de 60) : ne correspond pas bien</div>' },
-      { label: 'Baisse de prix', desc: 'Badge orange "Baisse -X EUR" : le prix a baissé depuis la dernière vérification. Le prix d\'origine est affiché barré à côté.' },
-      { label: 'Nouvelle annonce', desc: 'Badge vert : cette annonce n\'existait pas lors de la vérification précédente.' },
-      { label: 'Voir l\'annonce', desc: 'Ouvre la page de l\'annonce sur mobile.de dans un nouvel onglet.' },
-      { label: 'Traduire', desc: 'Ouvre l\'annonce traduite automatiquement en français via DeepL — utile pour les annonces en allemand.' },
-      { label: '👍 Intéressé / 👎 Pas intéressé', desc: '"Intéressé" met l\'annonce en évidence avec une bordure verte et l\'ajoute aux Favoris du client. "Pas intéressé" la masque. Rien n\'est supprimé définitivement.' },
-      { label: 'Détail du score', desc: 'Affiche la note obtenue pour chaque critère (prix, kilométrage, année, boîte, carburant, options) pour comprendre le score global.' },
+    titre: '📄 Résultats',
+    sections: [
+      {
+        titre: 'Comprendre le score',
+        items: [
+          { label: 'Score (ex : 85/100)', desc: 'Note automatique calculée en comparant l\'annonce à vos critères. Plus c\'est élevé, mieux l\'annonce correspond à ce que vous cherchez.' },
+          { label: 'Couleurs du score', desc: '<div class="aide-score-bar"><div class="fill" style="background:#2e7d32"></div> Vert (80+) : excellente annonce</div><div class="aide-score-bar"><div class="fill" style="background:#ef6c00"></div> Orange (60–79) : annonce correcte</div><div class="aide-score-bar"><div class="fill" style="background:#c62828"></div> Rouge (moins de 60) : ne correspond pas bien</div>' },
+          { label: 'Détail du score', desc: 'Cliquez sur "Détail du score" pour voir la note obtenue pour chaque critère (prix, kilométrage, année, boîte, carburant, options) et comprendre pourquoi une annonce est bien ou mal notée.' },
+        ]
+      },
+      {
+        titre: 'Badges sur les annonces',
+        items: [
+          { label: 'Nouvelle annonce', desc: 'Badge vert : cette annonce n\'existait pas lors de la vérification précédente. Elle vient d\'apparaître sur mobile.de.' },
+          { label: 'Baisse de prix', desc: 'Badge orange "Baisse -X EUR" : le prix a baissé depuis que Carveille a vu cette annonce pour la première fois. Le prix d\'origine est affiché barré à côté du nouveau prix.' },
+          { label: '⚠️ Vu aussi pour [nom client]', desc: 'Cette annonce correspond aussi à une recherche d\'un autre client. Utile pour éviter de présenter deux fois la même voiture sans le savoir.' },
+        ]
+      },
+      {
+        titre: 'Actions sur une annonce',
+        items: [
+          { label: '👍 Intéressé', desc: 'Met l\'annonce en évidence (bordure verte) et l\'ajoute aux Favoris du client. Retrouvez tous vos favoris en cliquant sur le badge ⭐ de la carte client.' },
+          { label: '👎 Pas intéressé', desc: 'Masque l\'annonce (grisée). Elle n\'est pas supprimée — vous pouvez la retrouver en rechargeant les résultats.' },
+          { label: 'Voir l\'annonce', desc: 'Ouvre la page de l\'annonce sur mobile.de dans un nouvel onglet Chrome.' },
+          { label: 'Traduire', desc: 'Ouvre l\'annonce traduite automatiquement en français via DeepL. Pratique pour les descriptions en allemand.' },
+          { label: 'Note personnelle', desc: 'Champ texte sous chaque annonce pour écrire vos propres remarques : "à rappeler lundi", "vu en vrai, moteur OK", "prix négociable"… Cliquez sur "Sauvegarder la note" pour enregistrer.' },
+        ]
+      },
+      {
+        titre: 'Filtrer les résultats',
+        items: [
+          { label: 'Barre de filtres', desc: 'Apparaît automatiquement quand des résultats sont affichés. Permet de filtrer par mot-clé (titre, ville), prix maximum et kilométrage maximum. Les filtres s\'appliquent instantanément.' },
+          { label: '✕ Effacer', desc: 'Réinitialise tous les filtres et réaffiche toutes les annonces.' },
+        ]
+      },
     ]
   },
   form: {
     titre: '+ Nouvelle recherche',
-    items: [
-      { label: 'Client', desc: 'Associez la recherche à un dossier client. Vous pouvez aussi laisser "Sans client" et rattacher plus tard depuis l\'onglet Mes recherches.' },
-      { label: 'Nom de la recherche', desc: 'Un nom pour vous repérer, par exemple "BMW Série 1 Auto" ou "Voiture M. Dupont". Ce nom apparaît sur la carte du client.' },
-      { label: 'URL mobile.de (recommandé)', desc: 'La méthode la plus précise : faites votre recherche sur mobile.de avec tous vos filtres, copiez l\'adresse de la page de résultats et collez-la ici. Carveille utilisera exactement ces critères.' },
-      { label: 'Budget strict', desc: 'Coché = toute annonce au-dessus du budget est ignorée. Non coché = une tolérance de 5% est accordée (ex : 21 000 EUR pour un budget de 20 000 EUR).' },
-      { label: 'Modifier une recherche existante', desc: 'Cliquez sur ✏️ à côté d\'une recherche pour modifier ses critères. Le formulaire se pré-remplit. Cliquez sur "Enregistrer les modifications" pour sauvegarder.' },
-      { label: 'Réglages avancés (facultatif)', desc: 'Permet de changer l\'importance de chaque critère dans le score. Par défaut : Prix 30 pts, Kilométrage 25 pts, Année 20 pts, Boîte 10 pts, Carburant 10 pts, Options 5 pts.' },
+    sections: [
+      {
+        titre: 'Associer à un client',
+        items: [
+          { label: 'Client', desc: 'Sélectionnez le client pour qui vous créez cette recherche. Vous pouvez aussi choisir "Sans client" et rattacher la recherche plus tard depuis l\'onglet Mes recherches via le menu "Rattacher à…".' },
+        ]
+      },
+      {
+        titre: 'Définir les critères',
+        items: [
+          { label: 'Nom de la recherche', desc: 'Un nom pour vous repérer, par exemple "BMW Série 3 Diesel" ou "Voiture M. Dupont". Ce nom apparaît sur la carte du client.' },
+          { label: 'URL mobile.de (recommandé)', desc: 'La méthode la plus précise : faites votre recherche sur mobile.de avec tous vos filtres, copiez l\'adresse de la page de résultats et collez-la ici. Carveille utilisera exactement ces critères.' },
+          { label: 'Budget strict', desc: 'Coché : toute annonce au-dessus du budget est exclue. Non coché : une tolérance de 5% est accordée (ex : 21 000 EUR accepté pour un budget de 20 000 EUR).' },
+          { label: 'Année minimum', desc: 'Carveille exclut toute voiture plus ancienne. Une tolérance d\'1 an est acceptée à 50% du score (ex : voiture de 2018 pour un minimum de 2019).' },
+          { label: 'Réglages avancés (facultatif)', desc: 'Modifiez le poids de chaque critère dans le score. Par défaut : Prix 30 pts, Kilométrage 25 pts, Année 20 pts, Boîte 10 pts, Carburant 10 pts, Options 5 pts. Augmentez le poids d\'un critère pour lui donner plus d\'importance.' },
+        ]
+      },
+      {
+        titre: 'Modifier une recherche existante',
+        items: [
+          { label: 'Comment modifier', desc: 'Depuis l\'onglet Mes recherches, cliquez sur ✏️ à côté de la recherche. Le formulaire se pré-remplit avec les valeurs actuelles. Modifiez ce que vous voulez puis cliquez sur "Enregistrer les modifications".' },
+          { label: 'Annuler la modification', desc: 'Cliquez sur "Annuler" pour revenir en mode création sans sauvegarder les changements.' },
+        ]
+      },
     ]
   },
   outils: {
-    titre: '&#128736; Outils',
-    items: [
-      { label: 'Convertisseur AVIF → JPG', desc: 'Les images téléchargées depuis mobile.de sont en format AVIF, difficile à partager par email ou WhatsApp. Sélectionnez un client, glissez vos fichiers AVIF dans la zone, cliquez "Convertir". Les JPG sont enregistrés directement dans le dossier "voitures" du client.' },
-      { label: 'Sélectionner un client (convertisseur)', desc: 'Choisissez le client à qui appartiennent les images. Les JPG seront enregistrés dans Documents/Carveille/Clients/[Nom du client]/voitures/. Si aucun client n\'est sélectionné, les fichiers vont dans un dossier "Non classé".' },
-      { label: 'Glisser-déposer', desc: 'Vous pouvez directement faire glisser vos fichiers AVIF depuis l\'explorateur Windows vers la zone de dépôt, sans avoir à les sélectionner un par un.' },
-      { label: 'Dossier de stockage', desc: 'Par défaut, tous les dossiers clients sont créés dans Documents/Carveille/Clients/. Vous pouvez changer cet emplacement si vous préférez un autre endroit (disque externe, dossier partagé…).' },
-      { label: 'Ouvrir dans l\'explorateur', desc: 'Ouvre le dossier racine Carveille directement dans l\'explorateur Windows, pour accéder à tous les dossiers clients en un clic.' },
+    titre: '🔧 Outils',
+    sections: [
+      {
+        titre: 'Convertisseur AVIF → JPG',
+        items: [
+          { label: 'Pourquoi convertir ?', desc: 'Les photos téléchargées depuis mobile.de sont au format AVIF. Ce format n\'est pas lisible par la plupart des applications (WhatsApp, email, Windows Photo…). La conversion les transforme en JPG standard, partageables facilement.' },
+          { label: 'Comment utiliser', desc: '1. Sélectionnez le client à qui appartiennent les images. 2. Glissez vos fichiers AVIF dans la zone (ou cliquez pour les sélectionner). 3. Cliquez "Convertir en JPG". Les fichiers JPG sont enregistrés automatiquement dans Documents/Carveille/Clients/[Nom]/voitures/.' },
+          { label: 'Sans client sélectionné', desc: 'Si aucun client n\'est choisi, les JPG sont enregistrés dans un dossier "Non classé" dans le dossier racine Carveille.' },
+        ]
+      },
+      {
+        titre: 'Dossier de stockage',
+        items: [
+          { label: 'Emplacement par défaut', desc: 'Tous les dossiers clients sont créés dans Documents/Carveille/Clients/. Chaque client a son propre sous-dossier avec "voitures/" et "documents/".' },
+          { label: 'Changer l\'emplacement', desc: 'Saisissez un nouveau chemin et cliquez "Sauvegarder". Utile si vous préférez stocker sur un disque externe ou un dossier réseau partagé. Les dossiers existants ne sont pas déplacés automatiquement.' },
+          { label: 'Ouvrir dans l\'explorateur', desc: 'Ouvre le dossier racine Carveille directement dans l\'explorateur Windows pour accéder à tous les dossiers clients en un clic.' },
+        ]
+      },
     ]
   },
   params: {
-    titre: '&#9881; Paramètres',
-    items: [
-      { label: 'Adresse Gmail', desc: 'Entrez votre adresse Gmail et un mot de passe d\'application (à créer dans les paramètres de sécurité Google — ce n\'est pas votre mot de passe habituel). Gmail → Compte → Sécurité → Mots de passe des applications.' },
-      { label: 'Email de réception', desc: 'Par défaut, les alertes sont envoyées à l\'adresse Gmail saisie. Indiquez une adresse différente si vous souhaitez les recevoir ailleurs.' },
-      { label: 'Envoyer un email de test', desc: 'Vérifie que la configuration email est correcte. Cliquez après avoir sauvegardé vos identifiants — vous devriez recevoir un email dans la minute.' },
-      { label: 'Alertes automatiques', desc: 'Activez pour que Carveille envoie les emails automatiquement aux horaires choisis, sans cliquer sur "Chercher". La fenêtre noire doit rester ouverte.' },
-      { label: 'Horaires', desc: 'Choisissez à quelle(s) heure(s) recevoir les alertes. Jusqu\'à 4 horaires par jour (ex : 9h00 et 18h00).' },
-      { label: 'Jours', desc: 'Sélectionnez les jours actifs. Les boutons en bleu foncé = jours sélectionnés. Exemple : L M M J V pour les jours de semaine uniquement.' },
-      { label: 'Nouvelles annonces', desc: 'Si coché, vous recevez un email dès que de nouvelles annonces correspondent à vos recherches.' },
-      { label: 'Baisses de prix', desc: 'Si coché, vous recevez un email quand le prix d\'une annonce déjà vue a baissé.' },
-      { label: 'Résumé du dimanche', desc: 'Envoie chaque dimanche un email récapitulatif : pour chaque client, nombre de nouvelles annonces de la semaine et total des favoris.' },
-      { label: 'Historique des vérifications', desc: 'Liste les dernières vérifications effectuées : date, heure, nombre d\'annonces trouvées et notifiées, durée. Utile pour confirmer que les alertes automatiques fonctionnent bien.' },
+    titre: '⚙️ Paramètres',
+    sections: [
+      {
+        titre: 'Configuration email',
+        items: [
+          { label: 'Adresse Gmail expéditrice', desc: 'L\'adresse Gmail depuis laquelle les alertes seront envoyées. Nécessite un "mot de passe d\'application" — pas votre mot de passe habituel. Pour le créer : Gmail → Mon compte → Sécurité → Validation en deux étapes → Mots de passe des applications.' },
+          { label: 'Email de réception', desc: 'L\'adresse qui recevra les alertes. Par défaut, c\'est la même que l\'adresse expéditrice. Changez-la si vous préférez recevoir les alertes sur une autre adresse.' },
+          { label: 'Envoyer un email de test', desc: 'Vérifie que la configuration est correcte en envoyant un email immédiatement. À utiliser après avoir sauvegardé vos identifiants pour confirmer que tout fonctionne.' },
+        ]
+      },
+      {
+        titre: 'Planning des alertes automatiques',
+        items: [
+          { label: 'Activer les alertes', desc: 'Quand activé, Carveille vérifie automatiquement mobile.de aux horaires choisis et envoie un email si de nouvelles annonces sont trouvées — sans que vous n\'ayez rien à faire. La fenêtre noire doit rester ouverte.' },
+          { label: 'Horaires', desc: 'Choisissez jusqu\'à 4 horaires par jour (ex : 9h00 et 18h00). Carveille vérifiera à chacun de ces horaires si la fenêtre est ouverte.' },
+          { label: 'Jours actifs', desc: 'Sélectionnez les jours où les vérifications automatiques doivent avoir lieu. Les boutons en bleu foncé = jours sélectionnés.' },
+        ]
+      },
+      {
+        titre: 'Types d\'alertes',
+        items: [
+          { label: 'Nouvelles annonces', desc: 'Envoie un email dès que de nouvelles annonces correspondent à vos critères.' },
+          { label: 'Baisses de prix', desc: 'Envoie un email quand le prix d\'une annonce déjà vue a diminué, avec le montant de la baisse.' },
+          { label: 'Résumé du dimanche', desc: 'Envoie chaque dimanche un email récapitulatif par client : nouvelles annonces de la semaine et total des favoris.' },
+        ]
+      },
+      {
+        titre: 'Historique',
+        items: [
+          { label: 'Historique des vérifications', desc: 'Liste les dernières vérifications effectuées avec date, heure, nombre d\'annonces trouvées et durée. Utile pour confirmer que les alertes automatiques fonctionnent bien à vos horaires.' },
+        ]
+      },
     ]
   },
 };
@@ -1878,11 +1978,14 @@ function toggleAide() {
   } else {
     const contenu = AIDE_CONTENU[_tabCourant];
     document.getElementById('aide-titre').innerHTML = contenu.titre;
-    document.getElementById('aide-corps').innerHTML = contenu.items.map(item => `
-      <div class="aide-item">
-        <div class="aide-item-label">${item.label}</div>
-        <div class="aide-item-desc">${item.desc}</div>
-      </div>`).join('<hr class="aide-divider">');
+    document.getElementById('aide-corps').innerHTML = contenu.sections.map(section => `
+      <div class="aide-section-titre">${section.titre}</div>
+      ${section.items.map(item => `
+        <div class="aide-item">
+          <div class="aide-item-label">${item.label}</div>
+          <div class="aide-item-desc">${item.desc}</div>
+        </div>`).join('<hr class="aide-divider">')}
+    `).join('<hr class="aide-section-divider">');
     overlay.classList.add('open');
   }
 }
