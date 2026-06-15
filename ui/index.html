@@ -392,6 +392,22 @@ details > * + * { margin-top: 12px; }
 }
 .aide-divider { border: none; border-top: 1px solid #eee; margin: 18px 0; }
 
+/* ── Convertisseur AVIF ── */
+.avif-drop-zone {
+  border: 2px dashed #c0c8d8; border-radius: 12px;
+  padding: 36px 24px; text-align: center; cursor: pointer;
+  background: #f8f9fb; transition: border-color .2s, background .2s;
+}
+.avif-drop-zone:hover, .avif-drop-zone.drag-over { border-color: #1565c0; background: #f0f4ff; }
+.avif-drop-icon { font-size: 2.2rem; margin-bottom: 10px; }
+.avif-drop-text { font-size: 0.92rem; font-weight: 600; color: #333; margin-bottom: 4px; }
+.avif-drop-sub { font-size: 0.8rem; color: #888; }
+.conv-result-item { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0; font-size:0.85rem; }
+.conv-result-item:last-child { border-bottom:none; }
+.conv-ok { color:#2e7d32; font-size:1rem; }
+.conv-err { color:#c62828; font-size:1rem; }
+.conv-dossier { font-size:0.78rem; color:#1565c0; margin-top:10px; font-style:italic; }
+
 /* ── Toast ── */
 .toast {
   position: fixed; bottom: 24px; right: 24px;
@@ -429,6 +445,7 @@ details > * + * { margin-top: 12px; }
   <div class="nav-tab active" onclick="switchTab('voitures')" id="nav-voitures">&#128269; Mes recherches</div>
   <div class="nav-tab" onclick="switchTab('resultats')" id="nav-resultats">&#128196; Resultats</div>
   <div class="nav-tab" onclick="switchTab('form')" id="nav-form">&#43; Nouvelle recherche</div>
+  <div class="nav-tab" onclick="switchTab('outils')" id="nav-outils">&#128736; Outils</div>
   <div class="nav-tab" onclick="switchTab('params')" id="nav-params">&#9881; Parametres</div>
 </nav>
 
@@ -603,7 +620,56 @@ details > * + * { margin-top: 12px; }
     </div>
   </div>
 
-  <!-- ── Onglet 4 : Parametres ── -->
+  <!-- ── Onglet 4 : Outils ── -->
+  <div class="tab-content" id="tab-outils">
+
+    <!-- Convertisseur AVIF → JPG -->
+    <div class="card">
+      <div class="card-title">&#128247; Convertisseur d'images AVIF → JPG</div>
+      <p style="font-size:0.85rem;color:#555;margin-bottom:16px;line-height:1.6">
+        Les images téléchargées depuis mobile.de sont au format AVIF, difficile à partager.
+        Sélectionnez vos fichiers ici pour les convertir en JPG et les enregistrer directement dans le dossier du bon client.
+      </p>
+
+      <label style="font-size:0.85rem;font-weight:600;color:#333;display:block;margin-bottom:8px">Client destinataire (optionnel)</label>
+      <select id="conv-client-id" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:0.88rem;margin-bottom:16px">
+        <option value="">— Dossier "Non classé" —</option>
+      </select>
+
+      <div class="avif-drop-zone" id="avif-drop-zone" onclick="document.getElementById('avif-input').click()">
+        <div class="avif-drop-icon">&#128247;</div>
+        <div class="avif-drop-text">Cliquez ou glissez vos fichiers AVIF ici</div>
+        <div class="avif-drop-sub" id="avif-drop-sub">Aucun fichier sélectionné</div>
+      </div>
+      <input type="file" id="avif-input" accept=".avif,image/avif" multiple style="display:none" onchange="avifFilesSelected(this.files)">
+
+      <button class="btn-save" id="btn-convertir" onclick="convertirAvif()" disabled style="margin-top:16px;width:100%">
+        Convertir en JPG
+      </button>
+
+      <div id="conv-result" style="display:none;margin-top:16px"></div>
+    </div>
+
+    <!-- Dossier clients -->
+    <div class="card">
+      <div class="card-title">&#128193; Dossier de stockage des clients</div>
+      <p style="font-size:0.85rem;color:#555;margin-bottom:12px;line-height:1.6">
+        Tous les dossiers clients sont créés automatiquement ici. Laissez vide pour utiliser l'emplacement par défaut.
+      </p>
+      <label style="font-size:0.82rem;font-weight:600;color:#333">
+        Chemin du dossier
+        <input type="text" id="dossier-clients-path" placeholder="Laisser vide = Documents/Carveille/Clients" style="margin-top:6px">
+      </label>
+      <div style="display:flex;gap:10px;margin-top:12px;align-items:center;flex-wrap:wrap">
+        <button class="btn-save" onclick="sauvegarderDossier()">Sauvegarder</button>
+        <button class="btn-secondary" onclick="ouvrirDossierRacine()">&#128193; Ouvrir dans l'explorateur</button>
+        <span id="dossier-path-actuel" style="font-size:0.78rem;color:#999"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Onglet 5 : Parametres ── -->
   <div class="tab-content" id="tab-params">
 
     <!-- Email -->
@@ -940,7 +1006,10 @@ function renderClientCard(c) {
         ${c.contact ? `<span class="client-contact">${c.contact}</span>` : ''}
         ${favorisBtn}
       </div>
-      <button class="btn-sm-ghost danger" onclick="archiverClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}')">Archiver</button>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn-sm-ghost" onclick="ouvrirDossierClient('${c.client_id}')">&#128193; Dossier</button>
+        <button class="btn-sm-ghost danger" onclick="archiverClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}')">Archiver</button>
+      </div>
     </div>
     ${c.notes ? `<div class="client-notes">${c.notes}</div>` : ''}
     <div class="recherches-client">
@@ -1012,6 +1081,8 @@ async function chargerClients() {
 
     // Archives
     chargerArchives();
+    // Sync le sélecteur du convertisseur
+    _chargerSelectConvertisseur();
   } catch {
     el.innerHTML = `<div class="empty-state">
       <div class="icon">⚠️</div>
@@ -1599,6 +1670,127 @@ function fermerAide(e) {
   if (e.target === document.getElementById('aide-overlay')) toggleAide();
 }
 
+// ── Outils — Dossiers clients ──────────────────────────────────────────────────
+
+async function ouvrirDossierClient(clientId) {
+  try {
+    await fetch(`${API}/clients/${clientId}/ouvrir-dossier`, { method: 'POST' });
+  } catch { showToast('Impossible d\'ouvrir le dossier.', false); }
+}
+
+async function ouvrirDossierRacine() {
+  try {
+    await fetch(`${API}/ouvrir-dossier-racine`, { method: 'POST' });
+  } catch { showToast('Impossible d\'ouvrir le dossier.', false); }
+}
+
+async function chargerDossierConfig() {
+  try {
+    const { path } = await fetch(`${API}/dossier-clients-root`).then(r => r.json());
+    document.getElementById('dossier-path-actuel').textContent = path;
+  } catch {}
+}
+
+async function sauvegarderDossier() {
+  const val = document.getElementById('dossier-clients-path').value.trim();
+  try {
+    await fetch(`${API}/config`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ DOSSIER_CLIENTS: val })
+    });
+    showToast('Dossier sauvegardé !');
+    chargerDossierConfig();
+  } catch { showToast('Erreur de connexion.', false); }
+}
+
+// ── Outils — Convertisseur AVIF ────────────────────────────────────────────────
+
+let _avifFiles = [];
+
+function avifFilesSelected(files) {
+  _avifFiles = Array.from(files);
+  const sub = document.getElementById('avif-drop-sub');
+  const btn = document.getElementById('btn-convertir');
+  if (_avifFiles.length) {
+    sub.textContent = `${_avifFiles.length} fichier${_avifFiles.length > 1 ? 's' : ''} sélectionné${_avifFiles.length > 1 ? 's' : ''}`;
+    btn.disabled = false;
+  } else {
+    sub.textContent = 'Aucun fichier sélectionné';
+    btn.disabled = true;
+  }
+}
+
+function _setupAvifDrop() {
+  const zone = document.getElementById('avif-drop-zone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer.files).filter(f => f.name.toLowerCase().endsWith('.avif'));
+    if (!files.length) { showToast('Aucun fichier AVIF détecté.', false); return; }
+    avifFilesSelected(files);
+  });
+}
+
+async function convertirAvif() {
+  if (!_avifFiles.length) return;
+  const btn = document.getElementById('btn-convertir');
+  const result = document.getElementById('conv-result');
+  btn.textContent = 'Conversion en cours...';
+  btn.disabled = true;
+
+  try {
+    const toBase64 = f => new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(f);
+    });
+
+    const files = await Promise.all(_avifFiles.map(async f => ({
+      nom: f.name,
+      data: await toBase64(f),
+    })));
+
+    const clientId = document.getElementById('conv-client-id').value;
+    const d = await fetch(`${API}/convertir-avif`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files, client_id: clientId || null })
+    }).then(r => r.json());
+
+    if (!d.ok && d.error) { showToast(d.error, false); return; }
+
+    const items = [
+      ...d.converted.map(n => `<div class="conv-result-item"><span class="conv-ok">✓</span><span>${n}</span></div>`),
+      ...d.errors.map(e => `<div class="conv-result-item"><span class="conv-err">✗</span><span>${e}</span></div>`),
+    ].join('');
+
+    result.style.display = 'block';
+    result.innerHTML = `
+      <div style="font-weight:600;font-size:0.88rem;margin-bottom:8px">
+        ${d.converted.length} fichier${d.converted.length > 1 ? 's' : ''} converti${d.converted.length > 1 ? 's' : ''}
+        ${d.errors.length ? ` · ${d.errors.length} erreur${d.errors.length > 1 ? 's' : ''}` : ''}
+      </div>
+      ${items}
+      <div class="conv-dossier">&#128193; Enregistré dans : ${d.dossier}</div>`;
+
+    _avifFiles = [];
+    document.getElementById('avif-drop-sub').textContent = 'Aucun fichier sélectionné';
+  } catch { showToast('Erreur de connexion.', false); }
+  finally {
+    btn.textContent = 'Convertir en JPG';
+    btn.disabled = false;
+  }
+}
+
+function _chargerSelectConvertisseur() {
+  const sel = document.getElementById('conv-client-id');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Dossier "Non classé" —</option>' +
+    _clientsData.map(c => `<option value="${c.client_id}">${c.nom}</option>`).join('');
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────────
 
 (async function init() {
@@ -1608,7 +1800,9 @@ function fermerAide(e) {
     chargerConfig(),
     chargerPlanificateur(),
     chargerRuns(),
+    chargerDossierConfig(),
   ]);
+  _setupAvifDrop();
 
   // Verifier si un run est deja en cours au chargement de la page
   try {

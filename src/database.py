@@ -166,6 +166,12 @@ def get_clients(statut: str = "actif") -> list[dict]:
     return clients
 
 
+def get_client_by_id(client_id: str) -> dict | None:
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM clients WHERE client_id=?", (client_id,)).fetchone()
+    return dict(row) if row else None
+
+
 def archiver_client(client_id: str):
     now = _now()
     with get_conn() as conn:

@@ -8,6 +8,9 @@ Usage CLI    : python main.py [init | seed | run | ui]
 import argparse
 import json
 import os
+import pathlib
+import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -72,6 +75,40 @@ def _save_config(data: dict):
 
     for k, v in data.items():
         os.environ[k] = v
+
+
+# ── Gestion des dossiers clients locaux ─────────────────────────────────────────
+
+def _dossier_clients_root() -> pathlib.Path:
+    cfg = _load_config()
+    path = cfg.get("DOSSIER_CLIENTS") or str(pathlib.Path.home() / "Documents" / "Carveille" / "Clients")
+    return pathlib.Path(path)
+
+
+def _nom_dossier_safe(nom: str) -> str:
+    """Retire les caractères interdits dans un nom de dossier Windows/Mac/Linux."""
+    return "".join(c for c in nom if c not in r'\/:*?"<>|').strip()
+
+
+def _dossier_client(nom_client: str) -> pathlib.Path:
+    return _dossier_clients_root() / _nom_dossier_safe(nom_client)
+
+
+def _creer_dossier_client(nom_client: str):
+    base = _dossier_client(nom_client)
+    (base / "voitures").mkdir(parents=True, exist_ok=True)
+    (base / "documents").mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def _ouvrir_dossier(path: pathlib.Path):
+    path.mkdir(parents=True, exist_ok=True)
+    if sys.platform == "win32":
+        os.startfile(str(path))
+    elif sys.platform == "darwin":
+        subprocess.run(["open", str(path)])
+    else:
+        subprocess.run(["xdg-open", str(path)])
 
 
 # ── Planificateur de runs automatiques ──────────────────────────────────────────
@@ -265,7 +302,7 @@ def cmd_ui():
     from src.database import (
         init_db, get_recherches_actives, insert_recherche, get_recherche_by_id,
         get_derniers_resultats, marquer_interet,
-        insert_client, get_clients, archiver_client, reactiver_client,
+        insert_client, get_clients, get_client_by_id, archiver_client, reactiver_client,
         get_historique_client, get_recherches_sans_client,
         desactiver_recherche, rattacher_recherche_client,
         get_derniers_runs, get_resume_hebdo,
@@ -333,6 +370,8 @@ def cmd_ui():
                 self._send_json(r if r else {}, status=200 if r else 404)
             elif self.path == "/runs":
                 self._send_json(get_derniers_runs(15))
+            elif self.path == "/dossier-clients-root":
+                self._send_json({"path": str(_dossier_clients_root())})
             elif self.path.startswith("/resultats/"):
                 search_id = self.path.split("/resultats/")[1]
                 self._send_json(get_derniers_resultats(search_id))
@@ -365,6 +404,7 @@ def cmd_ui():
                     self._send_json({"ok": False, "error": "Le nom est obligatoire"}, 400)
                     return
                 insert_client(data)
+                _creer_dossier_client(data["nom"])
                 self._send_json({"ok": True, "client_id": data["client_id"]})
 
             elif self.path.startswith("/clients/") and self.path.endswith("/archiver"):
@@ -376,6 +416,63 @@ def cmd_ui():
                 client_id = self.path.split("/clients/")[1].replace("/reactiver", "")
                 reactiver_client(client_id)
                 self._send_json({"ok": True})
+
+            elif self.path == "/ouvrir-dossier-racine":
+                _ouvrir_dossier(_dossier_clients_root())
+                self._send_json({"ok": True})
+
+            elif self.path.startswith("/clients/") and self.path.endswith("/ouvrir-dossier"):
+                client_id = self.path.split("/clients/")[1].replace("/ouvrir-dossier", "")
+                client = get_client_by_id(client_id)
+                if client:
+                    _ouvrir_dossier(_dossier_client(client["nom"]))
+                    self._send_json({"ok": True})
+                else:
+                    self._send_json({"ok": False}, 404)
+
+            elif self.path == "/convertir-avif":
+                import base64, io
+                try:
+                    from pillow_heif import register_heif_opener
+                    register_heif_opener()
+                    from PIL import Image
+                except ImportError:
+                    self._send_json({"ok": False, "error": "Module manquant. Relancez Carveille pour l'installer."}, 500)
+                    return
+
+                files   = body.get("files", [])
+                cid     = body.get("client_id")
+                client  = get_client_by_id(cid) if cid else None
+                if client:
+                    save_dir = _dossier_client(client["nom"]) / "voitures"
+                else:
+                    save_dir = _dossier_clients_root() / "_Non classe"
+                save_dir.mkdir(parents=True, exist_ok=True)
+
+                converted, errors = [], []
+                for f in files:
+                    try:
+                        nom  = f.get("nom", "image.avif")
+                        data = base64.b64decode(f.get("data", ""))
+                        img  = Image.open(io.BytesIO(data))
+                        out_nom  = pathlib.Path(nom).stem + ".jpg"
+                        out_path = save_dir / out_nom
+                        # Éviter d'écraser un fichier existant
+                        i = 1
+                        while out_path.exists():
+                            out_path = save_dir / f"{pathlib.Path(nom).stem}_{i}.jpg"
+                            i += 1
+                        img.convert("RGB").save(str(out_path), "JPEG", quality=92)
+                        converted.append(out_path.name)
+                    except Exception as e:
+                        errors.append(f"{f.get('nom', '?')} : {e}")
+
+                self._send_json({
+                    "ok": True,
+                    "converted": converted,
+                    "errors": errors,
+                    "dossier": str(save_dir),
+                })
 
             elif self.path.startswith("/recherches/") and self.path.endswith("/client"):
                 search_id = self.path.split("/recherches/")[1].replace("/client", "")
@@ -436,7 +533,7 @@ def cmd_ui():
                     self._send_json({"ok": False, "error": "Parametres invalides"}, 400)
 
             elif self.path == "/config":
-                allowed = {"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_DEST"}
+                allowed = {"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_DEST", "DOSSIER_CLIENTS"}
                 to_save = {k: v for k, v in body.items() if k in allowed and v != "***"}
                 to_save["CANAL_NOTIFICATION"] = "email"   # toujours email
                 _save_config(to_save)
