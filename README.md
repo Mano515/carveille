@@ -18,22 +18,27 @@ Carveille scrape mobile.de selon vos critères, score chaque annonce, détecte l
 8. [Configurer les alertes email](#configurer-les-alertes-email)
 9. [Convertir des images AVIF en JPG](#convertir-des-images-avif-en-jpg)
 10. [Vérification automatique](#vérification-automatique)
-11. [Comprendre le score](#comprendre-le-score)
-12. [Structure du projet](#structure-du-projet)
-13. [Tests automatisés](#tests-automatisés)
+11. [Mises à jour](#mises-à-jour)
+12. [Comprendre le score](#comprendre-le-score)
+13. [Structure du projet](#structure-du-projet)
+14. [Tests automatisés](#tests-automatisés)
 
 ---
 
 ## Ce que ça fait
 
-- **Dossiers clients** — chaque client a son dossier avec ses recherches, ses résultats et ses favoris
+- **Dossiers clients** — chaque client a son dossier avec ses recherches, ses résultats, ses favoris et ses liens sauvegardés
 - **Scraping mobile.de** — récupère les annonces selon les critères (marque, modèle, budget, km, boîte, carburant…)
 - **Scoring sur 100** — chaque annonce reçoit un score pondéré selon les critères
 - **Détection de baisses de prix** — si une annonce déjà vue baisse de prix, vous en êtes informé
+- **Détection de doublons** — si la même annonce correspond à plusieurs clients, un badge d'avertissement s'affiche
 - **Bonus fraîcheur** — les annonces très récentes (<24h, <48h, <7j) gagnent quelques points
 - **Anti-doublon** — une annonce vue ne remonte pas comme nouvelle au run suivant
 - **Alertes automatiques** — choisissez les horaires et les jours, Carveille vérifie sans action manuelle
 - **Résumé hebdomadaire** — email de bilan chaque dimanche par client (optionnel)
+- **Notes personnelles** — ajoutez des notes sur chaque annonce (rappel, avis, négociation…)
+- **Liens sauvegardés** — enregistrez manuellement des liens d'annonces trouvées en naviguant
+- **Filtre des résultats** — filtrez par texte, prix max et km max directement dans l'interface
 - **Dossiers locaux** — un dossier Windows est créé automatiquement pour chaque client dans Documents/Carveille/Clients
 - **Convertisseur AVIF → JPG** — convertit les images mobile.de en JPG partageables, directement dans le dossier du client
 - **Interface web** — tableau de bord local pour voir les résultats, marquer l'intérêt, configurer les alertes
@@ -43,6 +48,7 @@ Carveille scrape mobile.de selon vos critères, score chaque annonce, détecte l
 ## Prérequis
 
 - Python 3.11 ou plus récent ([télécharger](https://www.python.org/downloads/) — cocher "Add Python to PATH" lors de l'installation)
+- Git ([télécharger](https://git-scm.com/download/win) — nécessaire pour les mises à jour automatiques)
 
 Pas de base de données externe, pas de serveur cloud — tout tourne en local avec SQLite.
 
@@ -50,18 +56,23 @@ Pas de base de données externe, pas de serveur cloud — tout tourne en local a
 
 ## Installation
 
-### 1. Cloner le projet
+### 1. Installer Python et Git
 
-```bash
-git clone https://github.com/Mano515/carveille.git
-cd carveille
+Suivre les instructions dans **`Installer Python.txt`** puis **`Installer Git.txt`**.
+
+### 2. Télécharger Carveille
+
+Ouvrir le menu Démarrer, taper `cmd`, et coller :
+
+```
+cd %USERPROFILE%\Documents && git clone https://github.com/Mano515/carveille.git
 ```
 
-### 2. Lancer
+### 3. Lancer
 
-Double-clic sur **`Lancer Carveille.bat`**.
+Double-clic sur **`Lancer Carveille.bat`** dans le dossier `carveille`.
 
-À la première utilisation, le script installe automatiquement tout ce dont Python a besoin (1-2 minutes). Ensuite, le navigateur s'ouvre tout seul sur l'interface.
+À la première utilisation, le script installe automatiquement tout ce dont Python a besoin (1-2 minutes). Ensuite, Chrome s'ouvre tout seul sur l'interface.
 
 > La fenêtre noire qui s'ouvre doit rester ouverte pendant toute l'utilisation de Carveille. La fermer arrête l'application.
 
@@ -69,11 +80,11 @@ Double-clic sur **`Lancer Carveille.bat`**.
 
 ## Utilisation quotidienne
 
-1. Double-clic sur **`Lancer Carveille.bat`**
-2. Le navigateur s'ouvre automatiquement sur l'interface
-3. Cliquer sur **"Chercher pour tous les clients"** pour lancer une vérification
-4. Consulter les résultats dans l'onglet **Résultats** (ou attendre l'email)
-5. Marquer les annonces intéressantes avec 👍 ou les masquer avec 👎
+1. Double-clic sur **`Lancer Carveille.bat`** — la fenêtre se minimise automatiquement, Chrome s'ouvre
+2. Cliquer sur **"Chercher pour tous les clients"** pour lancer une vérification manuelle
+3. Consulter les résultats dans l'onglet **Résultats** (ou attendre l'email si les alertes sont configurées)
+4. Marquer les annonces intéressantes avec 👍 ou les masquer avec 👎
+5. Ajouter une note personnelle sur une annonce si besoin
 
 > Le bouton **?** en bas à droite affiche une aide contextuelle selon l'onglet ouvert.
 
@@ -86,7 +97,7 @@ L'onglet **"Mes recherches"** affiche tous les dossiers clients.
 ### Créer un client
 
 Cliquer sur **"+ Nouveau client"** et renseigner :
-- Nom du client (obligatoire)
+- Nom du client (obligatoire — les doublons de nom sont bloqués)
 - Téléphone ou email (optionnel)
 - Notes libres : budget, préférences, remarques
 
@@ -100,13 +111,21 @@ Documents/
             └── documents/    ← PDFs, devis, contrats
 ```
 
+### Modifier un client (✏️)
+
+Cliquer sur le bouton ✏️ en haut à droite de la carte pour modifier le nom, les coordonnées ou les notes d'un client.
+
 ### Bouton 📂 Dossier
 
-Ouvre directement le dossier du client dans l'explorateur Windows. Pratique pour y déposer des images ou documents.
+Ouvre directement le dossier du client dans l'explorateur Windows.
 
 ### Favoris (⭐)
 
 Quand un client a des annonces marquées 👍, un badge "⭐ N favori(s)" apparaît sur sa carte. Cliquez dessus pour voir toutes ses annonces retenues, triées par score.
+
+### Liens sauvegardés
+
+En bas de chaque carte client, une zone permet de coller des liens d'annonces trouvées en naviguant soi-même sur mobile.de. Ajoutez un titre pour vous souvenir de quoi il s'agit. Les liens sont cliquables directement depuis la carte.
 
 ### Modifier ou supprimer une recherche
 
@@ -114,9 +133,11 @@ Sur chaque recherche d'un client :
 - **✏️** — modifie les critères (le formulaire se pré-remplit automatiquement)
 - **🗑️** — désactive la recherche (les annonces déjà trouvées sont conservées)
 
-### Archiver un client
+### Archiver / Réactiver / Supprimer un client
 
-Le bouton **"Archiver"** retire le client de la liste principale. Il reste accessible dans la section **"Dossiers archivés"** et peut être réactivé à tout moment avec le bouton **"Réactiver"**.
+- **Archiver** — retire le client de la liste principale sans rien supprimer. Accessible dans "Dossiers archivés" en bas de page.
+- **Réactiver** — remet le client dans la liste principale.
+- **Supprimer** — supprime définitivement le client et toutes ses données (uniquement depuis les archives). Action irréversible.
 
 ### Recherches sans client
 
@@ -161,11 +182,29 @@ Sélectionnez le client concerné en haut du formulaire. Vous pouvez aussi cliqu
 
 Cliquer sur **"Résultats"** à côté d'une recherche pour voir les annonces trouvées.
 
+### Actions sur une annonce
+
 - **👍 Intéressé** — met l'annonce en évidence et l'ajoute aux Favoris du client
 - **👎 Pas intéressé** — masque l'annonce (rien n'est supprimé définitivement)
-- **Voir l'annonce** — ouvre l'annonce sur mobile.de dans un nouvel onglet
+- **Voir l'annonce** — ouvre l'annonce sur mobile.de dans un nouvel onglet Chrome
 - **Traduire** — ouvre l'annonce traduite en français via DeepL
 - **Détail du score** — affiche la note obtenue pour chaque critère
+- **Note personnelle** — champ texte pour écrire ses propres remarques sur l'annonce ("à rappeler lundi", "vu en vrai"…)
+
+### Badges sur les annonces
+
+- **Nouvelle annonce** (vert) — annonce absente lors de la vérification précédente
+- **Baisse -X EUR** (orange) — le prix a baissé depuis la première apparition
+- **⚠️ Vu aussi pour [client]** — la même annonce correspond à un autre client
+
+### Filtrer les résultats
+
+Une barre de filtres apparaît automatiquement au-dessus des résultats. Filtrez par :
+- Mot-clé (titre, ville)
+- Prix maximum
+- Kilométrage maximum
+
+Les filtres s'appliquent instantanément. Cliquer **✕ Effacer** pour tout réafficher.
 
 ---
 
@@ -190,7 +229,7 @@ Dans l'onglet **"Paramètres"**.
 
 ### Historique des vérifications
 
-En bas de l'onglet Paramètres : liste des dernières vérifications effectuées avec date, heure, nombre d'annonces trouvées et durée. Permet de confirmer que les alertes automatiques fonctionnent bien.
+En bas de l'onglet Paramètres : liste des dernières vérifications effectuées avec date, heure, nombre d'annonces trouvées et durée.
 
 ---
 
@@ -213,6 +252,18 @@ Les JPG sont enregistrés automatiquement dans le dossier `voitures/` du client 
 Dans l'onglet **"Paramètres"**, activer les alertes automatiques et choisir les horaires.
 
 > **Important** : la fenêtre noire (`Lancer Carveille.bat`) doit être ouverte à ce moment-là. Pour que ça fonctionne tous les jours, laisser la fenêtre ouverte en permanence ou s'assurer qu'elle est ouverte avant l'heure configurée.
+
+---
+
+## Mises à jour
+
+Quand une mise à jour est disponible, double-cliquer sur **`Mettre a jour Carveille.bat`**. Ce fichier :
+
+1. Arrête Carveille s'il est en cours
+2. Télécharge la dernière version depuis GitHub
+3. Relance Carveille automatiquement
+
+> Aucune donnée n'est perdue lors d'une mise à jour (la base de données et la configuration sont exclues du dépôt git).
 
 ---
 
@@ -266,13 +317,14 @@ Score = prix(30) + km(25) + annee(20) + boite(10) + carburant(10) + options(5)
 
 ```
 carveille/
-├── Lancer Carveille.bat   # Double-clic pour tout démarrer
-├── main.py                # Point d'entrée CLI + serveur HTTP
-├── config.py              # Paramètres ajustables (poids, seuils, mappings mobile.de)
-├── test.py                # Tests automatisés (python test.py)
-├── requirements.txt       # Dépendances Python
-├── .env                   # Configuration locale (créé automatiquement, ne pas partager)
-├── .env.example           # Modèle de configuration
+├── Lancer Carveille.bat          # Double-clic pour tout démarrer (fenêtre minimisée)
+├── Mettre a jour Carveille.bat   # Mise à jour depuis GitHub + relance automatique
+├── main.py                       # Point d'entrée CLI + serveur HTTP
+├── config.py                     # Paramètres ajustables (poids, seuils, mappings)
+├── test.py                       # Tests automatisés (python test.py)
+├── requirements.txt              # Dépendances Python
+├── .env                          # Configuration locale (créé automatiquement, ne pas partager)
+├── .env.example                  # Modèle de configuration
 │
 ├── src/
 │   ├── database.py        # Toutes les fonctions SQLite
@@ -302,9 +354,10 @@ carveille/
 |---|---|
 | `clients` | Les dossiers clients (nom, contact, notes, statut) |
 | `recherches` | Les critères de recherche, liés à un client |
-| `annonces_vues` | Toutes les annonces trouvées avec score, `prix_initial`, `baisse_prix` |
+| `annonces_vues` | Toutes les annonces trouvées avec score, `prix_initial`, `baisse_prix`, `note` |
 | `historique_prix` | Historique des prix à chaque run |
 | `runs` | Bilan de chaque vérification |
+| `liens_client` | Liens d'annonces sauvegardés manuellement par client |
 
 ### Dossiers locaux
 
@@ -357,3 +410,4 @@ Exit code 0 si tout passe, 1 si un test échoue (compatible CI).
 - **mobile.de peut bloquer** : si le scraping retourne zéro résultat avec un message `__NEXT_DATA__ introuvable`, mobile.de a probablement bloqué la requête. Attendre quelques minutes et réessayer.
 - **Le fichier `.env`** est dans `.gitignore` et ne sera jamais envoyé sur GitHub.
 - **Dossier clients** : par défaut dans `Documents/Carveille/Clients/`. Modifiable dans l'onglet Outils → "Dossier de stockage".
+- **Plusieurs clics sur le bat** : si Carveille est déjà lancé, un clic supplémentaire ouvre juste un nouvel onglet — aucune instance dupliquée n'est créée.
