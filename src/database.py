@@ -132,6 +132,21 @@ def get_recherche_by_id(search_id: str) -> dict | None:
 
 # ── Clients ─────────────────────────────────────────────────────────────────────
 
+def client_nom_existe(nom: str) -> bool:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM clients WHERE LOWER(nom)=LOWER(?) AND statut='actif'", (nom,)
+        ).fetchone()
+        return row is not None
+
+
+def supprimer_client(client_id: str):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM annonces_vues WHERE search_id IN (SELECT search_id FROM recherches WHERE client_id=?)", (client_id,))
+        conn.execute("DELETE FROM recherches WHERE client_id=?", (client_id,))
+        conn.execute("DELETE FROM clients WHERE client_id=?", (client_id,))
+
+
 def insert_client(data: dict):
     now = _now()
     with get_conn() as conn:

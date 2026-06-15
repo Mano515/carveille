@@ -939,6 +939,8 @@ async function creerClient(e) {
       toggleModalClient();
       showToast('Dossier client créé !');
       chargerClients();
+    } else {
+      showToast(d.error || 'Erreur lors de la création.', false);
     }
   } catch { showToast('Erreur de connexion.', false); }
 }
@@ -1107,6 +1109,7 @@ async function chargerArchives() {
               ${c.contact ? `<span class="client-contact">${c.contact}</span>` : ''}
             </div>
             <button class="btn-sm-ghost" onclick="reactiverClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}')">Réactiver</button>
+            <button class="btn-sm-ghost danger" onclick="supprimerClient('${c.client_id}', '${c.nom.replace(/'/g, "\\'")}')">Supprimer</button>
           </div>
         </div>`).join('');
     }
@@ -1174,6 +1177,13 @@ async function supprimerRecherche(searchId, nom) {
     showToast(`Recherche "${nom}" supprimée.`);
     chargerClients();
   } catch { showToast('Erreur de connexion.', false); }
+}
+
+async function supprimerClient(clientId, nom) {
+  if (!confirm(`Supprimer définitivement le dossier "${nom}" ?\n\nToutes ses recherches et annonces seront effacées. Cette action est irréversible.`)) return;
+  await fetch(`${API}/clients/${clientId}`, { method: 'DELETE' });
+  showToast(`${nom} supprimé.`);
+  chargerClients();
 }
 
 async function reactiverClient(clientId, nom) {

@@ -302,7 +302,7 @@ def cmd_ui():
     from src.database import (
         init_db, get_recherches_actives, insert_recherche, get_recherche_by_id,
         get_derniers_resultats, marquer_interet,
-        insert_client, get_clients, get_client_by_id, archiver_client, reactiver_client,
+        insert_client, get_clients, get_client_by_id, archiver_client, reactiver_client, supprimer_client, client_nom_existe,
         get_historique_client, get_recherches_sans_client,
         desactiver_recherche, rattacher_recherche_client,
         get_derniers_runs, get_resume_hebdo,
@@ -338,6 +338,10 @@ def cmd_ui():
             if self.path.startswith("/recherches/"):
                 search_id = self.path.split("/recherches/")[1]
                 desactiver_recherche(search_id)
+                self._send_json({"ok": True})
+            elif self.path.startswith("/clients/"):
+                client_id = self.path.split("/clients/")[1]
+                supprimer_client(client_id)
                 self._send_json({"ok": True})
             else:
                 self.send_response(404)
@@ -402,6 +406,9 @@ def cmd_ui():
                 }
                 if not data["nom"]:
                     self._send_json({"ok": False, "error": "Le nom est obligatoire"}, 400)
+                    return
+                if client_nom_existe(data["nom"]):
+                    self._send_json({"ok": False, "error": f"Un client « {data['nom']} » existe déjà."}, 409)
                     return
                 insert_client(data)
                 _creer_dossier_client(data["nom"])
