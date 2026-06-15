@@ -48,7 +48,7 @@ def _enrichir(ann: dict, search_id: str, res: dict, est_nouvelle: bool) -> dict:
     }
 
 
-def run(source: str = "mock", day: int = 1):
+def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notify_baisses: bool = True):
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
     print(f"\n[RUN] Run {run_id[:8]} demarre ({source} / day {day})")
@@ -104,10 +104,9 @@ def run(source: str = "mock", day: int = 1):
         if baisses:
             print(f"  -> {len(baisses)} baisse(s) de prix detectee(s) !")
 
-        # 5. Notifier : top N nouvelles + toutes les baisses de prix
-        # (baisses et nouvelles sont disjoints par construction → pas besoin de déduplication)
+        # 5. Notifier selon les déclencheurs configurés
         top = selectionner_top_annonces(annonces_scorees, recherche)
-        a_notifier = top + baisses
+        a_notifier = (top if notify_nouvelles else []) + (baisses if notify_baisses else [])
 
         print(f"  -> {len(a_notifier)} annonce(s) a notifier")
 

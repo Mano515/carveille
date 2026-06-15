@@ -189,30 +189,64 @@ details > * + * { margin-top: 12px; }
 /* ── Parametres ── */
 .param-section { margin-bottom: 28px; }
 .param-section-title {
-  font-size: 0.9rem; font-weight: 700; color: #1a1a2e;
+  font-size: 0.88rem; font-weight: 700; color: #1a1a2e;
   margin-bottom: 14px; padding-bottom: 8px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #eee; text-transform: uppercase; letter-spacing: .4px;
 }
-.canal-options { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
-.canal-btn {
-  padding: 10px 18px; border: 2px solid #ddd; border-radius: 10px;
-  background: white; color: #555; font-weight: 500; font-size: 0.88rem;
-  cursor: pointer; transition: all .15s;
-}
-.canal-btn:hover { border-color: #1a1a2e; }
-.canal-btn.active { border-color: #1a1a2e; background: #1a1a2e; color: white; }
-.canal-fields { display: none; }
-.canal-fields.active { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.canal-fields.active.single-col { grid-template-columns: 1fr; }
 .info-box {
   background: #f0f4ff; border-radius: 10px; padding: 14px 16px;
-  font-size: 0.82rem; color: #1a1a2e; line-height: 1.7;
-  grid-column: 1 / -1;
+  font-size: 0.82rem; color: #1a1a2e; line-height: 1.7; margin-bottom: 16px;
 }
-.info-box strong { display: block; margin-bottom: 4px; }
-.planif-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.planif-row label { flex-direction: row; align-items: center; gap: 8px; font-size: 0.9rem; }
-.planif-row input[type=time] { width: 120px; }
+.info-box a { color: #1565c0; }
+.btn-test {
+  background: #f0f2f5; color: #333; padding: 10px 20px;
+  font-size: 0.9rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;
+}
+.btn-test:hover { background: #e0e2e5; }
+.toggle-switch {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+}
+.toggle-switch input[type=checkbox] { width: 20px; height: 20px; cursor: pointer; accent-color: #2e7d32; }
+.toggle-switch span { font-size: 0.95rem; font-weight: 500; }
+/* Horaires */
+.horaire-item {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.horaire-item input[type=time] {
+  width: 130px; padding: 8px 12px; border: 1.5px solid #ddd;
+  border-radius: 8px; font-size: 0.95rem;
+}
+.btn-remove {
+  background: #fee2e2; color: #c62828; border: none; border-radius: 6px;
+  width: 30px; height: 30px; font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.btn-remove:hover { background: #fca5a5; }
+.btn-add-slot {
+  background: none; border: 1.5px dashed #aaa; color: #666;
+  padding: 7px 14px; border-radius: 8px; font-size: 0.85rem;
+  cursor: pointer; margin-top: 4px; font-weight: 500;
+}
+.btn-add-slot:hover { border-color: #1a1a2e; color: #1a1a2e; }
+/* Jours */
+.jours-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+.jour-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1.5px solid #ddd; background: white; color: #666;
+  font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all .15s;
+}
+.jour-btn.active { background: #1a1a2e; color: white; border-color: #1a1a2e; }
+.jour-btn:hover:not(.active) { border-color: #888; }
+/* Déclencheurs */
+.trigger-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px; border: 1.5px solid #eee; border-radius: 10px;
+  margin-bottom: 10px; cursor: pointer; transition: border-color .15s;
+}
+.trigger-item:hover { border-color: #bbb; }
+.trigger-item input[type=checkbox] { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; accent-color: #2e7d32; }
+.trigger-label { font-weight: 600; font-size: 0.9rem; color: #222; margin-bottom: 2px; }
+.trigger-desc { font-size: 0.82rem; color: #666; line-height: 1.5; }
 
 /* ── Bouton aide ── */
 .btn-aide {
@@ -451,84 +485,86 @@ details > * + * { margin-top: 12px; }
   <!-- ── Onglet 4 : Parametres ── -->
   <div class="tab-content" id="tab-params">
 
+    <!-- Email -->
     <div class="card">
-      <div class="param-section">
-        <div class="param-section-title">Comment voulez-vous etre alerte ?</div>
+      <div class="param-section-title">&#128140; Adresse email</div>
+      <div class="info-box">
+        Les alertes sont envoyees par email. Pour Gmail, vous devez creer un
+        <strong>mot de passe d'application</strong> (different de votre mot de passe habituel) :
+        allez dans les <a href="https://myaccount.google.com/apppasswords" target="_blank">
+        parametres de securite Google</a>, section "Mots de passe des applications".
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <label class="full">
+          Votre adresse Gmail
+          <input type="email" id="smtp-user" placeholder="votre.adresse@gmail.com">
+        </label>
+        <label class="full">
+          Mot de passe d'application
+          <input type="password" id="smtp-pass" placeholder="xxxx xxxx xxxx xxxx">
+        </label>
+        <label class="full">
+          Recevoir les alertes sur (si differente de l'adresse ci-dessus)
+          <input type="email" id="smtp-dest" placeholder="Laisser vide pour utiliser la meme adresse">
+        </label>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:18px;align-items:center;flex-wrap:wrap">
+        <button class="btn-save" onclick="sauvegarderConfig()">Sauvegarder</button>
+        <button class="btn-test" onclick="testerEmail(this)">Envoyer un email de test</button>
+        <span id="test-result" style="font-size:0.82rem;display:none"></span>
+      </div>
+    </div>
 
-        <div class="canal-options">
-          <button class="canal-btn" data-canal="console" onclick="selectCanal('console')">
-            &#128187; Console seulement
-          </button>
-          <button class="canal-btn" data-canal="telegram" onclick="selectCanal('telegram')">
-            &#128172; Telegram
-          </button>
-          <button class="canal-btn" data-canal="email" onclick="selectCanal('email')">
-            &#128140; Email
-          </button>
-        </div>
+    <!-- Planning -->
+    <div class="card">
+      <div class="param-section-title">&#128337; Quand recevoir les alertes ?</div>
 
-        <!-- Telegram -->
-        <div class="canal-fields" id="fields-telegram">
-          <div class="info-box">
-            <strong>Comment configurer Telegram :</strong>
-            1. Ouvrez Telegram et cherchez <strong>@BotFather</strong><br>
-            2. Envoyez <code>/newbot</code> et suivez les instructions — notez le <strong>Token</strong><br>
-            3. Envoyez un message a votre nouveau bot, puis allez sur :<br>
-            &nbsp;&nbsp;&nbsp;<code>https://api.telegram.org/bot<strong>VOTRE_TOKEN</strong>/getUpdates</code><br>
-            4. Notez le <strong>Chat ID</strong> (nombre dans "id")
-          </div>
-          <label>Token du bot Telegram
-            <input type="text" id="telegram-token" placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ">
-          </label>
-          <label>Votre Chat ID
-            <input type="text" id="telegram-chat" placeholder="987654321">
-          </label>
-        </div>
-
-        <!-- Email -->
-        <div class="canal-fields single-col" id="fields-email">
-          <div class="info-box">
-            <strong>Pour Gmail :</strong>
-            Activez la validation en deux etapes, puis creez un <strong>mot de passe d'application</strong>
-            dans les parametres de securite de votre compte Google.
-            Utilisez ce mot de passe (pas votre mot de passe habituel) dans le champ ci-dessous.
-          </div>
-          <label>Votre adresse email (expediteur)
-            <input type="email" id="smtp-user" placeholder="votre.email@gmail.com">
-          </label>
-          <label>Mot de passe d'application Gmail
-            <input type="password" id="smtp-pass" placeholder="xxxx xxxx xxxx xxxx">
-          </label>
-          <label>Adresse email de reception (si differente)
-            <input type="email" id="smtp-dest" placeholder="(meme adresse si vide)">
-          </label>
-        </div>
-
-        <div style="margin-top:20px">
-          <button class="btn-save" onclick="sauvegarderConfig()">Enregistrer les notifications</button>
-        </div>
+      <div class="toggle-switch" style="margin-bottom:18px">
+        <input type="checkbox" id="planif-actif" onchange="togglePlanif()">
+        <span>Activer les alertes automatiques par email</span>
       </div>
 
-      <div class="param-section">
-        <div class="param-section-title">Verification automatique</div>
-        <p style="font-size:0.85rem;color:#555;margin-bottom:16px;line-height:1.6">
-          Carveille peut verifier automatiquement les nouvelles annonces tous les jours
-          a une heure que vous choisissez. <strong>Carveille doit etre ouvert</strong> (la fenetre noire)
-          pour que ca fonctionne.
-        </p>
-        <div class="planif-row">
-          <label>
-            <input type="checkbox" id="planif-actif" onchange="togglePlanifHeure()">
-            Activer la verification automatique
+      <div id="planif-config" style="display:none">
+
+        <div class="param-section">
+          <div style="font-size:0.85rem;font-weight:600;color:#333;margin-bottom:10px">Horaires d'envoi</div>
+          <div id="horaires-list"></div>
+          <button class="btn-add-slot" onclick="ajouterHoraire()">+ Ajouter un horaire</button>
+        </div>
+
+        <div class="param-section" style="margin-top:20px">
+          <div style="font-size:0.85rem;font-weight:600;color:#333;margin-bottom:10px">Jours d'envoi</div>
+          <div class="jours-picker">
+            <button class="jour-btn" data-jour="lun" onclick="toggleJour(this)">L</button>
+            <button class="jour-btn" data-jour="mar" onclick="toggleJour(this)">M</button>
+            <button class="jour-btn" data-jour="mer" onclick="toggleJour(this)">M</button>
+            <button class="jour-btn" data-jour="jeu" onclick="toggleJour(this)">J</button>
+            <button class="jour-btn" data-jour="ven" onclick="toggleJour(this)">V</button>
+            <button class="jour-btn" data-jour="sam" onclick="toggleJour(this)">S</button>
+            <button class="jour-btn" data-jour="dim" onclick="toggleJour(this)">D</button>
+          </div>
+        </div>
+
+        <div class="param-section" style="margin-top:20px">
+          <div style="font-size:0.85rem;font-weight:600;color:#333;margin-bottom:10px">M'alerter pour</div>
+          <label class="trigger-item">
+            <input type="checkbox" id="trig-nouvelles">
+            <div>
+              <div class="trigger-label">Nouvelles annonces</div>
+              <div class="trigger-desc">Recevoir un email quand de nouvelles annonces correspondent a mes criteres de recherche</div>
+            </div>
           </label>
-          <label id="planif-heure-label" style="display:none">
-            Tous les jours a :
-            <input type="time" id="planif-heure" value="09:00">
+          <label class="trigger-item">
+            <input type="checkbox" id="trig-baisses">
+            <div>
+              <div class="trigger-label">Baisses de prix</div>
+              <div class="trigger-desc">Recevoir un email quand le prix d'une annonce deja vue a baisse depuis la derniere verification</div>
+            </div>
           </label>
         </div>
-        <div style="margin-top:20px">
-          <button class="btn-save" onclick="sauvegarderPlanificateur()">Enregistrer le planning</button>
-        </div>
+
+        <button class="btn-save" onclick="sauvegarderPlanificateur()">Sauvegarder le planning</button>
+
       </div>
     </div>
 
@@ -553,7 +589,6 @@ details > * + * { margin-top: 12px; }
 const API = 'http://localhost:8765';
 let currentSearchId = null;
 let currentSearchNom = '';
-let currentCanal = 'console';
 let pollTimer = null;
 
 // ── Utilitaires ────────────────────────────────────────────────────────────────
@@ -870,83 +905,136 @@ async function soumettreRecherche(e) {
   } catch { showToast('Erreur de connexion.', false); }
 }
 
-// ── Parametres ─────────────────────────────────────────────────────────────────
-
-function selectCanal(canal) {
-  currentCanal = canal;
-  document.querySelectorAll('.canal-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.canal === canal);
-  });
-  document.getElementById('fields-telegram').classList.toggle('active', canal === 'telegram');
-  document.getElementById('fields-email').classList.toggle('active', canal === 'email');
-}
+// ── Parametres — Email ─────────────────────────────────────────────────────────
 
 async function chargerConfig() {
   try {
     const cfg = await fetch(`${API}/config`).then(r => r.json());
-    selectCanal(cfg.CANAL_NOTIFICATION || 'console');
-    document.getElementById('telegram-token').value = cfg.TELEGRAM_BOT_TOKEN || '';
-    document.getElementById('telegram-chat').value  = cfg.TELEGRAM_CHAT_ID || '';
-    document.getElementById('smtp-user').value  = cfg.SMTP_USER || '';
-    document.getElementById('smtp-pass').value  = cfg.SMTP_PASSWORD || '';
-    document.getElementById('smtp-dest').value  = cfg.SMTP_DEST || '';
+    document.getElementById('smtp-user').value = cfg.SMTP_USER || '';
+    document.getElementById('smtp-pass').value = cfg.SMTP_PASSWORD || '';
+    document.getElementById('smtp-dest').value = cfg.SMTP_DEST || '';
   } catch {}
 }
 
 async function sauvegarderConfig() {
-  const body = { CANAL_NOTIFICATION: currentCanal };
-  if (currentCanal === 'telegram') {
-    body.TELEGRAM_BOT_TOKEN = document.getElementById('telegram-token').value;
-    body.TELEGRAM_CHAT_ID   = document.getElementById('telegram-chat').value;
-  } else if (currentCanal === 'email') {
-    body.SMTP_USER  = document.getElementById('smtp-user').value;
-    body.SMTP_PASS  = document.getElementById('smtp-pass').value;
-    body.SMTP_DEST  = document.getElementById('smtp-dest').value;
-    body.SMTP_PASSWORD = document.getElementById('smtp-pass').value;
-  }
+  const body = {
+    SMTP_USER:     document.getElementById('smtp-user').value,
+    SMTP_PASSWORD: document.getElementById('smtp-pass').value,
+    SMTP_DEST:     document.getElementById('smtp-dest').value,
+  };
   try {
     await fetch(`${API}/config`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-    showToast('Parametres de notification enregistres !');
+    showToast('Adresse email sauvegardee !');
   } catch { showToast('Erreur de connexion.', false); }
 }
 
-function togglePlanifHeure() {
+async function testerEmail(btn) {
+  const result = document.getElementById('test-result');
+  btn.textContent = 'Envoi en cours...';
+  btn.disabled = true;
+  result.style.display = 'none';
+  try {
+    const r = await fetch(`${API}/test-email`, { method: 'POST' }).then(r => r.json());
+    result.style.display = 'inline';
+    if (r.ok) {
+      result.style.color = '#2e7d32';
+      result.textContent = '✓ Email envoye ! Verifiez votre boite de reception.';
+    } else {
+      result.style.color = '#c62828';
+      result.textContent = '✗ ' + (r.error || 'Echec. Verifiez l\'adresse et le mot de passe.');
+    }
+  } catch { showToast('Erreur de connexion.', false); }
+  finally {
+    btn.textContent = 'Envoyer un email de test';
+    btn.disabled = false;
+  }
+}
+
+// ── Parametres — Planificateur ─────────────────────────────────────────────────
+
+let _horaires = ['09:00'];
+
+function togglePlanif() {
   const actif = document.getElementById('planif-actif').checked;
-  document.getElementById('planif-heure-label').style.display = actif ? '' : 'none';
+  document.getElementById('planif-config').style.display = actif ? '' : 'none';
+}
+
+function toggleJour(btn) {
+  btn.classList.toggle('active');
+}
+
+function renderHoraires() {
+  document.getElementById('horaires-list').innerHTML = _horaires.map((h, i) => `
+    <div class="horaire-item">
+      <input type="time" value="${h}" oninput="_horaires[${i}]=this.value">
+      ${_horaires.length > 1
+        ? `<button class="btn-remove" onclick="supprimerHoraire(${i})" title="Supprimer">&#215;</button>`
+        : ''}
+    </div>`).join('');
+}
+
+function ajouterHoraire() {
+  if (_horaires.length >= 4) { showToast('Maximum 4 horaires par jour.', false); return; }
+  _horaires.push('09:00');
+  renderHoraires();
+}
+
+function supprimerHoraire(i) {
+  _horaires.splice(i, 1);
+  renderHoraires();
 }
 
 async function chargerPlanificateur() {
   try {
     const s = await fetch(`${API}/planificateur`).then(r => r.json());
-    document.getElementById('planif-actif').checked = s.actif;
-    document.getElementById('planif-heure').value = s.heure || '09:00';
-    togglePlanifHeure();
+    document.getElementById('planif-actif').checked = !!s.actif;
+    _horaires = (s.horaires && s.horaires.length) ? s.horaires : ['09:00'];
+    renderHoraires();
 
+    const jours = s.jours || ['lun','mar','mer','jeu','ven','sam','dim'];
+    document.querySelectorAll('.jour-btn').forEach(b => {
+      b.classList.toggle('active', jours.includes(b.dataset.jour));
+    });
+
+    document.getElementById('trig-nouvelles').checked = s.nouvelles_annonces !== false;
+    document.getElementById('trig-baisses').checked   = s.baisses_prix !== false;
+
+    togglePlanif();
+
+    // Badge sur l'onglet principal
     const badge = document.getElementById('planif-badge');
-    if (s.actif) {
+    if (s.actif && _horaires.length) {
       badge.style.display = 'block';
-      badge.textContent = 'Verification automatique activee a ' + (s.heure || '09:00') + ' tous les jours';
+      badge.textContent = 'Alertes automatiques : ' + _horaires.join(', ');
+    } else {
+      badge.style.display = 'none';
     }
   } catch {}
 }
 
 async function sauvegarderPlanificateur() {
-  const actif = document.getElementById('planif-actif').checked;
-  const heure = document.getElementById('planif-heure').value;
+  const jours = [...document.querySelectorAll('.jour-btn.active')].map(b => b.dataset.jour);
+  if (jours.length === 0) { showToast('Selectionnez au moins un jour.', false); return; }
+  const nouv = document.getElementById('trig-nouvelles').checked;
+  const bais = document.getElementById('trig-baisses').checked;
+  if (!nouv && !bais) { showToast('Selectionnez au moins un type d\'alerte.', false); return; }
+
+  const body = {
+    actif: document.getElementById('planif-actif').checked,
+    horaires: _horaires,
+    jours,
+    nouvelles_annonces: nouv,
+    baisses_prix: bais,
+  };
   try {
     await fetch(`${API}/planificateur`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ actif, heure })
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
     });
-    showToast(actif
-      ? `Verification automatique activee a ${heure} !`
-      : 'Verification automatique desactivee.'
-    );
+    showToast(body.actif ? 'Planning sauvegarde !' : 'Alertes automatiques desactivees.');
     chargerPlanificateur();
   } catch { showToast('Erreur de connexion.', false); }
 }
@@ -988,10 +1076,14 @@ const AIDE_CONTENU = {
   params: {
     titre: '&#9881; Parametres',
     items: [
-      { label: 'Console seulement', desc: 'Les resultats s\'affichent uniquement dans la fenetre noire. Aucune configuration necessaire.' },
-      { label: 'Telegram', desc: 'Vous recevez un message Telegram a chaque verification. Necessite de creer un bot via @BotFather et de renseigner le Token et le Chat ID.' },
-      { label: 'Email', desc: 'Vous recevez un email a chaque verification. Pour Gmail, utilisez un mot de passe d\'application (pas votre mot de passe habituel).' },
-      { label: 'Verification automatique', desc: 'Activez et choisissez une heure : Carveille lancera une recherche chaque jour a cette heure. La fenetre noire doit etre ouverte.' },
+      { label: 'Adresse Gmail', desc: 'Entrez votre adresse Gmail et un mot de passe d\'application (a creer dans les parametres de securite Google — ce n\'est pas votre mot de passe habituel).' },
+      { label: 'Email de reception', desc: 'Par defaut, les alertes sont envoyees a l\'adresse Gmail saisie. Vous pouvez indiquer une adresse differente si vous souhaitez recevoir les alertes ailleurs.' },
+      { label: 'Envoyer un email de test', desc: 'Permet de verifier que tout est bien configure. Cliquez dessus apres avoir sauvegarde vos identifiants : vous devriez recevoir un email dans la minute.' },
+      { label: 'Alertes automatiques', desc: 'Activez ce bouton pour que Carveille vous envoie un email automatiquement aux horaires choisis, sans avoir a cliquer sur "Chercher maintenant". La fenetre noire doit rester ouverte.' },
+      { label: 'Horaires', desc: 'Choisissez a quelle(s) heure(s) de la journee vous souhaitez recevoir les alertes. Vous pouvez en ajouter plusieurs (ex : 9h et 18h).' },
+      { label: 'Jours', desc: 'Selectionnez les jours de la semaine ou vous voulez recevoir des alertes. Les jours actifs apparaissent en bleu fonce.' },
+      { label: 'Nouvelles annonces', desc: 'Si coche, vous recevez un email quand de nouvelles annonces correspondent a vos recherches.' },
+      { label: 'Baisses de prix', desc: 'Si coche, vous recevez un email quand le prix d\'une annonce deja vue a baisse depuis la derniere verification.' },
     ]
   },
 };

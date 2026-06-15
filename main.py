@@ -76,13 +76,22 @@ def _save_config(data: dict):
 
 # ── Planificateur de runs automatiques ──────────────────────────────────────────
 def _load_schedule() -> dict:
+    defaults = {
+        "actif": False,
+        "horaires": ["09:00"],
+        "jours": ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"],
+        "nouvelles_annonces": True,
+        "baisses_prix": True,
+        "derniers_runs": [],   # liste de "YYYY-MM-DD_HH:MM" déjà traités
+    }
     if os.path.exists(_SCHEDULE_PATH):
         try:
             with open(_SCHEDULE_PATH, encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                defaults.update(data)
         except Exception:
             pass
-    return {"actif": False, "heure": "09:00", "dernier_run_date": None}
+    return defaults
 
 
 def _save_schedule(data: dict):
@@ -99,21 +108,24 @@ _run_status = {
 }
 
 
-def _do_run_with_status(source: str, day: int = 1):
+def _do_run_with_status(source: str, day: int = 1, notify_nouvelles: bool = True, notify_baisses: bool = True):
     """Lance un run et met a jour _run_status."""
     from src.runner import run
     with _run_lock:
         _run_status["en_cours"] = True
     try:
-        run(source=source, day=day)
+        run(source=source, day=day, notify_nouvelles=notify_nouvelles, notify_baisses=notify_baisses)
     finally:
         with _run_lock:
             _run_status["en_cours"] = False
         _run_status["dernier_run"] = datetime.now().isoformat()
 
 
+_JOURS_SEMAINE = {"lun": 0, "mar": 1, "mer": 2, "jeu": 3, "ven": 4, "sam": 5, "dim": 6}
+
+
 def _scheduler_thread():
-    """Tourne en arriere-plan et declenche les runs automatiques a l'heure prevue."""
+    """Tourne en arriere-plan et declenche les runs automatiques selon le planning."""
     while True:
         time.sleep(60)
         try:
@@ -121,20 +133,35 @@ def _scheduler_thread():
             if not sched.get("actif"):
                 continue
             now = datetime.now()
-            heure_str = sched.get("heure", "09:00")
-            h, m = map(int, heure_str.split(":"))
+            jours_actifs = {_JOURS_SEMAINE[j] for j in sched.get("jours", []) if j in _JOURS_SEMAINE}
+            if now.weekday() not in jours_actifs:
+                continue
             today = now.strftime("%Y-%m-%d")
-            already_ran = sched.get("dernier_run_date") == today
-            if now.hour == h and now.minute == m and not already_ran and not _run_status["en_cours"]:
-                print(f"[RUN] Run automatique declenche a {heure_str}")
-                sched["dernier_run_date"] = today
+            derniers_runs = sched.get("derniers_runs", [])
+            changed = False
+            for heure_str in sched.get("horaires", ["09:00"]):
+                try:
+                    h, m = map(int, heure_str.split(":"))
+                except ValueError:
+                    continue
+                slot_key = f"{today}_{heure_str}"
+                if now.hour == h and now.minute == m and slot_key not in derniers_runs and not _run_status["en_cours"]:
+                    print(f"[RUN] Run automatique a {heure_str}")
+                    derniers_runs.append(slot_key)
+                    changed = True
+                    t = threading.Thread(
+                        target=_do_run_with_status,
+                        kwargs={
+                            "source": "mobile.de",
+                            "notify_nouvelles": sched.get("nouvelles_annonces", True),
+                            "notify_baisses": sched.get("baisses_prix", True),
+                        },
+                        daemon=True,
+                    )
+                    t.start()
+            if changed:
+                sched["derniers_runs"] = derniers_runs[-100:]  # eviter une liste infinie
                 _save_schedule(sched)
-                t = threading.Thread(
-                    target=_do_run_with_status,
-                    kwargs={"source": "mobile.de"},
-                    daemon=True,
-                )
-                t.start()
         except Exception as e:
             print(f"[WARN] Erreur planificateur : {e}")
 
@@ -311,19 +338,30 @@ def cmd_ui():
                     self._send_json({"ok": False, "error": "Parametres invalides"}, 400)
 
             elif self.path == "/config":
-                allowed = {
-                    "CANAL_NOTIFICATION", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID",
-                    "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_DEST",
-                }
-                # Ignorer "***" (placeholder mot de passe non modifie)
+                allowed = {"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_DEST"}
                 to_save = {k: v for k, v in body.items() if k in allowed and v != "***"}
+                to_save["CANAL_NOTIFICATION"] = "email"   # toujours email
                 _save_config(to_save)
                 self._send_json({"ok": True})
 
+            elif self.path == "/test-email":
+                from src.notifier import envoyer_email
+                ok = envoyer_email(
+                    "Ceci est un email de test de Carveille.\n\nSi vous recevez ce message, la configuration est correcte !",
+                    sujet="Carveille — Test de configuration"
+                )
+                if ok:
+                    self._send_json({"ok": True})
+                else:
+                    self._send_json({"ok": False, "error": "Envoi echoue. Verifiez l'adresse email et le mot de passe d'application."}, 400)
+
             elif self.path == "/planificateur":
                 sched = _load_schedule()
-                sched["actif"] = bool(body.get("actif", False))
-                sched["heure"] = body.get("heure", "09:00")
+                sched["actif"]             = bool(body.get("actif", False))
+                sched["horaires"]          = body.get("horaires") or ["09:00"]
+                sched["jours"]             = body.get("jours") or list(_JOURS_SEMAINE.keys())
+                sched["nouvelles_annonces"] = bool(body.get("nouvelles_annonces", True))
+                sched["baisses_prix"]      = bool(body.get("baisses_prix", True))
                 _save_schedule(sched)
                 self._send_json({"ok": True})
 
