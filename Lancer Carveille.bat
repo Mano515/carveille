@@ -1,8 +1,9 @@
 @echo off
 
-:: Si Carveille est deja en cours, quitter silencieusement
+:: Si Carveille est deja en cours, ouvrir un onglet Chrome et quitter
 netstat -aon 2>nul | findstr ":8765 " >nul
 if not errorlevel 1 (
+    start chrome http://localhost:8765
     exit
 )
 
