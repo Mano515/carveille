@@ -39,7 +39,7 @@ Carveille scrape mobile.de selon vos critères, score chaque annonce, détecte l
 - **Notes personnelles** — ajoutez des notes sur chaque annonce (rappel, avis, négociation…)
 - **Liens sauvegardés** — enregistrez manuellement des liens d'annonces trouvées en naviguant
 - **Filtre des résultats** — filtrez par texte, prix max et km max directement dans l'interface
-- **Dossiers locaux** — un dossier Windows est créé automatiquement pour chaque client dans Documents/Carveille/Clients
+- **Dossiers locaux** — un dossier Windows est créé automatiquement pour chaque client dans le dossier `Clients/` à côté de Carveille
 - **Convertisseur AVIF → JPG** — convertit les images mobile.de en JPG partageables, directement dans le dossier du client
 - **Interface web** — tableau de bord local pour voir les résultats, marquer l'intérêt, configurer les alertes
 
@@ -362,7 +362,7 @@ carveille/
 ### Dossiers locaux
 
 ```
-Documents/Carveille/Clients/
+carveille/Clients/
 ├── Dupont Jean/
 │   ├── voitures/     ← images JPG des voitures
 │   └── documents/    ← PDFs, devis, contrats
@@ -409,5 +409,5 @@ Exit code 0 si tout passe, 1 si un test échoue (compatible CI).
 - **Encodage Windows** : si des caractères s'affichent mal dans la fenêtre noire, lancer `$env:PYTHONIOENCODING="utf-8"` avant la commande Python.
 - **mobile.de peut bloquer** : si le scraping retourne zéro résultat avec un message `__NEXT_DATA__ introuvable`, mobile.de a probablement bloqué la requête. Attendre quelques minutes et réessayer.
 - **Le fichier `.env`** est dans `.gitignore` et ne sera jamais envoyé sur GitHub.
-- **Dossier clients** : par défaut dans `Documents/Carveille/Clients/`. Modifiable dans l'onglet Outils → "Dossier de stockage".
+- **Dossier clients** : par défaut dans `carveille/Clients/`. Modifiable dans l'onglet Outils → "Dossier de stockage".
 - **Plusieurs clics sur le bat** : si Carveille est déjà lancé, un clic supplémentaire ouvre juste un nouvel onglet — aucune instance dupliquée n'est créée.

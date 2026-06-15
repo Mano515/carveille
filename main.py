@@ -82,7 +82,9 @@ def _save_config(data: dict):
 
 def _dossier_clients_root() -> pathlib.Path:
     cfg = _load_config()
-    path = cfg.get("DOSSIER_CLIENTS") or str(pathlib.Path.home() / "Documents" / "Carveille" / "Clients")
+    # Par défaut : dossier "Clients" à côté de main.py, quel que soit l'endroit où Carveille est installé
+    default = str(pathlib.Path(__file__).parent / "Clients")
+    path = cfg.get("DOSSIER_CLIENTS") or default
     return pathlib.Path(path)
 
 

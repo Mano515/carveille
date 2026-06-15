@@ -710,7 +710,7 @@ button.btn-loading { opacity: 0.6; cursor: wait; pointer-events: none; }
       </p>
       <label style="font-size:0.82rem;font-weight:600;color:#333">
         Chemin du dossier
-        <input type="text" id="dossier-clients-path" placeholder="Laisser vide = Documents/Carveille/Clients" style="margin-top:6px">
+        <input type="text" id="dossier-clients-path" placeholder="Laisser vide = dossier Clients/ à côté de Carveille" style="margin-top:6px">
       </label>
       <div style="display:flex;gap:10px;margin-top:12px;align-items:center;flex-wrap:wrap">
         <button class="btn-save" onclick="sauvegarderDossier()">Sauvegarder</button>
@@ -1828,7 +1828,7 @@ const AIDE_CONTENU = {
       {
         titre: 'Gérer un dossier client',
         items: [
-          { label: '+ Nouveau client', desc: 'Crée un dossier client avec nom, téléphone/email et notes libres. Un dossier Windows est automatiquement créé dans Documents/Carveille/Clients/[Nom du client]/ avec deux sous-dossiers : "voitures" et "documents".' },
+          { label: '+ Nouveau client', desc: 'Crée un dossier client avec nom, téléphone/email et notes libres. Un dossier Windows est automatiquement créé dans le dossier Clients/ à côté de Carveille, avec deux sous-dossiers : "voitures" et "documents".' },
           { label: '✏️ Modifier le client', desc: 'Modifie le nom, les coordonnées ou les notes d\'un client existant. Cliquez sur le bouton ✏️ en haut à droite de la carte du client.' },
           { label: '📂 Dossier', desc: 'Ouvre le dossier Windows du client directement dans l\'explorateur — pratique pour y déposer des photos ou des documents.' },
           { label: '⭐ Favoris', desc: 'Badge cliquable qui apparaît quand vous avez marqué des annonces 👍 pour ce client. Cliquez dessus pour voir toutes les annonces retenues, classées par score.' },
@@ -1928,14 +1928,14 @@ const AIDE_CONTENU = {
         titre: 'Convertisseur AVIF → JPG',
         items: [
           { label: 'Pourquoi convertir ?', desc: 'Les photos téléchargées depuis mobile.de sont au format AVIF. Ce format n\'est pas lisible par la plupart des applications (WhatsApp, email, Windows Photo…). La conversion les transforme en JPG standard, partageables facilement.' },
-          { label: 'Comment utiliser', desc: '1. Sélectionnez le client à qui appartiennent les images. 2. Glissez vos fichiers AVIF dans la zone (ou cliquez pour les sélectionner). 3. Cliquez "Convertir en JPG". Les fichiers JPG sont enregistrés automatiquement dans Documents/Carveille/Clients/[Nom]/voitures/.' },
+          { label: 'Comment utiliser', desc: '1. Sélectionnez le client à qui appartiennent les images. 2. Glissez vos fichiers AVIF dans la zone (ou cliquez pour les sélectionner). 3. Cliquez "Convertir en JPG". Les fichiers JPG sont enregistrés automatiquement dans Clients/[Nom]/voitures/ à côté de Carveille.' },
           { label: 'Sans client sélectionné', desc: 'Si aucun client n\'est choisi, les JPG sont enregistrés dans un dossier "Non classé" dans le dossier racine Carveille.' },
         ]
       },
       {
         titre: 'Dossier de stockage',
         items: [
-          { label: 'Emplacement par défaut', desc: 'Tous les dossiers clients sont créés dans Documents/Carveille/Clients/. Chaque client a son propre sous-dossier avec "voitures/" et "documents/".' },
+          { label: 'Emplacement par défaut', desc: 'Tous les dossiers clients sont créés dans le dossier Clients/ situé à côté de Carveille. Chaque client a son propre sous-dossier avec "voitures/" et "documents/".' },
           { label: 'Changer l\'emplacement', desc: 'Saisissez un nouveau chemin et cliquez "Sauvegarder". Utile si vous préférez stocker sur un disque externe ou un dossier réseau partagé. Les dossiers existants ne sont pas déplacés automatiquement.' },
           { label: 'Ouvrir dans l\'explorateur', desc: 'Ouvre le dossier racine Carveille directement dans l\'explorateur Windows pour accéder à tous les dossiers clients en un clic.' },
         ]
