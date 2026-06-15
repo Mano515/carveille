@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "db", "carveille.db")
 
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
 
 def get_conn() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
