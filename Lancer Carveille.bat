@@ -24,24 +24,29 @@ if errorlevel 1 (
 
 :: Creer l'environnement virtuel si necessaire (premiere utilisation)
 if not exist ".venv\Scripts\python.exe" (
-    echo  Premiere utilisation - Installation en cours...
-    echo  (Cela peut prendre 1 a 2 minutes, merci de patienter)
-    echo.
+    echo  Premiere utilisation - Creation de l'environnement Python...
     python -m venv .venv
     if errorlevel 1 (
         echo  [ERREUR] Impossible de creer l'environnement Python.
         pause
         exit /b 1
     )
-    .venv\Scripts\pip install -r requirements.txt --quiet
-    if errorlevel 1 (
-        echo  [ERREUR] Impossible d'installer les dependances.
-        pause
-        exit /b 1
-    )
-    echo  Installation terminee !
+    echo  Environnement cree.
     echo.
 )
+
+:: Installer / mettre a jour les dependances a chaque lancement
+:: (rapide si tout est deja installe, installe les nouveaux modules sinon)
+echo  Verification des modules Python...
+.venv\Scripts\pip install -r requirements.txt --quiet --disable-pip-version-check
+if errorlevel 1 (
+    echo  [ERREUR] Impossible d'installer les dependances.
+    echo  Verifiez votre connexion internet et relancez.
+    pause
+    exit /b 1
+)
+echo  Modules OK.
+echo.
 
 echo  Carveille demarre...
 echo  Votre navigateur va s'ouvrir automatiquement dans quelques secondes.

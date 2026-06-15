@@ -1602,47 +1602,66 @@ async function sauvegarderPlanificateur() {
 
 const AIDE_CONTENU = {
   voitures: {
-    titre: '&#128269; Mes recherches',
+    titre: '&#128100; Dossiers clients',
     items: [
-      { label: 'Bouton "Chercher maintenant"', desc: 'Lance une verification sur mobile.de pour toutes vos recherches. La fenetre noire doit rester ouverte pendant l\'operation (peut prendre quelques minutes).' },
-      { label: 'Statut en haut a droite', desc: 'Point vert = tout va bien, derniere verification affichee. Point orange clignotant = recherche en cours.' },
-      { label: 'Verification automatique', desc: 'Si vous l\'avez activee dans les Parametres, Carveille cherche automatiquement chaque jour a l\'heure choisie, sans que vous ayez a cliquer.' },
-      { label: 'Voir les resultats', desc: 'Affiche les annonces trouvees pour cette recherche. Cliquez dessus apres une verification pour voir ce qui a ete trouve.' },
+      { label: 'Chercher pour tous les clients', desc: 'Lance une vérification sur mobile.de pour toutes les recherches actives. La fenêtre noire doit rester ouverte pendant l\'opération (quelques minutes). Les résultats sont envoyés par email.' },
+      { label: 'Créer un dossier client', desc: 'Cliquez sur "+ Nouveau client" pour créer un dossier. Un dossier est automatiquement créé sur votre ordinateur dans Documents/Carveille/Clients.' },
+      { label: '📂 Dossier', desc: 'Ouvre directement le dossier de ce client dans l\'explorateur Windows. Vous y trouverez les sous-dossiers "voitures" et "documents" pour ranger les fichiers du client.' },
+      { label: '⭐ Favoris', desc: 'Affiche toutes les annonces que vous avez marquées 👍 pour ce client, classées par score. Pratique pour retrouver rapidement les voitures retenues.' },
+      { label: 'Résultats d\'une recherche', desc: 'Cliquez sur "Résultats" à côté d\'une recherche pour voir les annonces trouvées. Le nombre d\'annonces trouvées est affiché en bleu à côté du nom.' },
+      { label: '✏️ Modifier une recherche', desc: 'Modifie les critères d\'une recherche existante (budget, kilométrage, modèle…). Le formulaire se pré-remplit automatiquement.' },
+      { label: '🗑️ Supprimer une recherche', desc: 'Désactive la recherche. Elle ne sera plus incluse dans les vérifications. Les annonces déjà trouvées sont conservées.' },
+      { label: 'Recherches sans client', desc: 'Recherches non rattachées à un dossier client. Utilisez le menu déroulant "Rattacher à…" pour les associer au bon client.' },
+      { label: 'Dossiers archivés', desc: 'Clients archivés — plus visibles dans la liste principale mais conservés. Cliquez sur "Réactiver" pour les remettre actifs.' },
     ]
   },
   resultats: {
-    titre: '&#128196; Resultats',
+    titre: '&#128196; Résultats',
     items: [
-      { label: 'Le score (ex : 85/100)', desc: 'Note automatique calculee selon vos criteres. Plus c\'est eleve, mieux l\'annonce correspond.' },
-      { label: 'Couleur du score', desc: '<div class="aide-score-bar"><div class="fill" style="background:#2e7d32"></div> Vert (80+) : excellente annonce</div><div class="aide-score-bar"><div class="fill" style="background:#ef6c00"></div> Orange (60-79) : annonce correcte</div><div class="aide-score-bar"><div class="fill" style="background:#c62828"></div> Rouge (-60) : ne correspond pas bien</div>' },
-      { label: 'Baisse de prix', desc: 'Badge orange "Baisse -X EUR" : le prix a diminue depuis la derniere fois que cette annonce a ete vue. Le prix d\'origine est affiche barre.' },
-      { label: 'Nouvelle annonce', desc: 'Badge vert : cette annonce n\'existait pas lors de la verification precedente.' },
+      { label: 'Le score (ex : 85/100)', desc: 'Note automatique calculée selon vos critères. Plus c\'est élevé, mieux l\'annonce correspond à ce que vous cherchez.' },
+      { label: 'Couleur du score', desc: '<div class="aide-score-bar"><div class="fill" style="background:#2e7d32"></div> Vert (80+) : excellente annonce</div><div class="aide-score-bar"><div class="fill" style="background:#ef6c00"></div> Orange (60–79) : annonce correcte</div><div class="aide-score-bar"><div class="fill" style="background:#c62828"></div> Rouge (moins de 60) : ne correspond pas bien</div>' },
+      { label: 'Baisse de prix', desc: 'Badge orange "Baisse -X EUR" : le prix a baissé depuis la dernière vérification. Le prix d\'origine est affiché barré à côté.' },
+      { label: 'Nouvelle annonce', desc: 'Badge vert : cette annonce n\'existait pas lors de la vérification précédente.' },
       { label: 'Voir l\'annonce', desc: 'Ouvre la page de l\'annonce sur mobile.de dans un nouvel onglet.' },
-      { label: 'Traduire', desc: 'Ouvre l\'annonce traduite automatiquement en francais via DeepL.' },
-      { label: '&#128077; Interesse / &#128078; Pas interesse', desc: 'Interesse : met l\'annonce en evidence (bordure verte). Pas interesse : la masque (transparente). Rien n\'est supprime.' },
-      { label: 'Detail du score', desc: 'Affiche la note de chaque critere (prix, km, annee...) pour comprendre pourquoi l\'annonce a ce score.' },
+      { label: 'Traduire', desc: 'Ouvre l\'annonce traduite automatiquement en français via DeepL — utile pour les annonces en allemand.' },
+      { label: '👍 Intéressé / 👎 Pas intéressé', desc: '"Intéressé" met l\'annonce en évidence avec une bordure verte et l\'ajoute aux Favoris du client. "Pas intéressé" la masque. Rien n\'est supprimé définitivement.' },
+      { label: 'Détail du score', desc: 'Affiche la note obtenue pour chaque critère (prix, kilométrage, année, boîte, carburant, options) pour comprendre le score global.' },
     ]
   },
   form: {
     titre: '+ Nouvelle recherche',
     items: [
-      { label: 'Nom de la recherche', desc: 'Un nom pour vous reperer, ex : "BMW Serie 1 Auto" ou "Voiture papa".' },
-      { label: 'URL mobile.de (recommande)', desc: 'La methode la plus precise : faites votre recherche sur mobile.de avec tous vos filtres, copiez l\'adresse de la page et collez-la ici. Carveille utilisera exactement ces criteres.' },
-      { label: 'Budget strict', desc: 'Coche = toute annonce au-dessus du budget est ignoree. Non coche = une tolerance de 5% est accordee (ex : 21 000 EUR pour un budget de 20 000 EUR).' },
-      { label: 'Reglages avances (facultatif)', desc: 'Permet de changer l\'importance de chaque critere. Par defaut : Prix 30 pts, Kilometrage 25 pts, Annee 20 pts, Boite 10 pts, Carburant 10 pts, Options 5 pts.' },
+      { label: 'Client', desc: 'Associez la recherche à un dossier client. Vous pouvez aussi laisser "Sans client" et rattacher plus tard depuis l\'onglet Mes recherches.' },
+      { label: 'Nom de la recherche', desc: 'Un nom pour vous repérer, par exemple "BMW Série 1 Auto" ou "Voiture M. Dupont". Ce nom apparaît sur la carte du client.' },
+      { label: 'URL mobile.de (recommandé)', desc: 'La méthode la plus précise : faites votre recherche sur mobile.de avec tous vos filtres, copiez l\'adresse de la page de résultats et collez-la ici. Carveille utilisera exactement ces critères.' },
+      { label: 'Budget strict', desc: 'Coché = toute annonce au-dessus du budget est ignorée. Non coché = une tolérance de 5% est accordée (ex : 21 000 EUR pour un budget de 20 000 EUR).' },
+      { label: 'Modifier une recherche existante', desc: 'Cliquez sur ✏️ à côté d\'une recherche pour modifier ses critères. Le formulaire se pré-remplit. Cliquez sur "Enregistrer les modifications" pour sauvegarder.' },
+      { label: 'Réglages avancés (facultatif)', desc: 'Permet de changer l\'importance de chaque critère dans le score. Par défaut : Prix 30 pts, Kilométrage 25 pts, Année 20 pts, Boîte 10 pts, Carburant 10 pts, Options 5 pts.' },
+    ]
+  },
+  outils: {
+    titre: '&#128736; Outils',
+    items: [
+      { label: 'Convertisseur AVIF → JPG', desc: 'Les images téléchargées depuis mobile.de sont en format AVIF, difficile à partager par email ou WhatsApp. Sélectionnez un client, glissez vos fichiers AVIF dans la zone, cliquez "Convertir". Les JPG sont enregistrés directement dans le dossier "voitures" du client.' },
+      { label: 'Sélectionner un client (convertisseur)', desc: 'Choisissez le client à qui appartiennent les images. Les JPG seront enregistrés dans Documents/Carveille/Clients/[Nom du client]/voitures/. Si aucun client n\'est sélectionné, les fichiers vont dans un dossier "Non classé".' },
+      { label: 'Glisser-déposer', desc: 'Vous pouvez directement faire glisser vos fichiers AVIF depuis l\'explorateur Windows vers la zone de dépôt, sans avoir à les sélectionner un par un.' },
+      { label: 'Dossier de stockage', desc: 'Par défaut, tous les dossiers clients sont créés dans Documents/Carveille/Clients/. Vous pouvez changer cet emplacement si vous préférez un autre endroit (disque externe, dossier partagé…).' },
+      { label: 'Ouvrir dans l\'explorateur', desc: 'Ouvre le dossier racine Carveille directement dans l\'explorateur Windows, pour accéder à tous les dossiers clients en un clic.' },
     ]
   },
   params: {
-    titre: '&#9881; Parametres',
+    titre: '&#9881; Paramètres',
     items: [
-      { label: 'Adresse Gmail', desc: 'Entrez votre adresse Gmail et un mot de passe d\'application (a creer dans les parametres de securite Google — ce n\'est pas votre mot de passe habituel).' },
-      { label: 'Email de reception', desc: 'Par defaut, les alertes sont envoyees a l\'adresse Gmail saisie. Vous pouvez indiquer une adresse differente si vous souhaitez recevoir les alertes ailleurs.' },
-      { label: 'Envoyer un email de test', desc: 'Permet de verifier que tout est bien configure. Cliquez dessus apres avoir sauvegarde vos identifiants : vous devriez recevoir un email dans la minute.' },
-      { label: 'Alertes automatiques', desc: 'Activez ce bouton pour que Carveille vous envoie un email automatiquement aux horaires choisis, sans avoir a cliquer sur "Chercher maintenant". La fenetre noire doit rester ouverte.' },
-      { label: 'Horaires', desc: 'Choisissez a quelle(s) heure(s) de la journee vous souhaitez recevoir les alertes. Vous pouvez en ajouter plusieurs (ex : 9h et 18h).' },
-      { label: 'Jours', desc: 'Selectionnez les jours de la semaine ou vous voulez recevoir des alertes. Les jours actifs apparaissent en bleu fonce.' },
-      { label: 'Nouvelles annonces', desc: 'Si coche, vous recevez un email quand de nouvelles annonces correspondent a vos recherches.' },
-      { label: 'Baisses de prix', desc: 'Si coche, vous recevez un email quand le prix d\'une annonce deja vue a baisse depuis la derniere verification.' },
+      { label: 'Adresse Gmail', desc: 'Entrez votre adresse Gmail et un mot de passe d\'application (à créer dans les paramètres de sécurité Google — ce n\'est pas votre mot de passe habituel). Gmail → Compte → Sécurité → Mots de passe des applications.' },
+      { label: 'Email de réception', desc: 'Par défaut, les alertes sont envoyées à l\'adresse Gmail saisie. Indiquez une adresse différente si vous souhaitez les recevoir ailleurs.' },
+      { label: 'Envoyer un email de test', desc: 'Vérifie que la configuration email est correcte. Cliquez après avoir sauvegardé vos identifiants — vous devriez recevoir un email dans la minute.' },
+      { label: 'Alertes automatiques', desc: 'Activez pour que Carveille envoie les emails automatiquement aux horaires choisis, sans cliquer sur "Chercher". La fenêtre noire doit rester ouverte.' },
+      { label: 'Horaires', desc: 'Choisissez à quelle(s) heure(s) recevoir les alertes. Jusqu\'à 4 horaires par jour (ex : 9h00 et 18h00).' },
+      { label: 'Jours', desc: 'Sélectionnez les jours actifs. Les boutons en bleu foncé = jours sélectionnés. Exemple : L M M J V pour les jours de semaine uniquement.' },
+      { label: 'Nouvelles annonces', desc: 'Si coché, vous recevez un email dès que de nouvelles annonces correspondent à vos recherches.' },
+      { label: 'Baisses de prix', desc: 'Si coché, vous recevez un email quand le prix d\'une annonce déjà vue a baissé.' },
+      { label: 'Résumé du dimanche', desc: 'Envoie chaque dimanche un email récapitulatif : pour chaque client, nombre de nouvelles annonces de la semaine et total des favoris.' },
+      { label: 'Historique des vérifications', desc: 'Liste les dernières vérifications effectuées : date, heure, nombre d\'annonces trouvées et notifiées, durée. Utile pour confirmer que les alertes automatiques fonctionnent bien.' },
     ]
   },
 };

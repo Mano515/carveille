@@ -1,12 +1,16 @@
 """
 Tests automatisés Carveille — python test.py
 
-Vérifie les 5 comportements clés sans framework externe :
+Vérifie les comportements clés sans framework externe :
   1. Scoring — les annonces reçoivent les bons scores
   2. Filtres — budget strict, boite, carburant bloquent correctement
   3. Pénalités — champs manquants font baisser le score
-  4. Anti-doublon — une annonce déjà vue n'est pas recomptée comme nouvelle
-  5. Baisse de prix — détectée et signalée correctement
+  4. Sélection top annonces
+  5. Anti-doublon — une annonce déjà vue n'est pas recomptée comme nouvelle
+  6. Baisse de prix — détectée et signalée correctement
+  7. Clients — création, archivage, réactivation
+  8. Recherches — désactivation, rattachement à un client
+  9. Historique et résumé hebdomadaire
 """
 
 import os
@@ -22,7 +26,14 @@ import src.database as _db_module
 _db_module.DB_PATH = _db_test  # redirige toutes les fonctions BDD vers le fichier temp
 # ───────────────────────────────────────────────────────────────────────────────
 
-from src.database import init_db, insert_recherche, upsert_annonce, get_conn
+from src.database import (
+    init_db, insert_recherche, upsert_annonce, get_conn,
+    insert_client, get_client_by_id, get_clients,
+    archiver_client, reactiver_client,
+    desactiver_recherche, rattacher_recherche_client,
+    get_derniers_runs, save_run, get_historique_client,
+    get_recherches_sans_client, get_resume_hebdo,
+)
 from src.scoring import scorer_annonce, selectionner_top_annonces
 from src.dedup import filtrer_nouvelles_annonces
 
@@ -75,8 +86,8 @@ ANN_MAUVAISE_BOITE     = {**ANN_PARFAITE, "listing_id": "ann_003", "boite": "man
 ANN_MAUVAIS_CARBURANT  = {**ANN_PARFAITE, "listing_id": "ann_004", "carburant": "essence"}
 ANN_CHAMPS_MANQUANTS   = {**ANN_PARFAITE, "listing_id": "ann_005", "prix": None, "km": None, "boite": None}
 ANN_TROP_ANCIENNE      = {**ANN_PARFAITE, "listing_id": "ann_006", "annee": 2015, "date_immat": "2015-01"}
-ANN_PRIX_BAISSE        = {**ANN_PARFAITE, "listing_id": "ann_007", "prix": 17500}  # premier prix
-ANN_PRIX_BAISSE_APRES  = {**ANN_PRIX_BAISSE, "prix": 16000}                         # prix réduit
+ANN_PRIX_BAISSE        = {**ANN_PARFAITE, "listing_id": "ann_007", "prix": 17500}
+ANN_PRIX_BAISSE_APRES  = {**ANN_PRIX_BAISSE, "prix": 16000}
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -102,8 +113,7 @@ check("Budget strict : score = 0 si prix dépasse le budget",
 check("Budget strict : raison de rejet renseignée",
       res_strict["raison_rejet"] is not None)
 
-# Budget non strict : tolérance +5%
-res_souple = scorer_annonce({**ANN_PARFAITE, "prix": 20500}, RECHERCHE)  # 20500 / 20000 = +2.5%
+res_souple = scorer_annonce({**ANN_PARFAITE, "prix": 20500}, RECHERCHE)
 check("Budget non strict : légère tolérance autorisée (score partiel)",
       res_souple["detail"]["prix"]["score"] > 0)
 
@@ -122,8 +132,7 @@ res_old = scorer_annonce(ANN_TROP_ANCIENNE, RECHERCHE)
 check("Annee trop ancienne → score annee = 0", res_old["detail"]["annee"]["score"] == 0)
 check("Annee trop ancienne → raison de rejet renseignée", res_old["raison_rejet"] is not None)
 
-# Tolérance 1 an : annee_min - 1 donne 50%
-ann_limite = {**ANN_PARFAITE, "annee": 2017, "date_immat": "2017-06"}  # annee_min = 2018
+ann_limite = {**ANN_PARFAITE, "annee": 2017, "date_immat": "2017-06"}
 res_limite = scorer_annonce(ann_limite, RECHERCHE)
 expected = RECHERCHE["poids_annee"] * 0.5
 check("Année = min-1 → 50% du poids année",
@@ -141,7 +150,6 @@ check("Pénalité appliquée si champs manquants",
 check("Score global réduit par les pénalités",
       res_incomplet["score"] < res["score"])
 
-# Annonce avec tout manquant : pénalité plafonnée à PENALITE_MAX
 ann_vide = {**ANN_PARFAITE, "listing_id": "ann_vide",
             "prix": None, "km": None, "annee": None, "boite": None, "carburant": None}
 res_vide = scorer_annonce(ann_vide, RECHERCHE)
@@ -153,12 +161,6 @@ check("Pénalité plafonnée à 30 même si tout manque",
 print("\n[5] Sélection top annonces")
 # ════════════════════════════════════════════════════════════════════════════════
 
-annonces = [
-    {**scorer_annonce(ANN_PARFAITE, RECHERCHE), **ANN_PARFAITE, "search_id": "test"},
-    {**scorer_annonce(ANN_MAUVAISE_BOITE, RECHERCHE), **ANN_MAUVAISE_BOITE, "search_id": "test"},
-    {**scorer_annonce(ANN_TROP_ANCIENNE, RECHERCHE), **ANN_TROP_ANCIENNE, "search_id": "test"},
-]
-# Aplatir : scorer retourne {score, detail, raison_rejet}, on fusionne avec l'annonce
 annonces_scorees = []
 for ann in [ANN_PARFAITE, ANN_MAUVAISE_BOITE, ANN_TROP_ANCIENNE]:
     r = scorer_annonce(ann, RECHERCHE)
@@ -170,8 +172,7 @@ check("Top retourne au plus max_annonces résultats", len(top) <= RECHERCHE["max
 check("Top ne contient que des annonces au-dessus du seuil",
       all(a["score"] >= RECHERCHE["score_min_notification"] for a in top))
 if top:
-    check("Top trié par score décroissant",
-          top[0]["score"] >= top[-1]["score"])
+    check("Top trié par score décroissant", top[0]["score"] >= top[-1]["score"])
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -181,7 +182,6 @@ print("\n[6] Anti-doublon")
 init_db()
 insert_recherche(RECHERCHE)
 
-# Simuler un premier run : ann_001 est vue
 r = scorer_annonce(ANN_PARFAITE, RECHERCHE)
 upsert_annonce({
     **ANN_PARFAITE, "search_id": "test_bmw", "seen_id": "seen-001",
@@ -202,13 +202,11 @@ print("\n[7] Détection baisse de prix")
 # ════════════════════════════════════════════════════════════════════════════════
 
 r = scorer_annonce(ANN_PRIX_BAISSE, RECHERCHE)
-# Première insertion (prix 17500)
 upsert_annonce({
     **ANN_PRIX_BAISSE, "search_id": "test_bmw", "seen_id": "seen-007",
     "score": r["score"], "score_detail": "{}", "raison_rejet": None, "est_nouvelle": 1,
 })
 
-# Deuxième passage : même annonce, prix baissé à 16000
 r2 = scorer_annonce(ANN_PRIX_BAISSE_APRES, RECHERCHE)
 _, baisse_detectee = upsert_annonce({
     **ANN_PRIX_BAISSE_APRES, "search_id": "test_bmw", "seen_id": "",
@@ -217,7 +215,6 @@ _, baisse_detectee = upsert_annonce({
 
 check("Baisse de prix détectée", baisse_detectee)
 
-# Vérifier que le montant de baisse est correct en BDD
 conn = get_conn()
 row = conn.execute(
     "SELECT prix_initial, prix, baisse_prix FROM annonces_vues WHERE listing_id='ann_007'"
@@ -227,7 +224,6 @@ check("prix_initial conservé (premier prix jamais modifié)", row["prix_initial
 check("Montant baisse_prix correct (1500 EUR)", row["baisse_prix"] == 1500,
       f"obtenu : {row['baisse_prix']}")
 
-# Prix stable → pas de fausse détection
 _, pas_de_baisse = upsert_annonce({
     **ANN_PRIX_BAISSE_APRES, "search_id": "test_bmw", "seen_id": "",
     "score": r2["score"], "score_detail": "{}", "raison_rejet": None, "est_nouvelle": 0,
@@ -236,7 +232,103 @@ check("Prix stable → pas de fausse détection de baisse", not pas_de_baisse)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
-print("\n[8] Nettoyage + bilan")
+print("\n[8] Clients — création, archivage, réactivation")
+# ════════════════════════════════════════════════════════════════════════════════
+
+CLIENT_A = {"client_id": "cli_001", "nom": "Dupont Jean", "contact": "06 12 34 56 78", "notes": "Budget serré"}
+CLIENT_B = {"client_id": "cli_002", "nom": "Martin Paul", "contact": "", "notes": ""}
+
+insert_client(CLIENT_A)
+insert_client(CLIENT_B)
+
+c = get_client_by_id("cli_001")
+check("get_client_by_id retourne le bon client", c is not None and c["nom"] == "Dupont Jean")
+check("Client créé avec statut actif", c["statut"] == "actif")
+
+clients_actifs = get_clients("actif")
+noms = [c["nom"] for c in clients_actifs]
+check("get_clients retourne les deux clients actifs", "Dupont Jean" in noms and "Martin Paul" in noms)
+
+archiver_client("cli_001")
+c_archive = get_client_by_id("cli_001")
+check("archiver_client passe le client en archive", c_archive["statut"] == "archive")
+
+actifs_apres = get_clients("actif")
+check("Client archivé absent des actifs", not any(c["client_id"] == "cli_001" for c in actifs_apres))
+
+archives = get_clients("archive")
+check("Client archivé présent dans get_clients('archive')", any(c["client_id"] == "cli_001" for c in archives))
+
+reactiver_client("cli_001")
+c_reactif = get_client_by_id("cli_001")
+check("reactiver_client repasse le client en actif", c_reactif["statut"] == "actif")
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+print("\n[9] Recherches — désactivation et rattachement client")
+# ════════════════════════════════════════════════════════════════════════════════
+
+RECHERCHE_2 = {**RECHERCHE, "search_id": "test_peugeot", "nom_recherche": "Peugeot Test",
+               "client_id": None}
+insert_recherche(RECHERCHE_2)
+
+sans_client = get_recherches_sans_client()
+check("Recherche sans client_id apparaît dans get_recherches_sans_client",
+      any(r["search_id"] == "test_peugeot" for r in sans_client))
+
+rattacher_recherche_client("test_peugeot", "cli_002")
+sans_apres = get_recherches_sans_client()
+check("Après rattachement, recherche absente de sans_client",
+      not any(r["search_id"] == "test_peugeot" for r in sans_apres))
+
+clients_avec_recherches = get_clients("actif")
+martin = next((c for c in clients_avec_recherches if c["client_id"] == "cli_002"), None)
+check("Recherche rattachée visible dans get_clients pour Martin Paul",
+      martin is not None and any(r["search_id"] == "test_peugeot" for r in martin["recherches"]))
+
+desactiver_recherche("test_peugeot")
+conn = get_conn()
+row = conn.execute("SELECT statut FROM recherches WHERE search_id='test_peugeot'").fetchone()
+conn.close()
+check("desactiver_recherche passe la recherche en inactive", row["statut"] == "inactive")
+
+martin_apres = next((c for c in get_clients("actif") if c["client_id"] == "cli_002"), None)
+check("Recherche inactive absente des recherches actives du client",
+      martin_apres is not None and not any(r["search_id"] == "test_peugeot" for r in martin_apres["recherches"]))
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+print("\n[10] Historique runs et résumé hebdomadaire")
+# ════════════════════════════════════════════════════════════════════════════════
+
+import uuid
+from datetime import datetime, timezone
+
+save_run({
+    "run_id": str(uuid.uuid4()),
+    "started_at": datetime.now(timezone.utc).isoformat(),
+    "ended_at": datetime.now(timezone.utc).isoformat(),
+    "statut": "ok",
+    "nb_annonces_lues": 10,
+    "nb_annonces_nouvelles": 3,
+    "nb_annonces_notifiees": 2,
+})
+
+runs = get_derniers_runs(5)
+check("get_derniers_runs retourne au moins un run", len(runs) >= 1)
+check("Run enregistré avec le bon statut", runs[0]["statut"] == "ok")
+check("Run enregistré avec le bon nombre d'annonces lues", runs[0]["nb_annonces_lues"] == 10)
+
+resume = get_resume_hebdo()
+check("get_resume_hebdo retourne une liste", isinstance(resume, list))
+check("Résumé contient les clients actifs",
+      any(c["client_id"] == "cli_001" for c in resume))
+check("Résumé contient nb_annonces_semaine pour chaque client",
+      all("nb_annonces_semaine" in c for c in resume))
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+print("\n[11] Nettoyage + bilan")
 # ════════════════════════════════════════════════════════════════════════════════
 
 shutil.rmtree(_tmp_dir, ignore_errors=True)
