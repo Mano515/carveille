@@ -1131,6 +1131,7 @@ function switchTab(name) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'resultats') chargerTousResultats();
 }
 
 function scoreColor(score) {
@@ -1196,8 +1197,8 @@ function startPolling() {
         document.getElementById('run-info').textContent = 'Recherche terminee !';
         setTimeout(() => document.getElementById('run-info').textContent = '', 5000);
         chargerClients();
-        if (currentSearchId) voirResultats(currentSearchId, currentSearchNom);
-        showToast('Recherche terminee ! Consultez vos resultats.');
+        switchTab('resultats');
+        showToast('Recherche terminée ! Voici vos résultats.');
       }
     } catch {}
   }, 3000);
@@ -1727,6 +1728,29 @@ function toggleDetail(seenId) {
 let _resultatsData = [];
 let _resultatsSearchId = null;
 
+async function chargerTousResultats() {
+  const el = document.getElementById('resultats-content');
+  el.innerHTML = '<p style="text-align:center;padding:24px;color:#888">Chargement...</p>';
+  reinitialiserFiltres();
+  try {
+    _resultatsData = await fetch(`${API}/resultats-all`).then(r => r.json());
+    _resultatsSearchId = null;
+    if (!_resultatsData.length) {
+      document.getElementById('resultats-filtres-bar').style.display = 'none';
+      el.innerHTML = `<div class="empty-state">
+        <div class="icon">&#128270;</div>
+        <h3>Aucun résultat pour le moment</h3>
+        <p>Lancez une recherche depuis l'onglet "Mes recherches" en appuyant sur <strong>Chercher maintenant</strong>.</p>
+      </div>`;
+      return;
+    }
+    document.getElementById('resultats-filtres-bar').style.display = 'flex';
+    _afficherResultats('Tous les résultats');
+  } catch {
+    el.innerHTML = '<p style="color:#c62828;padding:16px">Erreur de chargement.</p>';
+  }
+}
+
 async function voirResultats(searchId, nom) {
   currentSearchId = searchId;
   currentSearchNom = nom;
@@ -1768,7 +1792,7 @@ function _afficherResultats(nom) {
     <span class="resultats-title">${nom2}</span>
     <span class="resultats-count">${filtered.length} / ${_resultatsData.length} annonce${_resultatsData.length > 1 ? 's' : ''}</span>
   </div>` + (filtered.length
-    ? filtered.map(a => renderAnnonce(a, _resultatsSearchId)).join('')
+    ? filtered.map(a => renderAnnonce(a, a.search_id, !_resultatsSearchId)).join('')
     : '<p style="color:#888;padding:16px;text-align:center">Aucune annonce ne correspond aux filtres.</p>');
 }
 

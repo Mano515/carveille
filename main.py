@@ -306,7 +306,7 @@ def cmd_ui():
     import http.server
     from src.database import (
         init_db, get_recherches_actives, insert_recherche, get_recherche_by_id,
-        get_derniers_resultats, marquer_interet,
+        get_derniers_resultats, get_tous_resultats, marquer_interet,
         insert_client, get_clients, get_client_by_id, archiver_client, reactiver_client, supprimer_client, client_nom_existe,
         ajouter_lien_client, get_liens_client, supprimer_lien_client,
         modifier_client, sauvegarder_note_annonce, get_autres_clients_pour_listing,
@@ -395,6 +395,11 @@ def cmd_ui():
                 self._send_json(get_derniers_runs(15))
             elif self.path == "/dossier-clients-root":
                 self._send_json({"path": str(_dossier_clients_root())})
+            elif self.path == "/resultats-all":
+                annonces = get_tous_resultats(100)
+                for a in annonces:
+                    a["autres_clients"] = get_autres_clients_pour_listing(a["listing_id"], a["search_id"])
+                self._send_json(annonces)
             elif self.path.startswith("/resultats/"):
                 search_id = self.path.split("/resultats/")[1]
                 annonces = get_derniers_resultats(search_id)

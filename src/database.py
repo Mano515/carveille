@@ -437,6 +437,19 @@ def get_autres_clients_pour_listing(listing_id: str, current_search_id: str) -> 
     return [r[0] for r in rows]
 
 
+def get_tous_resultats(limit: int = 100) -> list[dict]:
+    """Retourne les dernières annonces de toutes les recherches actives, avec le nom de la recherche."""
+    with get_conn() as conn:
+        rows = conn.execute("""
+            SELECT av.*, r.nom_recherche FROM annonces_vues av
+            JOIN recherches r ON av.search_id = r.search_id
+            WHERE r.statut = 'active' AND (av.interet IS NULL OR av.interet != 'non')
+            ORDER BY av.date_premiere_vue DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+    return [dict(r) for r in rows]
+
+
 def get_derniers_resultats(search_id: str, limit: int = 20) -> list[dict]:
     with get_conn() as conn:
         rows = conn.execute("""
