@@ -44,11 +44,11 @@ def _build_url_sans_make(recherche: dict, page: int = 1) -> str:
     parts.append(("sb", "doc"))
     parts.append(("vc", "Car"))
 
-    vendeur = (recherche.get("vendeur_filtre") or "indifferent").lower()
-    if vendeur == "pro":
-        parts.append(("seller", "dealer"))
-    elif vendeur == "particulier":
+    vendeur = (recherche.get("vendeur_filtre") or "pro").lower()
+    if vendeur == "particulier":
         parts.append(("seller", "private"))
+    else:
+        parts.append(("seller", "dealer"))  # pro par défaut
 
     if page > 1:
         parts.append(("pgn", page))
