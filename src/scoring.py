@@ -8,21 +8,40 @@ def _age_annonce(date_publication: str | None) -> str | None:
     try:
         pub = datetime.fromisoformat(date_publication.replace("Z", "+00:00"))
         age = datetime.now(timezone.utc) - pub
-        if age <= timedelta(hours=24):
-            return "24h"
-        if age <= timedelta(hours=48):
-            return "48h"
-        if age <= timedelta(days=7):
-            return "7j"
+        if age <= timedelta(hours=24):  return "24h"
+        if age <= timedelta(hours=48):  return "48h"
+        if age <= timedelta(days=7):    return "7j"
     except (ValueError, TypeError):
         pass
     return None
 
 
+def _score_km_absolu(km: float, p_km: float) -> float:
+    """Score basé sur la valeur brute du kilométrage, indépendant du km_max."""
+    if km <=  30_000: return p_km
+    if km <=  60_000: return round(p_km * 0.88, 1)
+    if km <= 100_000: return round(p_km * 0.73, 1)
+    if km <= 150_000: return round(p_km * 0.48, 1)
+    if km <= 200_000: return round(p_km * 0.22, 1)
+    return 0.0  # > 200 000 km → très usé
+
+
+def _score_annee_absolue(annee: int, p_annee: float) -> float:
+    """Score basé sur l'ancienneté réelle du véhicule."""
+    age = datetime.now().year - annee
+    if age <= 2:  return p_annee
+    if age <= 5:  return round(p_annee * 0.85, 1)
+    if age <= 8:  return round(p_annee * 0.65, 1)
+    if age <= 12: return round(p_annee * 0.40, 1)
+    return round(p_annee * 0.15, 1)  # > 12 ans, encore utilisable mais vieux
+
+
 def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     """
-    Score 0-100. Chaque critère a des paliers progressifs.
-    Les champs inconnus donnent un score partiel (pas 0).
+    Score 0-100.
+    Chaque critère a un score absolu (toujours actif) ET un score relatif
+    aux critères de la recherche. Le plus strict des deux s'applique.
+    Un champ inconnu est traité comme suspect, pas comme neutre.
     """
     p_prix      = recherche.get("poids_prix", 30)
     p_km        = recherche.get("poids_km", 25)
@@ -31,14 +50,14 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     p_carburant = recherche.get("poids_carburant", 10)
     p_options   = recherche.get("poids_options", 5)
 
-    budget_max   = recherche.get("budget_max")
+    budget_max    = recherche.get("budget_max")
     budget_strict = bool(recherche.get("budget_strict", False))
-    km_max       = recherche.get("km_max")
-    annee_min    = recherche.get("annee_min")
-    boite_r      = (recherche.get("boite") or "indifferent").lower()
-    carburant_r  = (recherche.get("carburant") or "indifferent").lower()
-    vendeur_r    = (recherche.get("vendeur_filtre") or "indifferent").lower()
-    options_r    = recherche.get("options_recherchees") or ""
+    km_max        = recherche.get("km_max")
+    annee_min     = recherche.get("annee_min")
+    boite_r       = (recherche.get("boite") or "indifferent").lower()
+    carburant_r   = (recherche.get("carburant") or "indifferent").lower()
+    vendeur_r     = (recherche.get("vendeur_filtre") or "indifferent").lower()
+    options_r     = recherche.get("options_recherchees") or ""
 
     prix        = annonce.get("prix")
     km          = annonce.get("km")
@@ -50,74 +69,118 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     options_a   = (annonce.get("options_texte") or "").lower()
     date_pub    = annonce.get("date_publication")
 
+    annee_actuelle = datetime.now().year
     detail = {}
     raison_rejet = None
 
     # ── Prix ──────────────────────────────────────────────────────────────────
-    # Plein score dans le budget ; bonus si vraiment pas cher ; 0 au-delà de +5%
     if prix is None:
-        score_prix = round(p_prix * 0.5, 1)   # inconnu : score neutre
+        # Prix inconnu : méfiance (on ne sait pas si c'est dans le budget)
+        score_prix = round(p_prix * 0.30, 1)
     elif budget_max is None:
         score_prix = p_prix
     elif budget_strict and prix > budget_max:
         score_prix = 0
-        raison_rejet = f"Prix {prix:.0f}EUR dépasse budget strict {budget_max:.0f}EUR"
+        raison_rejet = f"Prix {prix:.0f}€ dépasse budget strict {budget_max:.0f}€"
     elif prix > budget_max * 1.05:
         score_prix = 0
-        raison_rejet = f"Prix {prix:.0f}EUR dépasse budget {budget_max:.0f}EUR"
+        raison_rejet = f"Prix {prix:.0f}€ dépasse budget {budget_max:.0f}€"
     elif prix > budget_max:
-        score_prix = round(p_prix * 0.25, 1)  # légèrement au-dessus
-    elif prix <= budget_max * 0.70:
-        score_prix = p_prix                    # vraie bonne affaire
-    elif prix <= budget_max * 0.85:
-        score_prix = round(p_prix * 0.90, 1)  # bien en dessous
+        score_prix = round(p_prix * 0.20, 1)   # légèrement au-dessus
+    elif prix <= budget_max * 0.65:
+        score_prix = p_prix                      # très bonne affaire
+    elif prix <= budget_max * 0.80:
+        score_prix = round(p_prix * 0.90, 1)    # bien en dessous
+    elif prix <= budget_max * 0.92:
+        score_prix = round(p_prix * 0.78, 1)    # raisonnable
     else:
-        score_prix = round(p_prix * 0.75, 1)  # dans le budget
+        score_prix = round(p_prix * 0.65, 1)    # proche du budget max
     detail["prix"] = {"score": score_prix, "max": p_prix}
 
     # ── Kilométrage ────────────────────────────────────────────────────────────
-    # Plein score si bien en dessous ; score partiel jusqu'à +10% ; 0 au-delà
+    # Score absolu TOUJOURS actif : une voiture à 250 000 km reste risquée
+    # même si le critère km_max n'est pas renseigné.
     if km is None:
-        score_km = round(p_km * 0.5, 1)
-    elif km_max is None:
-        score_km = p_km
-    elif km > km_max * 1.10:
-        score_km = 0
-        if not raison_rejet:
-            raison_rejet = f"Kilométrage {km:.0f}km dépasse {km_max:.0f}km"
-    elif km > km_max:
-        score_km = round(p_km * 0.30, 1)   # légèrement au-dessus
-    elif km <= km_max * 0.50:
-        score_km = p_km                     # peu roulée
-    elif km <= km_max * 0.75:
-        score_km = round(p_km * 0.88, 1)   # raisonnable
+        # Km non renseigné : suspicion (info potentiellement cachée)
+        score_km = round(p_km * 0.20, 1)
+        detail["km"] = {"score": score_km, "max": p_km, "note": "non renseigné"}
     else:
-        score_km = round(p_km * 0.72, 1)   # dans les clous
-    detail["km"] = {"score": score_km, "max": p_km}
+        score_km_abs = _score_km_absolu(km, p_km)
+
+        if km > 200_000 and not raison_rejet:
+            raison_rejet = f"Kilométrage très élevé : {km:.0f} km"
+
+        if km_max is not None:
+            # Score relatif au critère
+            if km > km_max * 1.10:
+                score_km_rel = 0
+                if not raison_rejet:
+                    raison_rejet = f"Kilométrage {km:.0f} km dépasse {km_max:.0f} km"
+            elif km > km_max:
+                score_km_rel = round(p_km * 0.20, 1)
+            elif km <= km_max * 0.50:
+                score_km_rel = p_km
+            elif km <= km_max * 0.75:
+                score_km_rel = round(p_km * 0.88, 1)
+            else:
+                score_km_rel = round(p_km * 0.72, 1)
+            # Le plus strict des deux s'applique
+            score_km = min(score_km_abs, score_km_rel)
+        else:
+            score_km = score_km_abs
+        detail["km"] = {"score": score_km, "max": p_km}
 
     # ── Année ─────────────────────────────────────────────────────────────────
+    # Score absolu TOUJOURS actif : une voiture de 2008 est objectivement vieille.
     if annee is None:
-        score_annee = round(p_annee * 0.4, 1)
-    elif annee_min is None:
-        score_annee = p_annee
-    elif annee >= annee_min:
-        score_annee = p_annee
-    elif annee == annee_min - 1:
-        score_annee = round(p_annee * 0.60, 1)
-    elif annee == annee_min - 2:
         score_annee = round(p_annee * 0.25, 1)
+        detail["annee"] = {"score": score_annee, "max": p_annee, "note": "non renseignée"}
     else:
-        score_annee = 0
-        if not raison_rejet:
-            raison_rejet = f"Année {annee} trop ancienne (min {annee_min})"
-    detail["annee"] = {"score": score_annee, "max": p_annee}
+        # Bloquer les années manifestement fausses (scraping artifact)
+        if annee > annee_actuelle or annee < 1980:
+            score_annee = 0
+            detail["annee"] = {"score": 0, "max": p_annee, "note": "année invalide"}
+        else:
+            score_annee_abs = _score_annee_absolue(annee, p_annee)
+
+            if annee_min is not None:
+                if annee >= annee_min:
+                    score_annee_rel = p_annee
+                elif annee == annee_min - 1:
+                    score_annee_rel = round(p_annee * 0.60, 1)
+                elif annee == annee_min - 2:
+                    score_annee_rel = round(p_annee * 0.25, 1)
+                else:
+                    score_annee_rel = 0
+                    if not raison_rejet:
+                        raison_rejet = f"Année {annee} trop ancienne (min {annee_min})"
+                score_annee = min(score_annee_abs, score_annee_rel)
+            else:
+                score_annee = score_annee_abs
+            detail["annee"] = {"score": score_annee, "max": p_annee}
+
+    # ── Kilométrage annuel (km/an) ─────────────────────────────────────────────
+    # Si km et année connus, on peut estimer l'usage annuel.
+    # Un taxi fait 80 000 km/an, une voiture "normale" 12-15 000 km/an.
+    bonus_km_an = 0
+    if km is not None and annee is not None and annee < annee_actuelle and annee >= 1980:
+        age_ans = max(1, annee_actuelle - annee)
+        km_an = km / age_ans
+        if km_an <= 8_000:
+            bonus_km_an = 4    # très peu roulée (retraité, collection)
+        elif km_an <= 15_000:
+            bonus_km_an = 1    # usage normal
+        elif km_an <= 25_000:
+            bonus_km_an = -3   # usage élevé (commercial ?)
+        else:
+            bonus_km_an = -7   # usage intensif (taxi, livreur)
+    detail["km_an"] = {"score": bonus_km_an, "max": 4}
 
     # ── Boîte de vitesses ─────────────────────────────────────────────────────
-    # Inconnu → score partiel (on ne peut pas pénaliser ce qu'on ne sait pas)
     if boite_r in ("indifferent", ""):
         score_boite = p_boite
     elif not boite_a:
-        score_boite = round(p_boite * 0.40, 1)  # inconnu
+        score_boite = round(p_boite * 0.40, 1)  # inconnu : score partiel
     elif boite_a == boite_r:
         score_boite = p_boite
     else:
@@ -128,7 +191,7 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     if carburant_r in ("indifferent", ""):
         score_carburant = p_carburant
     elif not carburant_a:
-        score_carburant = round(p_carburant * 0.40, 1)  # inconnu
+        score_carburant = round(p_carburant * 0.40, 1)  # inconnu : score partiel
     elif carburant_a == carburant_r:
         score_carburant = p_carburant
     else:
@@ -141,7 +204,7 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     elif vendeur_a == vendeur_r:
         score_vendeur = 0
     else:
-        score_vendeur = -3   # léger malus si ne correspond pas
+        score_vendeur = -3
     detail["vendeur"] = {"score": score_vendeur, "max": 0}
 
     # ── Options / mots-clés ───────────────────────────────────────────────────
@@ -154,21 +217,25 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
         bonus_options = round(p_options * ratio, 1)
     detail["options"] = {"score": bonus_options, "max": p_options}
 
-    # ── Pénalité champs manquants ──────────────────────────────────────────────
-    # Réduite : -3 par champ, cap à -10. On ne punit que les champs critiques.
-    champs_critiques = [prix, km, annee]
-    nb_manquants = sum(1 for c in champs_critiques if c is None)
-    penalite = min(nb_manquants * 3, 10)
+    # ── Pénalité champs critiques manquants ────────────────────────────────────
+    # Prix, km et année manquants sont déjà pénalisés ci-dessus via leur score.
+    # On ajoute une pénalité supplémentaire légère pour souligner le manque d'info.
+    nb_manquants = sum([
+        1 if annonce.get("prix") is None else 0,
+        1 if annonce.get("km") is None else 0,
+        1 if annee is None else 0,
+    ])
+    penalite = min(nb_manquants * 4, 10)
     detail["penalite"] = {"score": -penalite, "max": 0}
 
     # ── Bonus fraîcheur ────────────────────────────────────────────────────────
-    age = _age_annonce(date_pub)
-    bonus_fraicheur = BONUS_FRAICHEUR.get(age, 0) if age else 0
-    detail["fraicheur"] = {"score": bonus_fraicheur, "max": 5, "age": age}
+    age_pub = _age_annonce(date_pub)
+    bonus_fraicheur = BONUS_FRAICHEUR.get(age_pub, 0) if age_pub else 0
+    detail["fraicheur"] = {"score": bonus_fraicheur, "max": 5, "age": age_pub}
 
     # ── Score final ────────────────────────────────────────────────────────────
     score_brut = (
-        score_prix + score_km + score_annee
+        score_prix + score_km + score_annee + bonus_km_an
         + score_boite + score_carburant + score_vendeur
         + bonus_options - penalite + bonus_fraicheur
     )
