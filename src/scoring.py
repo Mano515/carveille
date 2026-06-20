@@ -1,5 +1,5 @@
 from datetime import datetime, timezone, timedelta
-from config import BONUS_FRAICHEUR
+from config import BONUS_FRAICHEUR, ZONES_INONDATION
 
 
 def _age_annonce(date_publication: str | None) -> str | None:
@@ -51,6 +51,7 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     p_options   = recherche.get("poids_options", 5)
 
     budget_max    = recherche.get("budget_max")
+    prix_min      = recherche.get("prix_min")
     budget_strict = bool(recherche.get("budget_strict", False))
     km_max        = recherche.get("km_max")
     annee_min     = recherche.get("annee_min")
@@ -75,8 +76,14 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
 
     # ── Prix ──────────────────────────────────────────────────────────────────
     if prix is None:
-        # Prix inconnu : méfiance (on ne sait pas si c'est dans le budget)
         score_prix = round(p_prix * 0.30, 1)
+    elif prix_min is not None and prix < prix_min * 0.85:
+        # Prix anormalement bas : voiture suspecte (accident, inondation, vice caché)
+        score_prix = round(p_prix * 0.10, 1)
+        if not raison_rejet:
+            raison_rejet = f"Prix {prix:.0f}€ anormalement bas (min attendu {prix_min:.0f}€)"
+    elif prix_min is not None and prix < prix_min:
+        score_prix = round(p_prix * 0.45, 1)
     elif budget_max is None:
         score_prix = p_prix
     elif budget_strict and prix > budget_max:
@@ -177,22 +184,24 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     detail["km_an"] = {"score": bonus_km_an, "max": 4}
 
     # ── Boîte de vitesses ─────────────────────────────────────────────────────
-    if boite_r in ("indifferent", ""):
+    boite_list = [b.strip() for b in boite_r.split(",") if b.strip() and b.strip() != "indifferent"]
+    if not boite_list or boite_r in ("indifferent", ""):
         score_boite = p_boite
     elif not boite_a:
-        score_boite = round(p_boite * 0.40, 1)  # inconnu : score partiel
-    elif boite_a == boite_r:
+        score_boite = round(p_boite * 0.40, 1)
+    elif boite_a in boite_list:
         score_boite = p_boite
     else:
         score_boite = 0
     detail["boite"] = {"score": score_boite, "max": p_boite}
 
     # ── Carburant ─────────────────────────────────────────────────────────────
-    if carburant_r in ("indifferent", ""):
+    carburant_list = [c.strip() for c in carburant_r.split(",") if c.strip() and c.strip() != "indifferent"]
+    if not carburant_list or carburant_r in ("indifferent", ""):
         score_carburant = p_carburant
     elif not carburant_a:
         score_carburant = round(p_carburant * 0.40, 1)  # inconnu : score partiel
-    elif carburant_a == carburant_r:
+    elif carburant_a in carburant_list:
         score_carburant = p_carburant
     else:
         score_carburant = 0
@@ -233,11 +242,17 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     bonus_fraicheur = BONUS_FRAICHEUR.get(age_pub, 0) if age_pub else 0
     detail["fraicheur"] = {"score": bonus_fraicheur, "max": 5, "age": age_pub}
 
+    # ── Risque inondation ──────────────────────────────────────────────────────
+    ville_a = (annonce.get("ville") or "").lower().strip()
+    zone_inondable = bool(ville_a and any(z in ville_a for z in ZONES_INONDATION))
+    malus_inondation = -8 if zone_inondable else 0
+    detail["inondation"] = {"score": malus_inondation, "max": 0, "risque": zone_inondable}
+
     # ── Score final ────────────────────────────────────────────────────────────
     score_brut = (
         score_prix + score_km + score_annee + bonus_km_an
         + score_boite + score_carburant + score_vendeur
-        + bonus_options - penalite + bonus_fraicheur
+        + bonus_options - penalite + bonus_fraicheur + malus_inondation
     )
     score_final = max(0.0, min(100.0, score_brut))
 

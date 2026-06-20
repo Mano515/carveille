@@ -135,6 +135,7 @@ button:hover { opacity: .85; }
 .tag-fresh { background: #fff8e1; color: #e65100; }
 .tag-baisse { background: #fff3e0; color: #e65100; font-weight: 700; }
 .tag-rejet { background: #fce4ec; color: #c62828; }
+.tag-inondation { background: #e3f2fd; color: #0d47a1; border: 1px solid #90caf9; font-weight: 600; }
 
 .annonce-actions {
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
@@ -180,6 +181,20 @@ input:focus, select:focus, textarea:focus {
 }
 .checkbox-row { flex-direction: row; align-items: center; gap: 8px; margin-top: 8px; }
 .checkbox-row input { width: auto; }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.filter-chip { position: relative; }
+.filter-chip input[type="checkbox"] { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.filter-chip span { display: inline-flex; align-items: center; gap: 5px; padding: 6px 15px; border: 1.5px solid #ddd; border-radius: 20px; font-size: 0.84rem; font-weight: 500; cursor: pointer; background: #fff; transition: background 0.12s, border-color 0.12s, color 0.12s; user-select: none; }
+.filter-chip input:checked ~ span { background: #1a1a2e; border-color: #1a1a2e; color: #fff; }
+.filter-chip span:hover { border-color: #1a1a2e; background: #f0f0f8; }
+.filter-chip input:checked ~ span:hover { background: #2d2d50; }
+.multi-input-group { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.multi-input-row { display: flex; gap: 6px; align-items: center; }
+.multi-input-row input { flex: 1; margin: 0; }
+.btn-rm-input { flex-shrink: 0; width: 28px; height: 28px; border: 1px solid #ccc; border-radius: 6px; background: #f5f5f5; color: #888; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.btn-rm-input:hover { background: #fee; border-color: #e88; color: #c00; }
+.btn-add-input { align-self: flex-start; margin-top: 2px; background: none; border: 1px dashed #aaa; border-radius: 6px; color: #555; font-size: 0.82rem; padding: 4px 10px; cursor: pointer; }
+.btn-add-input:hover { border-color: #1a1a2e; color: #1a1a2e; background: #f5f5fa; }
 details { border: 1px solid #eee; border-radius: 10px; padding: 12px 16px; }
 details summary { cursor: pointer; font-size: 0.85rem; color: #666; font-weight: 500; list-style: none; }
 details summary::before { content: '▶ '; font-size: 0.7rem; }
@@ -534,6 +549,7 @@ html[data-theme="dark"] .tag-new { background: #14401a; color: #4ade80; }
 html[data-theme="dark"] .tag-fresh { background: #3d1f00; color: #fb923c; }
 html[data-theme="dark"] .tag-baisse { background: #3d1f00; color: #fb923c; }
 html[data-theme="dark"] .tag-rejet { background: #3d0a0a; color: #f87171; }
+html[data-theme="dark"] .tag-inondation { background: #0a1f3d; color: #60a5fa; border-color: #1e40af; }
 html[data-theme="dark"] .tag-source { background: #2d1e50; color: #a78bfa; }
 html[data-theme="dark"] .rech-count { background: #1e2545; color: #5c9ef7; }
 
@@ -763,52 +779,67 @@ html[data-theme="dark"] .search-criteria { color: #5c6494; }
 
         <label>
           Marque
-          <input type="text" name="marque" placeholder="BMW, Peugeot, Audi...">
+          <input type="text" name="marque" id="form-marque" list="list-marque"
+                 placeholder="BMW, Peugeot, BYD..." autocomplete="off"
+                 oninput="mettreAJourModeles(this.value)">
+          <datalist id="list-marque"></datalist>
         </label>
         <label>
           Modele
-          <input type="text" name="modele" placeholder="Serie 1, 308, A3...">
+          <div class="multi-input-group" id="modele-group">
+            <div class="multi-input-row">
+              <input type="text" name="modele" list="list-modele" placeholder="Serie 1, 308..." autocomplete="off">
+              <button type="button" class="btn-rm-input" onclick="rmInput(this,'modele-group')" title="Supprimer">×</button>
+            </div>
+          </div>
+          <button type="button" class="btn-add-input" onclick="addInput('modele-group','modele','list-modele','Serie 1, 308...')">+ Ajouter un modèle</button>
+          <datalist id="list-modele"></datalist>
         </label>
 
         <label>
-          Budget maximum (EUR)
-          <input type="number" name="budget_max" placeholder="20000" min="1000">
+          Prix minimum (EUR)
+          <input type="number" name="prix_min" placeholder="5000" min="0">
         </label>
+        <label>
+          Prix maximum (EUR)
+          <input type="number" name="budget_max" placeholder="20000" min="0">
+        </label>
+
         <label>
           Kilometrage maximum
           <input type="number" name="km_max" placeholder="100000" min="0">
         </label>
-
         <label>
           Annee minimum
           <input type="number" name="annee_min" placeholder="2018" min="2000" max="2025">
         </label>
         <label>
-          Boite de vitesses
-          <select name="boite">
-            <option value="indifferent">Peu importe</option>
-            <option value="auto">Automatique</option>
-            <option value="manuelle">Manuelle</option>
-          </select>
+          Couleur souhaitee
+          <div class="multi-input-group" id="couleur-group">
+            <div class="multi-input-row">
+              <input type="text" name="couleur" placeholder="Blanc, Noir, Gris...">
+              <button type="button" class="btn-rm-input" onclick="rmInput(this,'couleur-group')" title="Supprimer">×</button>
+            </div>
+          </div>
+          <button type="button" class="btn-add-input" onclick="addInput('couleur-group','couleur','','Blanc, Noir...')">+ Ajouter une couleur</button>
         </label>
 
-        <label>
-          Carburant
-          <select name="carburant">
-            <option value="indifferent">Peu importe</option>
-            <option value="diesel">Diesel</option>
-            <option value="essence">Essence</option>
-            <option value="hybride">Hybride</option>
-            <option value="electrique">Electrique</option>
-          </select>
+        <label class="full">
+          Boite de vitesses
+          <div class="filter-chips">
+            <label class="filter-chip"><input type="checkbox" name="boite" value="auto"><span>⚙️ Automatique</span></label>
+            <label class="filter-chip"><input type="checkbox" name="boite" value="manuelle"><span>🕹️ Manuelle</span></label>
+          </div>
         </label>
-        <label>
-          Type de vendeur
-          <select name="vendeur_filtre">
-            <option value="indifferent">Peu importe</option>
-            <option value="pro">Professionnel uniquement</option>
-            <option value="particulier">Particulier uniquement</option>
-          </select>
+
+        <label class="full">
+          Carburant
+          <div class="filter-chips">
+            <label class="filter-chip"><input type="checkbox" name="carburant" value="diesel"><span>🛢️ Diesel</span></label>
+            <label class="filter-chip"><input type="checkbox" name="carburant" value="essence"><span>⛽ Essence</span></label>
+            <label class="filter-chip"><input type="checkbox" name="carburant" value="hybride"><span>🔋 Hybride</span></label>
+            <label class="filter-chip"><input type="checkbox" name="carburant" value="electrique"><span>⚡ Électrique</span></label>
+          </div>
         </label>
 
         <label class="full">
@@ -1072,6 +1103,91 @@ html[data-theme="dark"] .search-criteria { color: #5c6494; }
 <!-- ═══════════════════════════════ SCRIPTS ═══════════════════════════════════ -->
 <script>
 const API = 'http://localhost:8765';
+
+// ── Marques & Modèles ──
+const MAKES = [
+  // Europe
+  "Alfa Romeo","Audi","BMW","Citroen","Dacia","DS","Fiat","Ford","Honda","Hyundai",
+  "Jaguar","Jeep","Kia","Land Rover","Lexus","Mazda","Mercedes-Benz","Mini",
+  "Mitsubishi","Nissan","Opel","Peugeot","Porsche","Renault","SEAT","Skoda",
+  "Subaru","Suzuki","Tesla","Toyota","Volkswagen","Volvo",
+  // Marques chinoises
+  "BYD","Chery","CUPRA","DFSK","Dongfeng","GWM","Haval","JAC","Lynk & Co",
+  "MG","NIO","Omoda","Polestar","SAIC","Smart","Seres","Wey","Xpeng","Zeekr",
+];
+const MODELS_BY_MARQUE = {
+  "BMW": ["Série 1","Série 2","Série 3","Série 4","Série 5","Série 6","Série 7","X1","X2","X3","X4","X5","X6","X7","Z4","M3","M5"],
+  "Peugeot": ["208","2008","308","3008","508","5008"],
+  "Mercedes-Benz": ["Classe A","Classe C","Classe E","GLA","GLC","GLE"],
+  "Volkswagen": ["Golf","Polo","Passat","Tiguan"],
+  "Audi": ["A3","A4","A5","A6","Q3","Q5","Q7"],
+  "Renault": ["Clio","Megane","Kadjar","Captur","Zoe","Arkana"],
+  "Jeep": ["Renegade","Compass","Cherokee","Grand Cherokee","Wrangler","Avenger"],
+  "Toyota": ["Yaris","Corolla","Camry","RAV4","C-HR","Prius","Aygo"],
+  "Ford": ["Fiesta","Focus","Puma","Kuga","Mustang","Explorer"],
+  "Kia": ["Picanto","Rio","Ceed","Sportage","Sorento","EV6","Niro"],
+  "Hyundai": ["i20","i30","Tucson","Santa Fe","Kona","Ioniq 5","Ioniq 6"],
+  "Volvo": ["XC40","XC60","XC90","V40","V60","V90","S60","S90"],
+  "MG": ["MG3","MG4","MG5","MG ZS","MG HS","MG One"],
+  "BYD": ["Atto 3","Han","Tang","Seal","Dolphin","Seagull"],
+};
+
+function initMarqueSelect() {
+  const dl = document.getElementById('list-marque');
+  MAKES.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    dl.appendChild(opt);
+  });
+}
+
+function mettreAJourModeles(marque) {
+  const dl = document.getElementById('list-modele');
+  dl.innerHTML = '';
+  (MODELS_BY_MARQUE[marque] || []).forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    dl.appendChild(opt);
+  });
+}
+
+function _syncRmButtons(groupId) {
+  const rows = document.querySelectorAll(`#${groupId} .multi-input-row`);
+  rows.forEach(row => {
+    const btn = row.querySelector('.btn-rm-input');
+    if (btn) btn.style.visibility = rows.length > 1 ? 'visible' : 'hidden';
+  });
+}
+
+function addInput(groupId, name, listId, placeholder) {
+  const group = document.getElementById(groupId);
+  const row = document.createElement('div');
+  row.className = 'multi-input-row';
+  row.innerHTML = `<input type="text" name="${name}" ${listId ? `list="${listId}"` : ''} placeholder="${placeholder}" autocomplete="off">
+    <button type="button" class="btn-rm-input" onclick="rmInput(this,'${groupId}')" title="Supprimer">×</button>`;
+  group.appendChild(row);
+  _syncRmButtons(groupId);
+  row.querySelector('input').focus();
+}
+
+function rmInput(btn, groupId) {
+  btn.closest('.multi-input-row').remove();
+  _syncRmButtons(groupId);
+}
+
+function setMultiInput(groupId, name, listId, placeholder, values) {
+  const group = document.getElementById(groupId);
+  group.innerHTML = '';
+  const vals = values.length ? values : [''];
+  vals.forEach(v => {
+    const row = document.createElement('div');
+    row.className = 'multi-input-row';
+    row.innerHTML = `<input type="text" name="${name}" ${listId ? `list="${listId}"` : ''} placeholder="${placeholder}" autocomplete="off" value="${v}">
+      <button type="button" class="btn-rm-input" onclick="rmInput(this,'${groupId}')" title="Supprimer">×</button>`;
+    group.appendChild(row);
+  });
+  _syncRmButtons(groupId);
+}
 
 // ── Mode sombre ──
 function toggleTheme() {
@@ -1445,17 +1561,29 @@ async function editerRecherche(searchId) {
     document.getElementById('form-submit-btn').textContent = 'Enregistrer les modifications';
 
     // Pré-remplir tous les champs
-    const set = (name, val) => { const el = form.elements[name]; if (el) el.value = val ?? ''; };
+    const set = (name, val) => { const el = form.elements[name]; if (el && !el.length) el.value = val ?? ''; };
     set('client_id', r.client_id || '');
     set('nom_recherche', r.nom_recherche || '');
+    // Marque + modèles multiples
+    mettreAJourModeles(r.marque || '');
     set('marque', r.marque || '');
-    set('modele', r.modele || '');
+    const modeleVals = (r.modele || '').split(',').map(s => s.trim()).filter(Boolean);
+    setMultiInput('modele-group', 'modele', 'list-modele', 'Serie 1, 308...', modeleVals);
+    set('prix_min', r.prix_min || '');
     set('budget_max', r.budget_max || '');
     set('km_max', r.km_max || '');
     set('annee_min', r.annee_min || '');
-    set('boite', r.boite || 'indifferent');
-    set('carburant', r.carburant || 'indifferent');
-    set('vendeur_filtre', r.vendeur_filtre || 'indifferent');
+    // Couleurs multiples
+    const couleurVals = (r.couleur || '').split(',').map(s => s.trim()).filter(Boolean);
+    setMultiInput('couleur-group', 'couleur', '', 'Blanc, Noir...', couleurVals);
+    // Chips boite
+    const boiteVals = (r.boite && r.boite !== 'indifferent') ? r.boite.split(',').map(s => s.trim()) : [];
+    form.querySelectorAll('input[name="boite"]').forEach(cb => { cb.checked = boiteVals.includes(cb.value); });
+    // Chips carburant
+    const carburantVals = (r.carburant && r.carburant !== 'indifferent')
+      ? r.carburant.split(',').map(s => s.trim())
+      : [];
+    form.querySelectorAll('input[name="carburant"]').forEach(cb => { cb.checked = carburantVals.includes(cb.value); });
     set('options_recherchees', r.options_recherchees || '');
     set('mobile_de_url', r.mobile_de_url || '');
     set('score_min_notification', r.score_min_notification ?? 60);
@@ -1638,6 +1766,7 @@ function renderBreakdown(detailJson) {
     { key:'options',    label:'Options' },
     { key:'penalite',   label:'Penalite' },
     { key:'fraicheur',  label:'Fraicheur' },
+    { key:'inondation', label:'Zone inondable' },
   ];
   return defs.map(({ key, label }) => {
     const item = d[key];
@@ -1680,6 +1809,9 @@ function renderAnnonce(a, searchId, historique = false) {
     ? `<span class="tag tag-source">&#128269; ${a.nom_recherche}</span>` : '';
   const doublonBadge = (a.autres_clients && a.autres_clients.length)
     ? `<span class="badge-doublon">⚠️ Vu aussi pour : ${a.autres_clients.join(', ')}</span>` : '';
+  let zoneInondable = false;
+  try { zoneInondable = JSON.parse(a.score_detail || '{}')?.inondation?.risque === true; } catch {}
+  const inondationBadge = zoneInondable ? '<span class="tag tag-inondation">🌊 Zone inondable</span>' : '';
 
   return `<div class="${classes}" id="card-${a.seen_id}" data-prix="${a.prix||0}" data-km="${a.km||0}" data-titre="${(a.titre||'').toLowerCase()}">
     <div class="annonce-top">
@@ -1696,6 +1828,7 @@ function renderAnnonce(a, searchId, historique = false) {
       ${a.boite ? `<span class="tag">${a.boite.charAt(0).toUpperCase()+a.boite.slice(1)}</span>` : ''}
       ${a.carburant ? `<span class="tag">${a.carburant.charAt(0).toUpperCase()+a.carburant.slice(1)}</span>` : ''}
       ${a.ville ? `<span class="tag">&#128205; ${a.ville}</span>` : ''}
+      ${inondationBadge}
       ${a.vendeur_type ? `<span class="tag">${a.vendeur_type === 'pro' ? 'Professionnel' : 'Particulier'}</span>` : ''}
       ${a.est_nouvelle ? '<span class="tag tag-new">Nouvelle annonce</span>' : ''}
       ${ageBadge(a.date_publication)}
@@ -1879,9 +2012,17 @@ async function soumettreRecherche(e) {
   const form = e.target;
   const fd = new FormData(form);
   const body = {};
-  fd.forEach((v, k) => { body[k] = v === '' ? null : v; });
+  fd.forEach((v, k) => { if (!['carburant','boite','modele','couleur'].includes(k)) body[k] = v === '' ? null : v; });
   body.budget_strict = fd.has('budget_strict');
-  ['budget_max','km_max','annee_min','poids_prix','poids_km','poids_annee',
+  const carburants = fd.getAll('carburant');
+  body.carburant = carburants.length > 0 ? carburants.join(',') : 'indifferent';
+  const boites = fd.getAll('boite');
+  body.boite = boites.length > 0 ? boites.join(',') : 'indifferent';
+  const modeles = fd.getAll('modele').map(v => v.trim()).filter(Boolean);
+  body.modele = modeles.length > 0 ? modeles.join(',') : null;
+  const couleurs = fd.getAll('couleur').map(v => v.trim()).filter(Boolean);
+  body.couleur = couleurs.length > 0 ? couleurs.join(',') : null;
+  ['prix_min','budget_max','km_max','annee_min','poids_prix','poids_km','poids_annee',
    'poids_boite','poids_carburant','poids_options','score_min_notification','max_annonces']
     .forEach(k => { if (body[k]) body[k] = parseFloat(body[k]); });
 
@@ -2411,6 +2552,9 @@ function _chargerSelectConvertisseur() {
 // ── Init ───────────────────────────────────────────────────────────────────────
 
 (async function init() {
+  initMarqueSelect();
+  _syncRmButtons('modele-group');
+  _syncRmButtons('couleur-group');
   await Promise.all([
     chargerClients(),
     updateStatus(),

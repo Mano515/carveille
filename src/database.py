@@ -117,6 +117,8 @@ def init_db():
         for sql in [
             "ALTER TABLE recherches ADD COLUMN client_id TEXT REFERENCES clients(client_id)",
             "ALTER TABLE annonces_vues ADD COLUMN note TEXT",
+            "ALTER TABLE recherches ADD COLUMN couleur TEXT",
+            "ALTER TABLE recherches ADD COLUMN prix_min REAL",
         ]:
             try:
                 conn.execute(sql)
@@ -303,14 +305,14 @@ def insert_recherche(data: dict):
             INSERT OR REPLACE INTO recherches (
                 search_id, nom_recherche, statut, marque, modele,
                 budget_max, budget_strict, km_max, annee_min,
-                boite, carburant, vendeur_filtre, options_recherchees, mobile_de_url,
+                prix_min, boite, carburant, couleur, vendeur_filtre, options_recherchees, mobile_de_url,
                 poids_prix, poids_km, poids_annee, poids_boite, poids_carburant, poids_options,
                 penalite_infos_manquantes, score_min_notification, max_annonces,
                 client_id, created_at, updated_at
             ) VALUES (
                 :search_id, :nom_recherche, :statut, :marque, :modele,
                 :budget_max, :budget_strict, :km_max, :annee_min,
-                :boite, :carburant, :vendeur_filtre, :options_recherchees, :mobile_de_url,
+                :prix_min, :boite, :carburant, :couleur, :vendeur_filtre, :options_recherchees, :mobile_de_url,
                 :poids_prix, :poids_km, :poids_annee, :poids_boite, :poids_carburant, :poids_options,
                 :penalite_infos_manquantes, :score_min_notification, :max_annonces,
                 :client_id, :created_at, :updated_at

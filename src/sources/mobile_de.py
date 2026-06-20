@@ -37,8 +37,12 @@ def _build_url_sans_make(recherche: dict, page: int = 1) -> str:
 
     parts.append(("od", "down"))
 
-    if recherche.get("budget_max"):
-        parts.append(("p", f":{int(recherche['budget_max'])}"))
+    prix_min = recherche.get("prix_min")
+    prix_max = recherche.get("budget_max")
+    if prix_min or prix_max:
+        p_min = int(prix_min) if prix_min else ""
+        p_max = int(prix_max) if prix_max else ""
+        parts.append(("p", f"{p_min}:{p_max}"))
 
     parts.append(("s", "Car"))
     parts.append(("sb", "doc"))
@@ -916,61 +920,94 @@ def charger(recherche: dict, max_pages: int = 3) -> list:
     _session["_recherche_courante"] = recherche
 
     # Déterminer l'URL de base
-    filtre_ui_applique = False
     if recherche.get("mobile_de_url"):
-        base_url = recherche["mobile_de_url"]
+        toutes = _scraper_url(driver, recherche["mobile_de_url"], max_pages)
     else:
         marque = recherche.get("marque", "")
-        modele = recherche.get("modele", "")
-        initial_url = _build_url(recherche, page=1)
+        modeles_raw = recherche.get("modele", "") or ""
+        modeles = [m.strip() for m in modeles_raw.split(",") if m.strip()]
 
-        if marque:
-            # Naviguer vers la page de recherche sans make/model, puis ouvrir les filtres
-            # pour laisser mobile.de générer lui-même l'URL correcte avec make/model.
-            driver.get(initial_url)
-            # Accepter le GDPR si la bannière réapparaît sur suchen.mobile.de
-            time.sleep(1.5)
-            _accepter_cookies_gdpr(driver)
-            # Attendre que le SRP soit chargé (bouton filtres visible)
-            try:
-                from selenium.webdriver.support.ui import WebDriverWait
-                from selenium.webdriver.support import expected_conditions as EC
-                from selenium.webdriver.common.by import By
-                WebDriverWait(driver, 15).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="more-filters-button"]'))
-                )
-            except Exception:
-                pass
-            time.sleep(2.0)
-            filtered_url = _appliquer_filtre_make_model(driver, marque, modele)
-            if filtered_url:
-                base_url = filtered_url
-                filtre_ui_applique = True
-            else:
-                base_url = initial_url
-        else:
-            base_url = initial_url
+        if not modeles:
+            modeles = [""]  # pas de filtre modèle
 
+        toutes_ids: set = set()
+        toutes: list = []
+
+        for modele in modeles:
+            if len(modeles) > 1:
+                print(f"  [WEB] Passage modèle : {modele or '(tous)'}")
+            annonces = _scraper_avec_filtre(driver, recherche, marque, modele, max_pages)
+            for a in annonces:
+                lid = a.get("listing_id")
+                if lid not in toutes_ids:
+                    toutes_ids.add(lid)
+                    toutes.append(a)
+
+    print(f"  [WEB] Total final : {len(toutes)} annonces")
+    return toutes
+
+
+def _scraper_url(driver, base_url: str, max_pages: int) -> list:
+    """Scrape une URL directe (mobile_de_url fourni manuellement), sans filtre UI."""
     print(f"  [WEB] Scraping : {base_url[:80]}...")
-
     annonces_p1, nb_total = _scrape_page(base_url)
     if not annonces_p1:
         print("  [WEB] Total scrape : 0 annonces")
         return []
-
     print(f"  [WEB] Page 1 : {len(annonces_p1)} annonces ({nb_total} au total)")
     toutes = list(annonces_p1)
-
     page_num = 2
     while len(toutes) < nb_total and page_num <= max_pages:
-        if "pgn=" in base_url:
-            url_page = re.sub(r"pgn=\d+", f"pgn={page_num}", base_url)
-        elif "pageNumber=" in base_url:
-            url_page = re.sub(r"pageNumber=\d+", f"pageNumber={page_num}", base_url)
-        else:
-            sep = "&" if "?" in base_url else "?"
-            url_page = f"{base_url}{sep}pgn={page_num}"
+        url_page = _url_page(base_url, page_num)
+        time.sleep(random.uniform(2.0, 3.5))
+        annonces, _ = _scrape_page(url_page)
+        if not annonces:
+            break
+        toutes.extend(annonces)
+        print(f"  [WEB] Page {page_num} : {len(annonces)} annonces")
+        page_num += 1
+    return toutes
 
+
+def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_pages: int) -> list:
+    """Scrape mobile.de pour une combinaison marque/modèle unique."""
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.common.by import By
+
+    initial_url = _build_url(recherche, page=1)
+    filtre_ui_applique = False
+
+    if marque:
+        driver.get(initial_url)
+        time.sleep(1.5)
+        _accepter_cookies_gdpr(driver)
+        try:
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="more-filters-button"]'))
+            )
+        except Exception:
+            pass
+        time.sleep(2.0)
+        filtered_url = _appliquer_filtre_make_model(driver, marque, modele)
+        if filtered_url:
+            base_url = filtered_url
+            filtre_ui_applique = True
+        else:
+            base_url = initial_url
+    else:
+        base_url = initial_url
+
+    print(f"  [WEB] Scraping : {base_url[:80]}...")
+    annonces_p1, nb_total = _scrape_page(base_url)
+    if not annonces_p1:
+        print("  [WEB] 0 annonces")
+        return []
+    print(f"  [WEB] Page 1 : {len(annonces_p1)} annonces ({nb_total} au total)")
+    toutes = list(annonces_p1)
+    page_num = 2
+    while len(toutes) < nb_total and page_num <= max_pages:
+        url_page = _url_page(base_url, page_num)
         time.sleep(random.uniform(2.0, 3.5))
         annonces, _ = _scrape_page(url_page)
         if not annonces:
@@ -979,13 +1016,11 @@ def charger(recherche: dict, max_pages: int = 3) -> list:
         print(f"  [WEB] Page {page_num} : {len(annonces)} annonces")
         page_num += 1
 
-    print(f"  [WEB] Total scrape : {len(toutes)} annonces (avant filtre marque/modèle)")
+    print(f"  [WEB] Total scrape : {len(toutes)} annonces (avant filtre client)")
 
-    # Filtre côté client par marque (sanity check sur le titre) — uniquement quand le
-    # filtre UI n'a pas pu être appliqué. Quand filtre_ui_applique=True, l'URL ms= gère
-    # déjà la marque et le modèle côté serveur, pas besoin de refilter.
-    marque_lower = (recherche.get("marque") or "").strip().lower()
-    modele_lower = (recherche.get("modele") or "").strip().lower()
+    # Filtre côté client uniquement si le filtre UI n'a pas pu s'appliquer
+    marque_lower = marque.strip().lower()
+    modele_lower = modele.strip().lower()
     if not filtre_ui_applique and (marque_lower or modele_lower):
         avant = len(toutes)
         def _correspond(ann: dict) -> bool:
@@ -996,7 +1031,15 @@ def charger(recherche: dict, max_pages: int = 3) -> list:
                 return False
             return True
         toutes = [a for a in toutes if _correspond(a)]
-        print(f"  [WEB] Après filtre marque/modèle (client) : {len(toutes)} annonces (sur {avant})")
+        print(f"  [WEB] Après filtre client : {len(toutes)} annonces (sur {avant})")
 
-    print(f"  [WEB] Total final : {len(toutes)} annonces")
     return toutes
+
+
+def _url_page(base_url: str, page_num: int) -> str:
+    if "pgn=" in base_url:
+        return re.sub(r"pgn=\d+", f"pgn={page_num}", base_url)
+    if "pageNumber=" in base_url:
+        return re.sub(r"pageNumber=\d+", f"pageNumber={page_num}", base_url)
+    sep = "&" if "?" in base_url else "?"
+    return f"{base_url}{sep}pgn={page_num}"

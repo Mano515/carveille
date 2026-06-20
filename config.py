@@ -27,6 +27,55 @@ BONUS_FRAICHEUR = {
     "7j": 1,
 }
 
+# Villes/zones à risque d'inondation en Allemagne
+# Source : historique des crues majeures (Ahr 2021, Elbe 2002/2013, Rhin, Danube...)
+ZONES_INONDATION = {
+    # Vallée de l'Ahr (catastrophe 2021)
+    "ahrweiler", "neuenahr", "altenahr", "dernau", "rech", "mayschoss", "mayschoß",
+    "sinzig", "schuld", "insul", "antweiler",
+    # Vallée du Rhin
+    "koblenz", "köln", "cologne", "bonn", "düsseldorf", "dusseldorf",
+    "duisburg", "mannheim", "worms", "mainz", "karlsruhe", "wiesbaden",
+    "wesel", "dormagen", "leverkusen", "neuss", "andernach", "bingen",
+    "bad honnef", "königswinter", "konigswinter", "remagen",
+    # Vallée de l'Elbe
+    "dresden", "magdeburg", "wittenberg", "schönebeck", "schonebeck",
+    "tangermünde", "tangermunde", "havelberg", "wittenberge", "pirna",
+    "meissen", "meißen", "riesa", "torgau",
+    # Moselle
+    "trier", "cochem", "bernkastel", "zell", "traben-trarbach", "bullay",
+    # Oder
+    "frankfurt (oder)", "eisenhüttenstadt", "eisenhuttenstadt", "küstrin", "kustrin",
+    # Danube (Donau)
+    "passau", "deggendorf", "straubing", "regensburg", "ingolstadt",
+    "neuburg", "kelheim", "donauwörth", "donauworth",
+    # Inn (crue 2013/2016)
+    "simbach", "rosenheim", "mühldorf", "muhldorf", "braunau",
+    # Néckar
+    "heidelberg", "heilbronn", "ladenburg", "eberbach",
+    # Main
+    "würzburg", "wurzburg", "aschaffenburg", "miltenberg",
+    # Weser
+    "hameln", "minden", "nienburg", "rinteln",
+    # Saale
+    "merseburg", "naumburg", "weißenfels", "weissenfels",
+    # Lippe / Ruhr
+    "lünen", "lunen", "hamm", "herne",
+    # Pays-Bas — vallée de la Maas (Meuse)
+    "venlo", "roermond", "maastricht", "oss", "megen", "ravenstein",
+    "boxmeer", "grave", "cuijk", "gennep",
+    # Pays-Bas — vallée du Rhin / Waal
+    "nijmegen", "arnhem", "tiel", "zaltbommel", "gorinchem", "woudrichem",
+    "geldermalsen", "rhenen", "wageningen", "bemmel",
+    # Pays-Bas — vallée de l'IJssel
+    "zutphen", "deventer", "zwolle", "kampen", "hattem", "doesburg",
+    # Pays-Bas — delta / zones basses
+    "dordrecht", "middelburg", "vlissingen", "goes", "terneuzen",
+    "sliedrecht", "alblasserdam", "kinderdijk",
+    # Pays-Bas — 's-Hertogenbosch et environs (inondations 1995, 2011)
+    "'s-hertogenbosch", "den bosch", "heusden", "vught",
+}
+
 # Mapping marques → codes mobile.de
 MAKES_MOBILE_DE = {
     "BMW": "BMW",
