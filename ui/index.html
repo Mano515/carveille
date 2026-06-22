@@ -147,30 +147,29 @@ button:hover { opacity: .88; }
 
 .annonce-card {
   border: 1px solid var(--c-border); border-radius: var(--radius-lg);
-  padding: 0; margin-bottom: 12px; overflow: hidden;
+  padding: 0; margin-bottom: 14px; overflow: hidden;
   transition: border-color .2s, box-shadow .2s; background: var(--c-surface);
 }
-.annonce-card:hover { box-shadow: var(--shadow); border-color: var(--c-border-strong); }
-.annonce-card.interet-non { opacity: 0.3; }
-.annonce-card.interet-oui { border-color: #4ade80; border-width: 2px; }
-.annonce-card.baisse-prix { border-color: #fb923c; }
-.annonce-inner { padding: 16px 18px; }
+.annonce-card:hover { box-shadow: var(--shadow); }
+.annonce-card.interet-non { opacity: 0.25; }
+.annonce-card.interet-oui { border-color: #4ade80; border-left: 3px solid #4ade80; }
+.annonce-card.baisse-prix { border-left: 3px solid #fb923c; }
+.annonce-inner { padding: 18px 20px 14px; }
 
 .annonce-top {
-  display: flex; justify-content: space-between; align-items: flex-start;
-  gap: 12px; margin-bottom: 10px;
+  display: flex; align-items: flex-start; gap: 16px;
 }
 .annonce-thumb {
-  width: 120px; height: 80px; object-fit: cover; border-radius: 6px;
-  flex-shrink: 0; cursor: pointer; border: 2px solid transparent;
-  transition: border-color .15s, transform .15s;
+  width: 150px; height: 100px; object-fit: cover; border-radius: var(--radius-sm);
+  flex-shrink: 0; cursor: pointer; border: 1px solid var(--c-border);
+  transition: opacity .15s, transform .15s;
 }
-.annonce-thumb:hover { border-color: var(--c-accent); transform: scale(1.03); }
+.annonce-thumb:hover { opacity: .9; transform: scale(1.02); }
 .annonce-thumb-wrap { position: relative; flex-shrink: 0; }
 .thumb-count {
-  position: absolute; bottom: 4px; right: 4px;
-  background: rgba(0,0,0,.55); color: #fff;
-  font-size: 0.68rem; padding: 1px 5px; border-radius: 4px; pointer-events: none;
+  position: absolute; bottom: 5px; right: 5px;
+  background: rgba(0,0,0,.6); color: #fff;
+  font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; pointer-events: none; letter-spacing: .3px;
 }
 
 /* ── Galerie modale ─────────────────────────────── */
@@ -204,19 +203,37 @@ button:hover { opacity: .88; }
   position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
   color: rgba(255,255,255,.7); font-size: 0.85rem;
 }
-.annonce-titre { font-weight: 600; font-size: 0.92rem; color: var(--c-text); line-height: 1.45; letter-spacing: -.15px; }
+.annonce-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.annonce-titre { font-weight: 600; font-size: 0.95rem; color: var(--c-text); line-height: 1.4; letter-spacing: -.2px; }
+.annonce-specs {
+  display: flex; flex-wrap: wrap; gap: 0; align-items: center;
+  font-size: 0.8rem; color: var(--c-text-muted); line-height: 1.6;
+}
+.annonce-specs .sep { margin: 0 6px; color: var(--c-border); }
+.annonce-prix {
+  font-size: 1.05rem; font-weight: 700; color: var(--c-text);
+  letter-spacing: -.3px; margin-top: 2px;
+}
+.annonce-prix .prix-baisse { color: #c2410c; font-size: 0.78rem; font-weight: 500; margin-left: 6px; }
+.annonce-prix .prix-barre { text-decoration: line-through; color: var(--c-text-subtle); font-size: 0.78rem; font-weight: 400; margin-left: 6px; }
+
 .score-badge {
-  font-size: 1.1rem; font-weight: 800; white-space: nowrap; flex-shrink: 0;
-  min-width: 52px; height: 52px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--c-bg); border: 2px solid var(--c-border); font-size: 0.9rem;
+  flex-shrink: 0; min-width: 44px; height: 44px; border-radius: 10px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--c-bg); border: 1px solid var(--c-border);
+  font-size: 1rem; font-weight: 800; line-height: 1; gap: 1px;
+}
+.score-badge .score-label-sm { font-size: 0.55rem; font-weight: 500; color: var(--c-text-subtle); text-transform: uppercase; letter-spacing: .5px; }
+
+.annonce-badges {
+  display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px;
 }
 .annonce-tags {
-  display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 12px;
+  display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 0;
 }
 .tag {
   background: var(--c-bg); padding: 3px 9px; border-radius: 20px;
-  font-size: 0.75rem; color: var(--c-text-muted); border: 1px solid var(--c-border);
+  font-size: 0.72rem; color: var(--c-text-muted); border: 1px solid var(--c-border);
   white-space: nowrap;
 }
 .tag-new { background: var(--c-success-light); color: #15803d; font-weight: 600; border-color: #bbf7d0; }
@@ -227,11 +244,11 @@ button:hover { opacity: .88; }
 
 .annonce-actions {
   display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
-  padding: 12px 18px; background: var(--c-bg); border-top: 1px solid var(--c-border);
+  padding: 10px 20px; border-top: 1px solid var(--c-border);
 }
 .btn-annonce {
   background: var(--c-accent); color: white;
-  padding: 7px 14px; font-size: 0.82rem; border-radius: var(--radius-sm);
+  padding: 6px 14px; font-size: 0.8rem; border-radius: var(--radius-sm);
   text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
   font-weight: 600; transition: opacity .15s; white-space: nowrap;
 }
@@ -256,6 +273,7 @@ button:hover { opacity: .88; }
 .btn-non.active { background: var(--c-danger); color: white; border-color: var(--c-danger); }
 .btn-non.active:hover { background: #b91c1c; opacity: 1; }
 .btn-photos { background: #f1f5f9; color: #475569; border-color: var(--c-border); }
+.btn-note { background: var(--c-bg); color: var(--c-text-muted); border-color: var(--c-border); }
 .btn-photos:hover { background: #e2e8f0; border-color: #94a3b8; color: #1e293b; opacity: 1; }
 .btn-detail { background: var(--c-bg); color: var(--c-text-muted); border-color: var(--c-border); }
 .btn-translate {
@@ -266,7 +284,7 @@ button:hover { opacity: .88; }
 }
 .btn-translate:hover { background: #dbeafe; opacity: 1; }
 
-.score-breakdown { display: none; margin-top: 12px; }
+.score-breakdown { display: none; padding: 10px 20px 14px; border-top: 1px solid var(--c-border); background: var(--c-bg); }
 .score-breakdown.open { display: block; }
 .score-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; margin-bottom: 6px; }
 .score-label { width: 90px; color: var(--c-text-muted); flex-shrink: 0; font-size: 0.75rem; }
@@ -475,10 +493,10 @@ details > * + * { margin-top: 12px; }
 .badge-doublon { display:inline-block; background:#fff7ed; color: var(--c-warning); border:1px solid #fed7aa; border-radius:6px; font-size:0.72rem; padding:2px 7px; margin-left:6px; font-weight:500; }
 
 /* ── Note annonce ── */
-.note-annonce { margin-top:8px; }
-.note-annonce textarea { width:100%; box-sizing:border-box; border:1px solid var(--c-border); border-radius: var(--radius-sm); padding:7px 10px; font-size:0.8rem; resize:vertical; min-height:52px; font-family:inherit; background: var(--c-surface); color: var(--c-text); }
-.note-annonce textarea:focus { outline:none; border-color: var(--c-accent); }
-.note-save-btn { margin-top:5px; font-size:0.78rem; }
+.note-annonce { padding: 10px 20px 12px; border-top: 1px solid var(--c-border); background: var(--c-bg); }
+.note-annonce textarea { width:100%; box-sizing:border-box; border:1px solid var(--c-border); border-radius: var(--radius-sm); padding:8px 10px; font-size:0.8rem; resize:vertical; min-height:56px; font-family:inherit; background: var(--c-surface); color: var(--c-text); }
+.note-annonce textarea:focus { outline:none; border-color: var(--c-accent); box-shadow: 0 0 0 3px var(--c-accent-light); }
+.note-save-btn { margin-top:6px; font-size:0.75rem; }
 
 /* ── Filtre résultats ── */
 .resultats-filtres { display:flex; gap:8px; flex-wrap:wrap; padding:10px 0 4px; border-bottom:1px solid var(--c-border); margin-bottom:10px; }
@@ -2033,11 +2051,12 @@ function renderAnnonce(a, searchId, historique = false) {
     baisse ? 'baisse-prix' : '',
   ].filter(Boolean).join(' ');
 
-  const prixStr  = a.prix ? Math.round(a.prix).toLocaleString('fr') + ' EUR' : 'Prix non renseigne';
+  const prixStr   = a.prix ? Math.round(a.prix).toLocaleString('fr') + ' €' : 'Prix non renseigné';
   const prixBarre = (baisse && a.prix_initial)
-    ? `<span class="prix-barre">${Math.round(a.prix_initial).toLocaleString('fr')} EUR</span>` : '';
-  const anneeStr = a.date_immat || (a.annee ? String(a.annee) : 'Annee inconnue');
-  const kmStr    = a.km ? Math.round(a.km).toLocaleString('fr') + ' km' : '';
+    ? `<span class="prix-barre">${Math.round(a.prix_initial).toLocaleString('fr')} €</span>` : '';
+  const prixBaisseStr = baisse ? `<span class="prix-baisse">↓ -${Math.round(a.baisse_prix).toLocaleString('fr')} €</span>` : '';
+  const anneeStr  = a.date_immat || (a.annee ? String(a.annee) : '');
+  const kmStr     = a.km ? Math.round(a.km).toLocaleString('fr') + ' km' : '';
   const breakdown = renderBreakdown(a.score_detail || '');
   const translateUrl = a.url
     ? `https://www.deepl.com/translator#de/fr/${encodeURIComponent(a.url)}` : null;
@@ -2046,57 +2065,74 @@ function renderAnnonce(a, searchId, historique = false) {
   const sourceBadge = historique && a.nom_recherche
     ? `<span class="tag tag-source">&#128269; ${a.nom_recherche}</span>` : '';
   const doublonBadge = (a.autres_clients && a.autres_clients.length)
-    ? `<span class="badge-doublon">⚠️ Vu aussi pour : ${a.autres_clients.join(', ')}</span>` : '';
+    ? `<span class="badge-doublon">⚠ Vu aussi : ${a.autres_clients.join(', ')}</span>` : '';
   let zoneInondable = false;
   try { zoneInondable = JSON.parse(a.score_detail || '{}')?.inondation?.risque === true; } catch {}
-  const inondationBadge = zoneInondable ? '<span class="tag tag-inondation">🌊 Zone inondable</span>' : '';
 
   const thumbUrls = a.images_urls ? a.images_urls.split('\n').filter(Boolean) : (a.image_url ? [a.image_url] : []);
   const thumbHtml = thumbUrls.length
     ? `<div class="annonce-thumb-wrap" onclick="_galerieOpen(${JSON.stringify(thumbUrls)},0)">
         <img class="annonce-thumb" src="${thumbUrls[0]}" alt="" loading="lazy" onerror="this.closest('.annonce-thumb-wrap').style.display='none'">
-        ${thumbUrls.length > 1 ? `<span class="thumb-count">&#128247; ${thumbUrls.length}</span>` : ''}
+        ${thumbUrls.length > 1 ? `<span class="thumb-count">+${thumbUrls.length - 1}</span>` : ''}
        </div>` : '';
 
-  return `<div class="${classes}" id="card-${a.seen_id}" data-prix="${a.prix||0}" data-km="${a.km||0}" data-titre="${(a.titre||'').toLowerCase()}">
-    <div class="annonce-top">
-      ${thumbHtml}
-      <div style="flex:1;min-width:0">
-        <div class="annonce-titre">${a.titre || 'Annonce sans titre'}${doublonBadge}</div>
-      </div>
-      <div class="score-badge" style="color:${color}">${score}/100</div>
-    </div>
+  // Ligne de specs inline (séparateurs · )
+  const specs = [
+    anneeStr,
+    kmStr,
+    a.carburant ? a.carburant.charAt(0).toUpperCase()+a.carburant.slice(1) : '',
+    a.boite     ? a.boite.charAt(0).toUpperCase()+a.boite.slice(1) : '',
+    a.ville     ? '📍 ' + a.ville : '',
+    a.vendeur_type === 'pro' ? 'Pro' : (a.vendeur_type === 'particulier' ? 'Particulier' : ''),
+  ].filter(Boolean);
+  const specsHtml = specs.map((s, i) =>
+    i === 0 ? s : `<span class="sep">·</span>${s}`
+  ).join('');
 
-    <div class="annonce-tags">
-      ${sourceBadge}
-      <span class="tag">&#128182; ${prixStr}${prixBarre}</span>
-      ${baisse ? `<span class="tag tag-baisse">&#8595; Baisse -${Math.round(a.baisse_prix)} EUR</span>` : ''}
-      ${kmStr ? `<span class="tag">&#128739; ${kmStr}</span>` : ''}
-      <span class="tag">&#128197; ${anneeStr}</span>
-      ${a.boite ? `<span class="tag">${a.boite.charAt(0).toUpperCase()+a.boite.slice(1)}</span>` : ''}
-      ${a.carburant ? `<span class="tag">${a.carburant.charAt(0).toUpperCase()+a.carburant.slice(1)}</span>` : ''}
-      ${a.ville ? `<span class="tag">&#128205; ${a.ville}</span>` : ''}
-      ${inondationBadge}
-      ${a.vendeur_type ? `<span class="tag">${a.vendeur_type === 'pro' ? 'Professionnel' : 'Particulier'}</span>` : ''}
-      ${a.est_nouvelle ? '<span class="tag tag-new">Nouvelle annonce</span>' : ''}
-      ${ageBadge(a.date_publication)}
-      ${a.raison_rejet ? `<span class="tag tag-rejet">&#9888; ${a.raison_rejet}</span>` : ''}
+  // Badges de statut (seulement les alertes)
+  const statusBadges = [
+    sourceBadge,
+    a.est_nouvelle ? '<span class="tag tag-new">Nouvelle</span>' : '',
+    ageBadge(a.date_publication),
+    baisse        ? `<span class="tag tag-baisse">↓ Baisse de prix</span>` : '',
+    zoneInondable ? '<span class="tag tag-inondation">🌊 Zone inondable</span>' : '',
+    a.raison_rejet ? `<span class="tag tag-rejet">⚠ ${a.raison_rejet}</span>` : '',
+  ].filter(Boolean).join('');
+
+  const hasNote = a.note && a.note.trim();
+
+  return `<div class="${classes}" id="card-${a.seen_id}" data-prix="${a.prix||0}" data-km="${a.km||0}" data-titre="${(a.titre||'').toLowerCase()}">
+    <div class="annonce-inner">
+      <div class="annonce-top">
+        ${thumbHtml}
+        <div class="annonce-body">
+          <div class="annonce-titre">${a.titre || 'Annonce sans titre'}${doublonBadge}</div>
+          ${specsHtml ? `<div class="annonce-specs">${specsHtml}</div>` : ''}
+          <div class="annonce-prix">${prixStr}${prixBarre}${prixBaisseStr}</div>
+          ${statusBadges ? `<div class="annonce-tags">${statusBadges}</div>` : ''}
+        </div>
+        <div class="score-badge" style="color:${color}">
+          ${score}
+          <span class="score-label-sm">/100</span>
+        </div>
+      </div>
     </div>
 
     <div class="annonce-actions">
-      ${a.url ? `<a class="btn-annonce" href="${a.url}" target="_blank">Voir l'annonce &#8594;</a>` : ''}
-      ${translateUrl ? `<a class="btn-translate" href="${translateUrl}" target="_blank">&#127760; Traduire</a>` : ''}
+      ${a.url ? `<a class="btn-annonce" href="${a.url}" target="_blank">Voir l'annonce →</a>` : ''}
+      ${translateUrl ? `<a class="btn-translate" href="${translateUrl}" target="_blank">🌐 Traduire</a>` : ''}
       <button class="btn-sm btn-oui ${a.interet === 'oui' ? 'active' : ''}"
-        onclick="marquerInteret('${seenIdSafe}','${a.interet === 'oui' ? 'neutre' : 'oui'}','${searchId}')">&#128077; Interesse</button>
+        onclick="marquerInteret('${seenIdSafe}','${a.interet === 'oui' ? 'neutre' : 'oui'}','${searchId}')">👍 Intéressé</button>
       <button class="btn-sm btn-non ${a.interet === 'non' ? 'active' : ''}"
-        onclick="marquerInteret('${seenIdSafe}','${a.interet === 'non' ? 'neutre' : 'non'}','${searchId}')">&#128078; Pas interesse</button>
-      <button class="btn-sm btn-photos" onclick="_telechargerPhotos('${seenIdSafe}')">&#128247; Photos</button>
-      ${breakdown ? `<button class="btn-sm btn-detail" onclick="toggleDetail('${seenIdSafe}')">Detail du score</button>` : ''}
+        onclick="marquerInteret('${seenIdSafe}','${a.interet === 'non' ? 'neutre' : 'non'}','${searchId}')">👎 Non</button>
+      <button class="btn-sm btn-photos" onclick="_telechargerPhotos('${seenIdSafe}')">📷 Photos</button>
+      ${breakdown ? `<button class="btn-sm btn-detail" onclick="toggleDetail('${seenIdSafe}')">Score</button>` : ''}
+      <button class="btn-sm btn-note" onclick="toggleNote('${seenIdSafe}')">${hasNote ? '📝 Note' : '+ Note'}</button>
     </div>
 
-    <div class="note-annonce">
-      <textarea id="note-${a.seen_id}" placeholder="Note personnelle (à rappeler, vu en vrai, négociable…)">${escHtml(a.note)}</textarea>
-      <button class="btn-sm note-save-btn" onclick="sauvegarderNote('${seenIdSafe}','${searchId}',this)">Sauvegarder la note</button>
+    <div class="note-annonce" id="note-wrap-${a.seen_id}" style="${hasNote ? '' : 'display:none'}">
+      <textarea id="note-${a.seen_id}" placeholder="Note personnelle…">${escHtml(a.note)}</textarea>
+      <button class="btn-sm note-save-btn" onclick="sauvegarderNote('${seenIdSafe}','${searchId}',this)">Sauvegarder</button>
     </div>
 
     ${breakdown ? `<div class="score-breakdown" id="bd-${a.seen_id}">${breakdown}</div>` : ''}
@@ -2105,6 +2141,14 @@ function renderAnnonce(a, searchId, historique = false) {
 
 function toggleDetail(seenId) {
   document.getElementById('bd-' + seenId)?.classList.toggle('open');
+}
+
+function toggleNote(seenId) {
+  const wrap = document.getElementById('note-wrap-' + seenId);
+  if (!wrap) return;
+  const hidden = wrap.style.display === 'none';
+  wrap.style.display = hidden ? 'block' : 'none';
+  if (hidden) wrap.querySelector('textarea')?.focus();
 }
 
 let _resultatsData = [];
