@@ -425,6 +425,11 @@ def get_annonce_by_seen_id(seen_id: str) -> dict | None:
     return dict(row) if row else None
 
 
+def update_images_urls(seen_id: str, images_urls: str):
+    with get_conn() as conn:
+        conn.execute("UPDATE annonces_vues SET images_urls=? WHERE seen_id=?", (images_urls, seen_id))
+
+
 def marquer_interet(seen_id: str, interet: str | None):
     with get_conn() as conn:
         conn.execute("UPDATE annonces_vues SET interet=? WHERE seen_id=?", (interet, seen_id))

@@ -339,7 +339,7 @@ def cmd_ui():
         modifier_client, sauvegarder_note_annonce, get_autres_clients_pour_listing,
         get_historique_client, get_recherches_sans_client, get_annonce_by_seen_id,
         desactiver_recherche, rattacher_recherche_client,
-        get_derniers_runs, get_resume_hebdo,
+        get_derniers_runs, get_resume_hebdo, update_images_urls,
     )
 
     init_db()
@@ -631,6 +631,66 @@ def cmd_ui():
                     self._send_json({"ok": True})
                 else:
                     self._send_json({"ok": False, "error": "Parametres invalides"}, 400)
+
+            elif self.path == "/charger-photos":
+                # Récupère toutes les URLs d'images depuis la page de détail mobile.de
+                # et les stocke en base. Retourne la liste des URLs.
+                seen_id = body.get("seen_id")
+                if not seen_id:
+                    self._send_json({"ok": False, "error": "seen_id manquant"}, 400)
+                    return
+                annonce = get_annonce_by_seen_id(seen_id)
+                if not annonce:
+                    self._send_json({"ok": False, "urls": []})
+                    return
+
+                # Si déjà plusieurs images en base, on retourne directement
+                existing = annonce.get("images_urls") or ""
+                existing_urls = [u for u in existing.split("\n") if u.strip()]
+                if len(existing_urls) > 1:
+                    self._send_json({"ok": True, "urls": existing_urls})
+                    return
+
+                detail_url = annonce.get("url") or ""
+                if not detail_url:
+                    # Rien à récupérer, renvoyer ce qu'on a
+                    self._send_json({"ok": True, "urls": existing_urls})
+                    return
+
+                try:
+                    import re as _re
+                    import urllib.request as _urllib
+                    req = _urllib.Request(detail_url, headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        "Accept-Language": "fr-FR,fr;q=0.9",
+                    })
+                    html = _urllib.urlopen(req, timeout=12).read().decode("utf-8", errors="replace")
+                    # Extraire toutes les URLs d'images mobile.de / ebayimg
+                    raw = _re.findall(
+                        r'https?://(?:img\.mobile\.de|i\.ebayimg\.com|images\.mobile\.de|pic\.classistatic\.de)'
+                        r'/[^\s"\'<>]+\.(?:jpg|jpeg|png|webp)',
+                        html, _re.IGNORECASE
+                    )
+                    # Dédupliquer en gardant l'ordre
+                    seen_u: set = set()
+                    urls = []
+                    for u in raw:
+                        # Préférer les grandes versions (éviter les miniatures _s / _t / thumb)
+                        if any(x in u.lower() for x in ["_thumb", "/tn/", "_s.", "_xs.", "48x48", "100x"]):
+                            continue
+                        if u not in seen_u:
+                            seen_u.add(u)
+                            urls.append(u)
+
+                    if urls:
+                        update_images_urls(seen_id, "\n".join(urls))
+                    elif existing_urls:
+                        urls = existing_urls  # garder ce qu'on avait
+
+                    self._send_json({"ok": True, "urls": urls})
+                except Exception as e:
+                    # En cas d'erreur réseau (Cloudflare etc.), renvoyer ce qu'on avait
+                    self._send_json({"ok": True, "urls": existing_urls, "warn": str(e)})
 
             elif self.path == "/telecharger-photos":
                 seen_id = body.get("seen_id")

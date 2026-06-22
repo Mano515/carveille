@@ -199,10 +199,19 @@ button:hover { opacity: .88; }
   cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
 #galerie-close:hover { background: rgba(255,255,255,.3); }
-#galerie-counter {
-  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
-  color: rgba(255,255,255,.7); font-size: 0.85rem;
+#galerie-bottom {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
 }
+#galerie-counter {
+  color: rgba(255,255,255,.65); font-size: 0.82rem; letter-spacing: .3px;
+}
+#galerie-dl {
+  background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3);
+  padding: 7px 16px; border-radius: 20px; font-size: 0.8rem; cursor: pointer;
+  backdrop-filter: blur(4px); transition: background .15s; font-family: inherit;
+}
+#galerie-dl:hover { background: rgba(255,255,255,.28); }
 .annonce-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .annonce-titre { font-weight: 600; font-size: 0.95rem; color: var(--c-text); line-height: 1.4; letter-spacing: -.2px; }
 .annonce-specs {
@@ -1280,7 +1289,10 @@ html[data-theme="dark"] .search-criteria { color: #5c6494; }
   <button class="galerie-nav" id="galerie-prev" onclick="_galeriePrev()">&#8592;</button>
   <img id="galerie-img" src="" alt="">
   <button class="galerie-nav" id="galerie-next" onclick="_galerieNext()">&#8594;</button>
-  <span id="galerie-counter"></span>
+  <div id="galerie-bottom">
+    <span id="galerie-counter"></span>
+    <button id="galerie-dl" onclick="_galerieDl()" title="Télécharger toutes les photos">⬇ Télécharger toutes les photos</button>
+  </div>
 </div>
 
 <!-- ── Modal nouveau client ── -->
@@ -2124,7 +2136,7 @@ function renderAnnonce(a, searchId, historique = false) {
         onclick="marquerInteret('${seenIdSafe}','${a.interet === 'oui' ? 'neutre' : 'oui'}','${searchId}')">👍 Intéressé</button>
       <button class="btn-sm btn-non ${a.interet === 'non' ? 'active' : ''}"
         onclick="marquerInteret('${seenIdSafe}','${a.interet === 'non' ? 'neutre' : 'non'}','${searchId}')">👎 Non</button>
-      <button class="btn-sm btn-photos" onclick="_telechargerPhotos('${seenIdSafe}')">📷 Photos</button>
+      <button class="btn-sm btn-photos" onclick="_ouvrirPhotos('${seenIdSafe}')">📷 Photos</button>
       ${breakdown ? `<button class="btn-sm btn-detail" onclick="toggleDetail('${seenIdSafe}')">Score</button>` : ''}
       <button class="btn-sm btn-note" onclick="toggleNote('${seenIdSafe}')">${hasNote ? '📝 Note' : '+ Note'}</button>
     </div>
@@ -2408,11 +2420,12 @@ function _syncHybrideSub() {
 // ── Photos ─────────────────────────────────────────────────────────────────────
 
 // ── Galerie photos ─────────────────────────────────────────────────────────
-let _galerieUrls = [], _galerieIdx = 0;
+let _galerieUrls = [], _galerieIdx = 0, _galerieSeenId = null;
 
-function _galerieOpen(urls, idx) {
+function _galerieOpen(urls, idx, seenId) {
   _galerieUrls = urls;
   _galerieIdx = idx;
+  _galerieSeenId = seenId || null;
   _galerieShow();
   document.getElementById('galerie-modal').classList.add('open');
   document.addEventListener('keydown', _galerieKey);
@@ -2423,10 +2436,12 @@ function _galerieClose() {
 }
 function _galerieShow() {
   document.getElementById('galerie-img').src = _galerieUrls[_galerieIdx];
-  document.getElementById('galerie-counter').textContent =
-    _galerieUrls.length > 1 ? `${_galerieIdx + 1} / ${_galerieUrls.length}` : '';
-  document.getElementById('galerie-prev').style.display = _galerieUrls.length > 1 ? '' : 'none';
-  document.getElementById('galerie-next').style.display = _galerieUrls.length > 1 ? '' : 'none';
+  const total = _galerieUrls.length;
+  document.getElementById('galerie-counter').textContent = total > 1 ? `${_galerieIdx + 1} / ${total}` : '';
+  document.getElementById('galerie-prev').style.display = total > 1 ? '' : 'none';
+  document.getElementById('galerie-next').style.display = total > 1 ? '' : 'none';
+  const dlBtn = document.getElementById('galerie-dl');
+  if (dlBtn) dlBtn.style.display = _galerieSeenId ? '' : 'none';
 }
 function _galeriePrev() { _galerieIdx = (_galerieIdx - 1 + _galerieUrls.length) % _galerieUrls.length; _galerieShow(); }
 function _galerieNext() { _galerieIdx = (_galerieIdx + 1) % _galerieUrls.length; _galerieShow(); }
@@ -2434,6 +2449,33 @@ function _galerieKey(e) {
   if (e.key === 'ArrowLeft')  _galeriePrev();
   if (e.key === 'ArrowRight') _galerieNext();
   if (e.key === 'Escape')     _galerieClose();
+}
+function _galerieDl() {
+  if (!_galerieSeenId) return;
+  _galerieClose();
+  _telechargerPhotos(_galerieSeenId);
+}
+
+// Ouvre la galerie après avoir chargé toutes les URLs depuis le backend
+async function _ouvrirPhotos(seenId) {
+  try {
+    showToast('Chargement des photos…', true, 0);
+    const r = await fetch(`${API}/charger-photos`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({seen_id: seenId})
+    }).then(r => r.json());
+    _hideToast();
+    const urls = r.urls || [];
+    if (!urls.length) { showToast('Aucune photo disponible', false); return; }
+    // Met à jour la miniature dans la carte si on a plus d'images qu'avant
+    const wrap = document.querySelector(`#card-${seenId} .annonce-thumb-wrap`);
+    if (wrap) {
+      const cnt = wrap.querySelector('.thumb-count');
+      if (cnt && urls.length > 1) cnt.textContent = `+${urls.length - 1}`;
+    }
+    _galerieOpen(urls, 0, seenId);
+  } catch { _hideToast(); showToast('Erreur connexion', false); }
 }
 
 async function _telechargerPhotos(seenId) {
@@ -2443,9 +2485,14 @@ async function _telechargerPhotos(seenId) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({seen_id: seenId})
     }).then(r => r.json());
-    if (r.ok) showToast(`📷 ${r.nb} photo${r.nb > 1 ? 's' : ''} enregistrée${r.nb > 1 ? 's' : ''} dans ${r.dossier}`);
+    if (r.ok) showToast(`📷 ${r.nb} photo${r.nb > 1 ? 's' : ''} sauvegardée${r.nb > 1 ? 's' : ''} → ${r.dossier}`);
     else showToast(r.error || 'Erreur téléchargement photos', false);
   } catch { showToast('Erreur connexion', false); }
+}
+
+function _hideToast() {
+  const t = document.getElementById('toast');
+  if (t) t.classList.remove('show');
 }
 
 // ── Formulaire nouvelle recherche ───────────────────────────────────────────────
