@@ -229,11 +229,13 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     # ── Couleur (impératif uniquement) ────────────────────────────────────────
     couleur_list = [c.strip() for c in couleur_r.split(",") if c.strip()]
     couleur_a = (annonce.get("couleur") or "").lower()
-    if couleur_imperatif and couleur_list and couleur_a:
-        if any(c in couleur_a for c in couleur_list):
-            malus_couleur = 0
+    if couleur_imperatif and couleur_list:
+        if not couleur_a:
+            malus_couleur = -8   # couleur inconnue : malus léger
+        elif any(c in couleur_a for c in couleur_list):
+            malus_couleur = 0    # bonne couleur
         else:
-            malus_couleur = -15
+            malus_couleur = -15  # mauvaise couleur
     else:
         malus_couleur = 0
     detail["couleur"] = {"score": malus_couleur, "max": 0}

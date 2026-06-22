@@ -48,6 +48,13 @@ def _build_url_sans_make(recherche: dict, page: int = 1) -> str:
     parts.append(("sb", "doc"))
     parts.append(("vc", "Car"))
 
+    # Filtre couleur (uniquement si impératif)
+    if recherche.get("couleur_imperatif") and recherche.get("couleur"):
+        for c in recherche["couleur"].split(","):
+            code = _COULEUR_FR_TO_CODE.get(c.strip().lower())
+            if code:
+                parts.append(("extCol", code))
+
     vendeur = (recherche.get("vendeur_filtre") or "pro").lower()
     if vendeur == "particulier":
         parts.append(("seller", "private"))
@@ -433,6 +440,39 @@ def _parse_carrosserie(val: str) -> str:
     return mapping.get(val, val.lower() if val else "")
 
 
+# Mapping couleur mobile.de (code interne) → français
+_COULEUR_MAP = {
+    "ORANGE": "orange",
+    "WEISS": "blanc", "WHITE": "blanc",
+    "SCHWARZ": "noir", "BLACK": "noir",
+    "ROT": "rouge", "RED": "rouge",
+    "BLAU": "bleu", "BLUE": "bleu",
+    "GRUEN": "vert", "GREEN": "vert",
+    "GRAU": "gris", "GRAY": "gris", "GREY": "gris",
+    "SILBER": "argent", "SILVER": "argent",
+    "BEIGE": "beige",
+    "BRAUN": "marron", "BROWN": "marron",
+    "GELB": "jaune", "YELLOW": "jaune",
+    "VIOLETT": "violet", "PURPLE": "violet",
+    "GOLD": "or",
+}
+
+# Mapping couleur français → code mobile.de pour l'URL (extCol)
+_COULEUR_FR_TO_CODE = {v: k for k, v in _COULEUR_MAP.items() if k not in ("WHITE","BLACK","RED","BLUE","GREEN","GRAY","GREY","SILVER","BROWN","YELLOW","PURPLE")}
+# Surcharge des doublons pour garder les codes allemands en priorité
+_COULEUR_FR_TO_CODE.update({
+    "blanc": "WEISS", "noir": "SCHWARZ", "rouge": "ROT", "bleu": "BLAU",
+    "vert": "GRUEN", "gris": "GRAU", "argent": "SILBER", "marron": "BRAUN",
+    "jaune": "GELB", "violet": "VIOLETT",
+})
+
+
+def _parse_couleur(val: str) -> str:
+    if not val:
+        return ""
+    return _COULEUR_MAP.get(val.upper().strip(), val.lower().strip())
+
+
 def _parse_vendeur(val: str) -> str:
     return "pro" if val in ("DEALER", "dealer") else "particulier"
 
@@ -457,6 +497,8 @@ def _parse_item(item: dict) -> dict | None:
         boite = _parse_transmission(attrs.get("transmission", ""))
         carburant = _parse_fuel(attrs.get("fuel", ""))
         carrosserie = _parse_carrosserie(attrs.get("category", "") or attrs.get("bodyType", "") or item.get("category", ""))
+        couleur_raw = attrs.get("color") or attrs.get("exteriorColor") or item.get("color") or item.get("exteriorColor") or ""
+        couleur = _parse_couleur(str(couleur_raw))
 
         seller = item.get("seller") or {}
         vendeur_type = _parse_vendeur(seller.get("type", ""))
@@ -489,7 +531,7 @@ def _parse_item(item: dict) -> dict | None:
             "boite": boite,
             "carburant": carburant,
             "carrosserie": carrosserie,
-            "couleur": None,
+            "couleur": couleur or None,
             "vendeur_type": vendeur_type,
             "ville": ville,
             "image_url": image_url,
