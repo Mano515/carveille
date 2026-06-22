@@ -10,11 +10,13 @@ import json
 import os
 import pathlib
 import random
+import re
 import shutil
 import subprocess
 import sys
 import threading
 import time
+import urllib.request
 import uuid
 import webbrowser
 from datetime import datetime, timedelta
@@ -191,15 +193,16 @@ def _envoyer_resume_hebdo():
 _jitter_cache: dict = {}
 
 
-def _fire_time(today: str, heure_str: str, h: int, m: int) -> datetime:
+def _fire_time(today: str, heure_str: str) -> datetime:
     """
     Retourne l'heure de déclenchement pour ce créneau aujourd'hui.
-    On tire un décalage aléatoire entre 0 et 9 minutes AVANT l'heure planifiée,
-    et on le mémorise pour la journée (évite de re-tirer à chaque tick).
+    Tire un décalage aléatoire entre 0 et 9 minutes AVANT l'heure planifiée,
+    mémorisé pour la journée (évite de re-tirer à chaque tick de 60s).
     """
     key = f"{today}_{heure_str}"
     if key not in _jitter_cache:
-        jitter = random.randint(0, 9)  # minutes d'avance (0 = pile à l'heure)
+        h, m = map(int, heure_str.split(":"))
+        jitter = random.randint(0, 9)
         scheduled = datetime.strptime(f"{today} {h:02d}:{m:02d}", "%Y-%m-%d %H:%M")
         _jitter_cache[key] = scheduled - timedelta(minutes=jitter)
         print(f"[PLAN] Créneau {heure_str} → déclenchement à {_jitter_cache[key].strftime('%H:%M')} (jitter -{jitter} min)")
@@ -219,18 +222,16 @@ def _scheduler_thread():
             derniers_runs = sched.get("derniers_runs", [])
             changed = False
 
-            # Nettoyage du cache des jitters des jours passés
-            for k in list(_jitter_cache.keys()):
-                if not k.startswith(today):
-                    del _jitter_cache[k]
+            # Nettoyage du cache des jitters au changement de jour
+            if _jitter_cache and not next(iter(_jitter_cache)).startswith(today):
+                _jitter_cache.clear()
 
             # Résumé hebdomadaire le dimanche
             if sched.get("resume_hebdo") and now.weekday() == 6:
                 semaine_key = f"resume_{now.strftime('%Y-W%U')}"
                 heure_str = sched.get("horaires", ["09:00"])[0]
                 try:
-                    h, m = map(int, heure_str.split(":"))
-                    ft = _fire_time(today, heure_str, h, m)
+                    ft = _fire_time(today, heure_str)
                     if now.hour == ft.hour and now.minute == ft.minute and semaine_key not in derniers_runs:
                         print("[RESUME] Envoi du résumé hebdomadaire")
                         derniers_runs.append(semaine_key)
@@ -247,11 +248,9 @@ def _scheduler_thread():
                 continue
 
             for heure_str in sched.get("horaires", ["09:00"]):
-                try:
-                    h, m = map(int, heure_str.split(":"))
-                except ValueError:
+                if ":" not in heure_str:
                     continue
-                ft = _fire_time(today, heure_str, h, m)
+                ft = _fire_time(today, heure_str)
                 slot_key = f"{today}_{heure_str}"
                 if now.hour == ft.hour and now.minute == ft.minute and slot_key not in derniers_runs and not _run_status["en_cours"]:
                     print(f"[RUN] Run automatique (prevu {heure_str}, declenche {ft.strftime('%H:%M')})")
@@ -658,18 +657,15 @@ def cmd_ui():
                     return
 
                 try:
-                    import re as _re
-                    import urllib.request as _urllib
-                    req = _urllib.Request(detail_url, headers={
+                    req = urllib.request.Request(detail_url, headers={
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                         "Accept-Language": "fr-FR,fr;q=0.9",
                     })
-                    html = _urllib.urlopen(req, timeout=12).read().decode("utf-8", errors="replace")
-                    # Extraire toutes les URLs d'images mobile.de / ebayimg
-                    raw = _re.findall(
+                    html = urllib.request.urlopen(req, timeout=12).read().decode("utf-8", errors="replace")
+                    raw = re.findall(
                         r'https?://(?:img\.mobile\.de|i\.ebayimg\.com|images\.mobile\.de|pic\.classistatic\.de)'
                         r'/[^\s"\'<>]+\.(?:jpg|jpeg|png|webp)',
-                        html, _re.IGNORECASE
+                        html, re.IGNORECASE
                     )
                     # Dédupliquer en gardant l'ordre
                     seen_u: set = set()
@@ -702,7 +698,7 @@ def cmd_ui():
                     self._send_json({"ok": False, "error": "Aucune image disponible"})
                     return
                 try:
-                    import io, urllib.request
+                    import io
                     from pillow_heif import register_heif_opener
                     register_heif_opener()
                     from PIL import Image

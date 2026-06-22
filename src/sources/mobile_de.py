@@ -23,11 +23,6 @@ BASE_URL = "https://suchen.mobile.de/fahrzeuge/search.html"
 BASE_DETAIL_URL = "https://www.mobile.de"
 
 
-def _build_url_sans_make(recherche: dict, page: int = 1) -> str:
-    """URL de recherche avec tous les filtres sauf make/model (utilisée en dernier recours)."""
-    return _build_url(recherche, marque="", modele="", page=page)
-
-
 def _build_url(recherche: dict, marque: str = "", modele: str = "", page: int = 1) -> str:
     """URL de recherche complète avec make/model en paramètres URL directs."""
     parts = []
@@ -184,131 +179,6 @@ def _url_via_detailsuche(driver, marque: str, modele: str) -> str | None:
         print(f"  [WARN] Detailsuche échoué : {type(e).__name__}: {e}")
         return None
 
-
-def _appliquer_filtre_make_model(driver, make_name: str, model_name: str) -> str | None:
-    """
-    Ouvre le panneau de filtres du SRP mobile.de, sélectionne la marque et le modèle,
-    soumet la recherche et retourne la nouvelle URL filtrée (ou None si échec).
-    """
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait, Select
-    from selenium.webdriver.support import expected_conditions as EC
-
-    url_avant = driver.current_url
-
-    try:
-        # 1. Ouvrir le panneau de filtres complets
-        more_btn = WebDriverWait(driver, 8).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, '[data-testid="more-filters-button"]'))
-        )
-        more_btn.click()
-        time.sleep(2.5)
-
-        # 2. Sélectionner la marque (select data-testid="make-incl-0")
-        make_sel_el = WebDriverWait(driver, 8).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="make-incl-0"]'))
-        )
-        make_sel = Select(make_sel_el)
-
-        # Chercher l'option dont le texte correspond à make_name (insensible à la casse)
-        selected_make = False
-        for opt in make_sel.options:
-            if make_name.lower() == opt.text.lower().strip():
-                make_sel.select_by_value(opt.get_attribute('value'))
-                selected_make = True
-                break
-        if not selected_make:
-            # Cherche par inclusion
-            for opt in make_sel.options:
-                if make_name.lower() in opt.text.lower():
-                    make_sel.select_by_value(opt.get_attribute('value'))
-                    selected_make = True
-                    break
-
-        if not selected_make:
-            print(f"  [WARN] Filtre : marque {make_name!r} non trouvée dans le select")
-            return None
-
-        print(f"  [WEB] Marque sélectionnée : {make_name}")
-        time.sleep(2.5)  # attendre le chargement des modèles
-
-        # 3. Sélectionner le modèle si spécifié
-        if model_name:
-            try:
-                model_sel_el = WebDriverWait(driver, 6).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="model-incl-0"]'))
-                )
-                model_sel = Select(model_sel_el)
-                opts = [(o.text.strip(), o.get_attribute('value')) for o in model_sel.options]
-
-                # Code interne mobile.de du modèle (ex: "Serie 1" → "1ER")
-                model_code = MODELS_MOBILE_DE.get(model_name, "").lower()
-
-                # Termes de recherche par ordre de priorité
-                search_terms = []
-                if model_code:
-                    search_terms.append(model_code)
-                search_terms.append(model_name.lower())
-
-                selected_model = False
-                for term in search_terms:
-                    if selected_model:
-                        break
-                    # Correspondance exacte d'abord, puis par inclusion
-                    for txt, val in opts:
-                        if term == txt.lower():
-                            model_sel.select_by_value(val)
-                            selected_model = True
-                            print(f"  [WEB] Modèle sélectionné (exact) : {txt!r}")
-                            break
-                    if not selected_model:
-                        for txt, val in opts:
-                            if term in txt.lower():
-                                model_sel.select_by_value(val)
-                                selected_model = True
-                                print(f"  [WEB] Modèle sélectionné (partiel) : {txt!r}")
-                                break
-
-                if not selected_model:
-                    print(f"  [WEB] Options modèle ({len(opts)}) : {opts[:8]}")
-                    print(f"  [WARN] Modèle {model_name!r} (code: {model_code!r}) non trouvé, on continue sans")
-                time.sleep(0.5)
-            except Exception as e:
-                print(f"  [WARN] Sélection modèle : {e}")
-
-        # 4. Cliquer sur le bouton "Ergebnisse anzeigen" / "Suchen"
-        submit_btn = None
-        for testid in ['search-button', 'submit-button', 'apply-filters-button']:
-            try:
-                submit_btn = driver.find_element(By.CSS_SELECTOR, f'[data-testid="{testid}"]')
-                break
-            except Exception:
-                pass
-        if not submit_btn:
-            # Chercher un bouton contenant "Ergebnisse" ou "Suchen"
-            for btn in driver.find_elements(By.CSS_SELECTOR, 'button'):
-                txt = btn.text.strip().lower()
-                if 'ergebnis' in txt or 'suchen' in txt or 'anzeigen' in txt:
-                    submit_btn = btn
-                    break
-        if not submit_btn:
-            print("  [WARN] Bouton submit non trouvé dans le panneau filtres")
-            return None
-
-        print(f"  [WEB] Clic sur : {submit_btn.text.strip()!r}")
-        submit_btn.click()
-
-        # 5. Attendre que l'URL change
-        WebDriverWait(driver, 10).until(EC.url_changes(url_avant))
-        time.sleep(2.5)
-
-        new_url = driver.current_url
-        print(f"  [WEB] URL filtrée : {new_url[:150]}")
-        return new_url
-
-    except Exception as e:
-        print(f"  [WARN] Filtre make/model ({type(e).__name__}) : {str(e)[:200]}")
-        return None
 
 
 def _extract_next_data(html: str) -> dict | None:
@@ -508,14 +378,13 @@ _COULEUR_MAP = {
     "GOLD": "or",
 }
 
-# Mapping couleur français → code mobile.de pour l'URL (extCol)
-_COULEUR_FR_TO_CODE = {v: k for k, v in _COULEUR_MAP.items() if k not in ("WHITE","BLACK","RED","BLUE","GREEN","GRAY","GREY","SILVER","BROWN","YELLOW","PURPLE")}
-# Surcharge des doublons pour garder les codes allemands en priorité
-_COULEUR_FR_TO_CODE.update({
-    "blanc": "WEISS", "noir": "SCHWARZ", "rouge": "ROT", "bleu": "BLAU",
-    "vert": "GRUEN", "gris": "GRAU", "argent": "SILBER", "marron": "BRAUN",
-    "jaune": "GELB", "violet": "VIOLETT",
-})
+# Mapping couleur français → code mobile.de pour l'URL (extCol) — codes allemands prioritaires
+_COULEUR_FR_TO_CODE = {
+    "orange": "ORANGE", "blanc": "WEISS", "noir": "SCHWARZ", "rouge": "ROT",
+    "bleu": "BLAU", "vert": "GRUEN", "gris": "GRAU", "argent": "SILBER",
+    "beige": "BEIGE", "marron": "BRAUN", "jaune": "GELB", "violet": "VIOLETT",
+    "or": "GOLD",
+}
 
 
 def _parse_couleur(val: str) -> str:
