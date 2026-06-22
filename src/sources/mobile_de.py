@@ -80,62 +80,108 @@ def _build_url(recherche: dict, marque: str = "", modele: str = "", page: int = 
     return f"{BASE_URL}?{urlencode(parts)}"
 
 
-def _url_via_detailsuche(driver, recherche: dict) -> str | None:
+def _url_via_detailsuche(driver, marque: str, modele: str) -> str | None:
     """
-    Navigue vers le formulaire detailsuche de mobile.de, sélectionne la marque
-    et le modèle via les dropdowns natifs, puis retourne l'URL de résultats
-    générée par mobile.de lui-même (format toujours correct).
+    Navigue vers le formulaire detailsuche de mobile.de, sélectionne marque/modèle
+    via JavaScript (plus fiable que les sélecteurs Selenium), soumet et retourne
+    l'URL résultante (format correct garanti par mobile.de).
     """
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import Select, WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-
-    marque = recherche.get("marque", "")
-    modele = recherche.get("modele", "")
-    make_code = MAKES_MOBILE_DE.get(marque, marque.upper().replace(" ", "_")) if marque else ""
-    model_code = MODELS_MOBILE_DE.get(modele, modele.upper().replace(" ", "_")) if modele else ""
+    make_code = MAKES_MOBILE_DE.get(marque, marque.upper().replace(" ", "_").replace("-", "_")) if marque else ""
+    model_code = MODELS_MOBILE_DE.get(modele, modele.upper().replace(" ", "_").replace("-", "_")) if modele else ""
 
     if not make_code:
         return None
 
     try:
-        driver.get("https://suchen.mobile.de/fahrzeuge/detailsuche?dam=false&s=Car&vc=Car")
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "form"))
-        )
+        driver.get("https://suchen.mobile.de/fahrzeuge/detailsuche?dam=false&s=Car&vc=Car&isSearchRequest=true")
+        time.sleep(3.0)
+        _accepter_cookies_gdpr(driver)
         time.sleep(1.5)
 
-        # Trouver et remplir le select "marque"
-        make_sel = driver.find_element(By.CSS_SELECTOR,
-            'select[name*="make"], select[id*="make"], select[data-testid*="make"]')
-        Select(make_sel).select_by_value(make_code)
-        print(f"  [WEB] Detailsuche : marque {make_code} sélectionnée")
-        time.sleep(2.0)  # attendre le chargement des modèles
+        # Sélectionner la marque via JS (cherche tout select dont name/id contient make/marke/hersteller)
+        chosen_make = driver.execute_script("""
+            const code = arguments[0];
+            const selects = document.querySelectorAll('select');
+            for (const sel of selects) {
+                const key = (sel.name + sel.id + (sel.getAttribute('data-testid') || '')).toLowerCase();
+                if (!key.match(/make|marke|hersteller/)) continue;
+                for (const opt of sel.options) {
+                    if (opt.value.toUpperCase() === code.toUpperCase()) {
+                        sel.value = opt.value;
+                        sel.dispatchEvent(new Event('change', {bubbles: true}));
+                        return opt.value;
+                    }
+                }
+                // Fallback : cherche le texte de l'option
+                for (const opt of sel.options) {
+                    if (opt.text.toUpperCase().includes(code.toUpperCase())) {
+                        sel.value = opt.value;
+                        sel.dispatchEvent(new Event('change', {bubbles: true}));
+                        return opt.value;
+                    }
+                }
+            }
+            return null;
+        """, make_code)
+
+        if not chosen_make:
+            print(f"  [WARN] Detailsuche : marque {make_code} non trouvée dans les options")
+            return None
+        print(f"  [WEB] Detailsuche : marque sélectionnée ({chosen_make})")
+        time.sleep(2.5)  # laisser les modèles se charger
 
         if model_code:
-            try:
-                model_sel = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR,
-                        'select[name*="model"], select[id*="model"], select[data-testid*="model"]'))
-                )
-                Select(model_sel).select_by_value(model_code)
-                print(f"  [WEB] Detailsuche : modèle {model_code} sélectionné")
-                time.sleep(0.5)
-            except Exception as e:
-                print(f"  [WEB] Detailsuche : modèle non trouvé ({e}), on continue sans")
+            chosen_model = driver.execute_script("""
+                const code = arguments[0];
+                const selects = document.querySelectorAll('select');
+                for (const sel of selects) {
+                    const key = (sel.name + sel.id + (sel.getAttribute('data-testid') || '')).toLowerCase();
+                    if (!key.match(/model|modell/)) continue;
+                    for (const opt of sel.options) {
+                        if (opt.value.toUpperCase() === code.toUpperCase()) {
+                            sel.value = opt.value;
+                            sel.dispatchEvent(new Event('change', {bubbles: true}));
+                            return opt.value;
+                        }
+                    }
+                    for (const opt of sel.options) {
+                        if (opt.text.toUpperCase().includes(code.toUpperCase())) {
+                            sel.value = opt.value;
+                            sel.dispatchEvent(new Event('change', {bubbles: true}));
+                            return opt.value;
+                        }
+                    }
+                }
+                return null;
+            """, model_code)
+            if chosen_model:
+                print(f"  [WEB] Detailsuche : modèle sélectionné ({chosen_model})")
+            else:
+                print(f"  [WEB] Detailsuche : modèle {model_code} non trouvé, continue sans")
+            time.sleep(0.8)
 
-        # Soumettre le formulaire
-        submit = driver.find_element(By.CSS_SELECTOR, 'button[type="submit"], input[type="submit"]')
-        submit.click()
-        WebDriverWait(driver, 10).until(EC.url_changes(driver.current_url))
-        time.sleep(2.0)
+        # Soumettre via JS si le bouton Selenium ne répond pas
+        submitted = driver.execute_script("""
+            const btn = document.querySelector('button[type="submit"], input[type="submit"]');
+            if (btn) { btn.click(); return true; }
+            const form = document.querySelector('form');
+            if (form) { form.submit(); return true; }
+            return false;
+        """)
+        if not submitted:
+            print("  [WARN] Detailsuche : bouton submit non trouvé")
+            return None
 
+        time.sleep(3.0)
         result_url = driver.current_url
+        if "search.html" not in result_url:
+            print(f"  [WARN] Detailsuche : URL résultat inattendue : {result_url[:80]}")
+            return None
         print(f"  [WEB] Detailsuche URL résultat : {result_url[:120]}")
         return result_url
 
     except Exception as e:
-        print(f"  [WARN] Detailsuche échoué : {e}")
+        print(f"  [WARN] Detailsuche échoué : {type(e).__name__}: {e}")
         return None
 
 
@@ -350,7 +396,7 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
 
             listings.push({
                 listing_id: id,
-                url: url.split('&searchId')[0].split('&ref=')[0],
+                url: 'https://suchen.mobile.de/fahrzeuge/details.html?id=' + id,
                 titre: title,
                 prix: price,
                 km: km,
@@ -1043,12 +1089,36 @@ def _scraper_url(driver, base_url: str, max_pages: int) -> list:
 
 def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_pages: int) -> list:
     """Scrape mobile.de pour une combinaison marque/modèle unique.
-    La marque et le modèle sont injectés directement dans l'URL (mk=/mo=),
-    sans passer par le Selenium dropdown qui est fragile.
+    Priorité 1 : _url_via_detailsuche (URL générée par mobile.de, toujours correcte).
+    Priorité 2 : _build_url (mk=/mo= dans l'URL) + filtre titre côté client en fallback.
     """
-    # URL avec mk/mo directement — approche principale, fiable
-    base_url = _build_url(recherche, marque=marque, modele=modele, page=1)
-    print(f"  [WEB] Scraping : {base_url[:120]}...")
+    filtre_url_ok = False
+    base_url = None
+
+    # Priorité 1 : detailsuche via JS — génère des URLs que mobile.de reconnaît
+    if marque:
+        base_url = _url_via_detailsuche(driver, marque, modele)
+        if base_url:
+            # Ajouter les filtres supplémentaires (couleur, prix, km, etc.) à l'URL retournée
+            from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+            parsed = urlparse(base_url)
+            qs = parse_qs(parsed.query, keep_blank_values=True)
+            extra = _build_url(recherche, page=1)
+            extra_parsed = urlparse(extra)
+            extra_qs = parse_qs(extra_parsed.query, keep_blank_values=True)
+            # Fusionner : garder les params detailsuche, ajouter ceux de _build_url qui manquent
+            for k, v in extra_qs.items():
+                if k not in qs and k not in ("mk", "mo", "s", "vc", "isSearchRequest"):
+                    qs[k] = v
+            new_query = urlencode({k: v[0] for k, v in qs.items()})
+            base_url = urlunparse(parsed._replace(query=new_query))
+            filtre_url_ok = True
+            print(f"  [WEB] Scraping (detailsuche) : {base_url[:120]}...")
+
+    # Priorité 2 : URL directe avec mk/mo (peut être ignoré par mobile.de)
+    if not base_url:
+        base_url = _build_url(recherche, marque=marque, modele=modele, page=1)
+        print(f"  [WEB] Scraping (fallback URL) : {base_url[:120]}...")
 
     annonces_p1, nb_total = _scrape_page(base_url)
     if not annonces_p1:
@@ -1067,7 +1137,18 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
         print(f"  [WEB] Page {page_num} : {len(annonces)} annonces")
         page_num += 1
 
-    print(f"  [WEB] Total scrape : {len(toutes)} annonces")
+    print(f"  [WEB] Total scrape : {len(toutes)} annonces (avant filtre client)")
+
+    # Filtre côté client si l'URL n'est pas certifiée par detailsuche
+    if not filtre_url_ok and marque:
+        marque_lower = marque.strip().lower()
+        modele_lower = modele.strip().lower()
+        avant = len(toutes)
+        toutes = [a for a in toutes if
+                  marque_lower in (a.get("titre") or "").lower() and
+                  (not modele_lower or modele_lower in (a.get("titre") or "").lower())]
+        print(f"  [WEB] Après filtre client : {len(toutes)} annonces (sur {avant})")
+
     return toutes
 
 
