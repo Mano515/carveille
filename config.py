@@ -112,6 +112,20 @@ MAKES_MOBILE_DE = {
     "Jaguar": "JAGUAR",
     "Lexus": "LEXUS",
     "Tesla": "TESLA",
+    "Jeep": "JEEP",
+    "Dodge": "DODGE",
+    "Chrysler": "CHRYSLER",
+    "Infiniti": "INFINITI",
+    "Subaru": "SUBARU",
+    "Isuzu": "ISUZU",
+    "DS": "DS",
+    "Cupra": "CUPRA",
+    "MG": "MG",
+    "BYD": "BYD",
+    "Polestar": "POLESTAR",
+    "Rivian": "RIVIAN",
+    "Lucid": "LUCID",
+    "Genesis": "GENESIS",
 }
 
 # Mapping modèles courants → codes mobile.de

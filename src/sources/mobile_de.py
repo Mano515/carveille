@@ -24,8 +24,21 @@ BASE_DETAIL_URL = "https://www.mobile.de"
 
 
 def _build_url_sans_make(recherche: dict, page: int = 1) -> str:
-    """URL de recherche sans make/model (sert de fallback et de base pour les filtres)."""
+    """URL de recherche avec tous les filtres sauf make/model (utilisée en dernier recours)."""
+    return _build_url(recherche, marque="", modele="", page=page)
+
+
+def _build_url(recherche: dict, marque: str = "", modele: str = "", page: int = 1) -> str:
+    """URL de recherche complète avec make/model en paramètres URL directs."""
     parts = []
+
+    # Marque et modèle directement dans l'URL (mk/mo) — plus fiable que le Selenium dropdown
+    if marque:
+        make_code = MAKES_MOBILE_DE.get(marque, marque.upper().replace(" ", "_").replace("-", "_"))
+        parts.append(("mk", make_code))
+    if modele:
+        model_code = MODELS_MOBILE_DE.get(modele, modele.upper().replace(" ", "_").replace("-", "_"))
+        parts.append(("mo", model_code))
 
     if recherche.get("annee_min"):
         parts.append(("fr", f"{recherche['annee_min']}:"))
@@ -59,7 +72,7 @@ def _build_url_sans_make(recherche: dict, page: int = 1) -> str:
     if vendeur == "particulier":
         parts.append(("seller", "private"))
     else:
-        parts.append(("seller", "dealer"))  # pro par défaut
+        parts.append(("seller", "dealer"))
 
     if page > 1:
         parts.append(("pgn", page))
@@ -1037,35 +1050,14 @@ def _scraper_url(driver, base_url: str, max_pages: int) -> list:
 
 
 def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_pages: int) -> list:
-    """Scrape mobile.de pour une combinaison marque/modèle unique."""
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-    from selenium.webdriver.common.by import By
+    """Scrape mobile.de pour une combinaison marque/modèle unique.
+    La marque et le modèle sont injectés directement dans l'URL (mk=/mo=),
+    sans passer par le Selenium dropdown qui est fragile.
+    """
+    # URL avec mk/mo directement — approche principale, fiable
+    base_url = _build_url(recherche, marque=marque, modele=modele, page=1)
+    print(f"  [WEB] Scraping : {base_url[:120]}...")
 
-    initial_url = _build_url(recherche, page=1)
-    filtre_ui_applique = False
-
-    if marque:
-        driver.get(initial_url)
-        time.sleep(1.5)
-        _accepter_cookies_gdpr(driver)
-        try:
-            WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="more-filters-button"]'))
-            )
-        except Exception:
-            pass
-        time.sleep(2.0)
-        filtered_url = _appliquer_filtre_make_model(driver, marque, modele)
-        if filtered_url:
-            base_url = filtered_url
-            filtre_ui_applique = True
-        else:
-            base_url = initial_url
-    else:
-        base_url = initial_url
-
-    print(f"  [WEB] Scraping : {base_url[:80]}...")
     annonces_p1, nb_total = _scrape_page(base_url)
     if not annonces_p1:
         print("  [WEB] 0 annonces")
@@ -1083,23 +1075,7 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
         print(f"  [WEB] Page {page_num} : {len(annonces)} annonces")
         page_num += 1
 
-    print(f"  [WEB] Total scrape : {len(toutes)} annonces (avant filtre client)")
-
-    # Filtre côté client uniquement si le filtre UI n'a pas pu s'appliquer
-    marque_lower = marque.strip().lower()
-    modele_lower = modele.strip().lower()
-    if not filtre_ui_applique and (marque_lower or modele_lower):
-        avant = len(toutes)
-        def _correspond(ann: dict) -> bool:
-            titre = (ann.get("titre") or "").lower()
-            if marque_lower and marque_lower not in titre:
-                return False
-            if modele_lower and modele_lower not in titre:
-                return False
-            return True
-        toutes = [a for a in toutes if _correspond(a)]
-        print(f"  [WEB] Après filtre client : {len(toutes)} annonces (sur {avant})")
-
+    print(f"  [WEB] Total scrape : {len(toutes)} annonces")
     return toutes
 
 
