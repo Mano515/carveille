@@ -119,6 +119,13 @@ def init_db():
             "ALTER TABLE annonces_vues ADD COLUMN note TEXT",
             "ALTER TABLE recherches ADD COLUMN couleur TEXT",
             "ALTER TABLE recherches ADD COLUMN prix_min REAL",
+            "ALTER TABLE recherches ADD COLUMN couleur_imperatif INTEGER DEFAULT 0",
+            "ALTER TABLE recherches ADD COLUMN options_imperatives TEXT",
+            "ALTER TABLE recherches ADD COLUMN carrosserie TEXT",
+            "ALTER TABLE recherches ADD COLUMN materiaux_interieur TEXT",
+            "ALTER TABLE recherches ADD COLUMN couleur_interieure TEXT",
+            "ALTER TABLE annonces_vues ADD COLUMN carrosserie TEXT",
+            "ALTER TABLE annonces_vues ADD COLUMN images_urls TEXT",
         ]:
             try:
                 conn.execute(sql)
@@ -305,14 +312,18 @@ def insert_recherche(data: dict):
             INSERT OR REPLACE INTO recherches (
                 search_id, nom_recherche, statut, marque, modele,
                 budget_max, budget_strict, km_max, annee_min,
-                prix_min, boite, carburant, couleur, vendeur_filtre, options_recherchees, mobile_de_url,
+                prix_min, boite, carburant, couleur, couleur_imperatif, vendeur_filtre,
+                options_recherchees, options_imperatives, mobile_de_url,
+                carrosserie, materiaux_interieur, couleur_interieure,
                 poids_prix, poids_km, poids_annee, poids_boite, poids_carburant, poids_options,
                 penalite_infos_manquantes, score_min_notification, max_annonces,
                 client_id, created_at, updated_at
             ) VALUES (
                 :search_id, :nom_recherche, :statut, :marque, :modele,
                 :budget_max, :budget_strict, :km_max, :annee_min,
-                :prix_min, :boite, :carburant, :couleur, :vendeur_filtre, :options_recherchees, :mobile_de_url,
+                :prix_min, :boite, :carburant, :couleur, :couleur_imperatif, :vendeur_filtre,
+                :options_recherchees, :options_imperatives, :mobile_de_url,
+                :carrosserie, :materiaux_interieur, :couleur_interieure,
                 :poids_prix, :poids_km, :poids_annee, :poids_boite, :poids_carburant, :poids_options,
                 :penalite_infos_manquantes, :score_min_notification, :max_annonces,
                 :client_id, :created_at, :updated_at
@@ -373,16 +384,16 @@ def upsert_annonce(annonce_data: dict) -> tuple[bool, bool]:
             INSERT INTO annonces_vues (
                 seen_id, search_id, listing_id, url, titre,
                 prix, prix_initial, baisse_prix,
-                km, annee, date_immat, boite, carburant, couleur,
-                vendeur_type, ville, image_url, options_texte, date_publication,
+                km, annee, date_immat, boite, carburant, carrosserie, couleur,
+                vendeur_type, ville, image_url, images_urls, options_texte, date_publication,
                 score, score_detail, raison_rejet, interet,
                 est_nouvelle, deja_notifiee,
                 date_premiere_vue, date_derniere_vue
             ) VALUES (
                 :seen_id, :search_id, :listing_id, :url, :titre,
                 :prix, :prix, 0,
-                :km, :annee, :date_immat, :boite, :carburant, :couleur,
-                :vendeur_type, :ville, :image_url, :options_texte, :date_publication,
+                :km, :annee, :date_immat, :boite, :carburant, :carrosserie, :couleur,
+                :vendeur_type, :ville, :image_url, :images_urls, :options_texte, :date_publication,
                 :score, :score_detail, :raison_rejet, NULL,
                 :est_nouvelle, 0,
                 :now, :now
@@ -401,6 +412,17 @@ def upsert_annonce(annonce_data: dict) -> tuple[bool, bool]:
 def marquer_notifiee(seen_id: str):
     with get_conn() as conn:
         conn.execute("UPDATE annonces_vues SET deja_notifiee=1 WHERE seen_id=?", (seen_id,))
+
+
+def get_annonce_by_seen_id(seen_id: str) -> dict | None:
+    with get_conn() as conn:
+        row = conn.execute("""
+            SELECT av.*, r.client_id
+            FROM annonces_vues av
+            LEFT JOIN recherches r ON av.search_id = r.search_id
+            WHERE av.seen_id = ?
+        """, (seen_id,)).fetchone()
+    return dict(row) if row else None
 
 
 def marquer_interet(seen_id: str, interet: str | None):

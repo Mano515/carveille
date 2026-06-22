@@ -120,6 +120,50 @@ button:hover { opacity: .85; }
   display: flex; justify-content: space-between; align-items: flex-start;
   gap: 12px; margin-bottom: 10px;
 }
+.annonce-thumb {
+  width: 120px; height: 80px; object-fit: cover; border-radius: 6px;
+  flex-shrink: 0; cursor: pointer; border: 2px solid transparent;
+  transition: border-color .15s, transform .15s;
+}
+.annonce-thumb:hover { border-color: #1565c0; transform: scale(1.03); }
+.annonce-thumb-wrap { position: relative; flex-shrink: 0; }
+.thumb-count {
+  position: absolute; bottom: 4px; right: 4px;
+  background: rgba(0,0,0,.55); color: #fff;
+  font-size: 0.68rem; padding: 1px 5px; border-radius: 4px; pointer-events: none;
+}
+
+/* ── Galerie modale ─────────────────────────────── */
+#galerie-modal {
+  display: none; position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,.88); align-items: center; justify-content: center;
+}
+#galerie-modal.open { display: flex; }
+#galerie-modal img {
+  max-width: 90vw; max-height: 85vh; border-radius: 8px;
+  object-fit: contain; user-select: none;
+}
+.galerie-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,.15); border: none; color: #fff;
+  font-size: 2rem; width: 48px; height: 48px; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.galerie-nav:hover { background: rgba(255,255,255,.3); }
+#galerie-prev { left: 16px; }
+#galerie-next { right: 16px; }
+#galerie-close {
+  position: absolute; top: 16px; right: 16px;
+  background: rgba(255,255,255,.15); border: none; color: #fff;
+  font-size: 1.4rem; width: 40px; height: 40px; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+#galerie-close:hover { background: rgba(255,255,255,.3); }
+#galerie-counter {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  color: rgba(255,255,255,.7); font-size: 0.85rem;
+}
 .annonce-titre { font-weight: 600; font-size: 0.95rem; color: #1a1a2e; line-height: 1.4; }
 .score-badge {
   font-size: 1.2rem; font-weight: 800; white-space: nowrap; flex-shrink: 0;
@@ -662,6 +706,23 @@ html[data-theme="dark"] .conv-dossier { color: #5c9ef7; }
 html[data-theme="dark"] .run-info { color: #5c6494; }
 html[data-theme="dark"] .score-label { color: #5c6494; }
 html[data-theme="dark"] .search-criteria { color: #5c6494; }
+
+.couleur-swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #ddd; flex-shrink: 0; background: transparent; transition: background 0.25s, border-color 0.25s, transform 0.15s; }
+.couleur-swatch.active { border-color: #999; transform: scale(1.1); }
+.hybride-sub { display: none; padding: 4px 0 2px 18px; gap: 6px; flex-wrap: wrap; }
+.hybride-sub.visible { display: flex; }
+.field-header { display: flex; align-items: center; gap: 10px; }
+.imperatif-badge { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 4px; font-size: 0.75rem; color: #999; cursor: pointer; font-weight: normal !important; white-space: nowrap; margin-left: auto; }
+.imperatif-badge input[type=checkbox] { width: 13px; height: 13px; accent-color: #c62828; cursor: pointer; flex-shrink: 0; }
+.imperatif-badge:has(input:checked) { color: #c62828; font-weight: 600 !important; }
+.options-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.options-row .options-input { flex: 1; margin: 0; min-width: 0; }
+.options-imperatif { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; color: #999; cursor: pointer; white-space: nowrap; }
+.options-imperatif input[type=checkbox] { width: 13px; height: 13px; accent-color: #c62828; cursor: pointer; }
+.options-imperatif:has(input:checked) { color: #c62828; }
+.prix-input { font-variant-numeric: tabular-nums; }
+.btn-photos { background: #37474f; color: white; border-color: #37474f; }
+.btn-photos:hover { background: #263238; }
 </style>
 </head>
 <body>
@@ -797,12 +858,8 @@ html[data-theme="dark"] .search-criteria { color: #5c6494; }
         </label>
 
         <label>
-          Prix minimum (EUR)
-          <input type="number" name="prix_min" placeholder="5000" min="0">
-        </label>
-        <label>
           Prix maximum (EUR)
-          <input type="number" name="budget_max" placeholder="20000" min="0">
+          <input type="text" inputmode="numeric" name="budget_max" placeholder="20 000" class="prix-input" autocomplete="off" onkeydown="_onPrixKeydown(event)">
         </label>
 
         <label>
@@ -814,14 +871,45 @@ html[data-theme="dark"] .search-criteria { color: #5c6494; }
           <input type="number" name="annee_min" placeholder="2018" min="2000" max="2025">
         </label>
         <label>
-          Couleur souhaitee
+          <span class="field-header">Couleur souhaitee
+            <span class="imperatif-badge" title="Pénalité si la couleur de l'annonce ne correspond pas" onclick="var cb=this.querySelector('input');cb.checked=!cb.checked"><input type="checkbox" name="couleur_imperatif" value="1" onclick="event.stopPropagation()"> Impératif</span>
+          </span>
           <div class="multi-input-group" id="couleur-group">
             <div class="multi-input-row">
+              <span class="couleur-swatch"></span>
               <input type="text" name="couleur" placeholder="Blanc, Noir, Gris...">
               <button type="button" class="btn-rm-input" onclick="rmInput(this,'couleur-group')" title="Supprimer">×</button>
             </div>
           </div>
           <button type="button" class="btn-add-input" onclick="addInput('couleur-group','couleur','','Blanc, Noir...')">+ Ajouter une couleur</button>
+        </label>
+
+        <label class="full">
+          Type de carrosserie
+          <div class="filter-chips">
+            <label class="filter-chip"><input type="checkbox" name="carrosserie" value="berline"><span>🚗 Berline</span></label>
+            <label class="filter-chip"><input type="checkbox" name="carrosserie" value="break"><span>🚙 Break</span></label>
+            <label class="filter-chip"><input type="checkbox" name="carrosserie" value="suv"><span>🛻 SUV</span></label>
+            <label class="filter-chip"><input type="checkbox" name="carrosserie" value="coupé"><span>🏎️ Coupé</span></label>
+            <label class="filter-chip"><input type="checkbox" name="carrosserie" value="cabriolet"><span>🌞 Cabriolet</span></label>
+            <label class="filter-chip"><input type="checkbox" name="carrosserie" value="monospace"><span>🚐 Monospace</span></label>
+            <label class="filter-chip"><input type="checkbox" name="carrosserie" value="citadine"><span>🏙️ Citadine</span></label>
+          </div>
+        </label>
+
+        <label>
+          Materiaux interieur
+          <div class="filter-chips">
+            <label class="filter-chip"><input type="checkbox" name="materiaux_interieur" value="cuir"><span>🪑 Cuir</span></label>
+            <label class="filter-chip"><input type="checkbox" name="materiaux_interieur" value="alcantara"><span>✨ Alcantara</span></label>
+            <label class="filter-chip"><input type="checkbox" name="materiaux_interieur" value="tissu"><span>🧵 Tissu</span></label>
+            <label class="filter-chip"><input type="checkbox" name="materiaux_interieur" value="similicuir"><span>🪢 Similicuir</span></label>
+          </div>
+        </label>
+
+        <label>
+          Couleur interieure
+          <input type="text" name="couleur_interieure" placeholder="Noir, Beige, Gris...">
         </label>
 
         <label class="full">
@@ -837,15 +925,54 @@ html[data-theme="dark"] .search-criteria { color: #5c6494; }
           <div class="filter-chips">
             <label class="filter-chip"><input type="checkbox" name="carburant" value="diesel"><span>🛢️ Diesel</span></label>
             <label class="filter-chip"><input type="checkbox" name="carburant" value="essence"><span>⛽ Essence</span></label>
-            <label class="filter-chip"><input type="checkbox" name="carburant" value="hybride"><span>🔋 Hybride</span></label>
+            <label class="filter-chip" id="chip-hybride"><input type="checkbox" name="carburant" value="hybride" id="cb-hybride"><span>🔋 Hybride</span></label>
             <label class="filter-chip"><input type="checkbox" name="carburant" value="electrique"><span>⚡ Électrique</span></label>
+          </div>
+          <div class="hybride-sub" id="hybride-sub">
+            <label class="filter-chip"><input type="checkbox" name="carburant" value="hybride essence"><span>Essence (PHEV/HEV)</span></label>
+            <label class="filter-chip"><input type="checkbox" name="carburant" value="hybride diesel"><span>Diesel (PHEV/HEV)</span></label>
           </div>
         </label>
 
         <label class="full">
-          Options souhaitees
-          <span class="hint">Separees par des virgules (optionnel)</span>
-          <input type="text" name="options_recherchees" placeholder="camera, gps, bluetooth, toit ouvrant...">
+          <span class="field-header">
+            Options souhaitees
+            <span class="hint" style="margin-left:0">Bonus au score si présentes dans l'annonce</span>
+          </span>
+          <div class="multi-input-group" id="options-group"></div>
+          <button type="button" class="btn-add-input" onclick="addOptionsRow()">+ Ajouter une option</button>
+          <datalist id="datalist-options">
+            <option value="Caméra de recul">
+            <option value="Caméra 360°">
+            <option value="GPS / Navigation">
+            <option value="Bluetooth">
+            <option value="Apple CarPlay / Android Auto">
+            <option value="Toit ouvrant">
+            <option value="Toit panoramique">
+            <option value="Sièges chauffants">
+            <option value="Sièges ventilés">
+            <option value="Sièges électriques">
+            <option value="Volant chauffant">
+            <option value="Climatisation automatique">
+            <option value="Régulateur de vitesse">
+            <option value="Cruise control adaptatif (ACC)">
+            <option value="Détecteur d'angles morts">
+            <option value="Radars de stationnement">
+            <option value="Phares LED">
+            <option value="Phares Xénon / Bi-Xénon">
+            <option value="Démarrage sans clé">
+            <option value="Accès mains libres">
+            <option value="Head-up display (HUD)">
+            <option value="Chargeur sans fil">
+            <option value="Freinage auto d'urgence">
+            <option value="Attelage / Boule de remorquage">
+            <option value="Hayon électrique">
+            <option value="Coffre électrique">
+            <option value="Jantes alliage">
+            <option value="Vitres teintées">
+            <option value="Pack hiver">
+            <option value="Suspension sport">
+          </datalist>
         </label>
 
         <label class="full">
@@ -1044,6 +1171,14 @@ html[data-theme="dark"] .search-criteria { color: #5c6494; }
 </main>
 
 <div class="toast" id="toast"><span class="toast-icon"></span><span class="toast-msg"></span></div>
+
+<div id="galerie-modal" onclick="if(event.target===this)_galerieClose()">
+  <button id="galerie-close" onclick="_galerieClose()">✕</button>
+  <button class="galerie-nav" id="galerie-prev" onclick="_galeriePrev()">&#8592;</button>
+  <img id="galerie-img" src="" alt="">
+  <button class="galerie-nav" id="galerie-next" onclick="_galerieNext()">&#8594;</button>
+  <span id="galerie-counter"></span>
+</div>
 
 <!-- ── Modal nouveau client ── -->
 <div class="modal-overlay" id="modal-client" onclick="fermerModal(event,'modal-client')">
@@ -1561,7 +1696,7 @@ async function editerRecherche(searchId) {
     document.getElementById('form-submit-btn').textContent = 'Enregistrer les modifications';
 
     // Pré-remplir tous les champs
-    const set = (name, val) => { const el = form.elements[name]; if (el && !el.length) el.value = val ?? ''; };
+    const set = (name, val) => { const el = form.elements[name]; if (el && (!el.length || el.tagName === 'SELECT')) el.value = val ?? ''; };
     set('client_id', r.client_id || '');
     set('nom_recherche', r.nom_recherche || '');
     // Marque + modèles multiples
@@ -1569,8 +1704,7 @@ async function editerRecherche(searchId) {
     set('marque', r.marque || '');
     const modeleVals = (r.modele || '').split(',').map(s => s.trim()).filter(Boolean);
     setMultiInput('modele-group', 'modele', 'list-modele', 'Serie 1, 308...', modeleVals);
-    set('prix_min', r.prix_min || '');
-    set('budget_max', r.budget_max || '');
+    _setPrix('budget_max', r.budget_max || '');
     set('km_max', r.km_max || '');
     set('annee_min', r.annee_min || '');
     // Couleurs multiples
@@ -1584,7 +1718,27 @@ async function editerRecherche(searchId) {
       ? r.carburant.split(',').map(s => s.trim())
       : [];
     form.querySelectorAll('input[name="carburant"]').forEach(cb => { cb.checked = carburantVals.includes(cb.value); });
-    set('options_recherchees', r.options_recherchees || '');
+    const cbHybride = document.getElementById('cb-hybride');
+    if (cbHybride) {
+      const hasHybride = carburantVals.some(v => v.startsWith('hybride'));
+      cbHybride.checked = cbHybride.checked || hasHybride;
+      _syncHybrideSub();
+    }
+    // Chips carrosserie
+    const carrosserieVals = (r.carrosserie || '').split(',').map(s => s.trim()).filter(Boolean);
+    form.querySelectorAll('input[name="carrosserie"]').forEach(cb => { cb.checked = carrosserieVals.includes(cb.value); });
+    // Chips matériaux intérieur
+    const materiauxVals = (r.materiaux_interieur || '').split(',').map(s => s.trim()).filter(Boolean);
+    form.querySelectorAll('input[name="materiaux_interieur"]').forEach(cb => { cb.checked = materiauxVals.includes(cb.value); });
+    // Couleur intérieure
+    set('couleur_interieure', r.couleur_interieure || '');
+    // Couleur impératif
+    const cbCouleurImp = form.elements['couleur_imperatif'];
+    if (cbCouleurImp) cbCouleurImp.checked = !!r.couleur_imperatif;
+    // Options multi-row
+    const optVals = (r.options_recherchees || '').split(',').map(s => s.trim()).filter(Boolean);
+    const impVals = (r.options_imperatives || '').split(',').map(s => s.trim()).filter(Boolean);
+    _initOptionsGroup(optVals, impVals);
     set('mobile_de_url', r.mobile_de_url || '');
     set('score_min_notification', r.score_min_notification ?? 60);
     set('max_annonces', r.max_annonces ?? 3);
@@ -1813,9 +1967,19 @@ function renderAnnonce(a, searchId, historique = false) {
   try { zoneInondable = JSON.parse(a.score_detail || '{}')?.inondation?.risque === true; } catch {}
   const inondationBadge = zoneInondable ? '<span class="tag tag-inondation">🌊 Zone inondable</span>' : '';
 
+  const thumbUrls = a.images_urls ? a.images_urls.split('\n').filter(Boolean) : (a.image_url ? [a.image_url] : []);
+  const thumbHtml = thumbUrls.length
+    ? `<div class="annonce-thumb-wrap" onclick="_galerieOpen(${JSON.stringify(thumbUrls)},0)">
+        <img class="annonce-thumb" src="${thumbUrls[0]}" alt="" loading="lazy" onerror="this.closest('.annonce-thumb-wrap').style.display='none'">
+        ${thumbUrls.length > 1 ? `<span class="thumb-count">&#128247; ${thumbUrls.length}</span>` : ''}
+       </div>` : '';
+
   return `<div class="${classes}" id="card-${a.seen_id}" data-prix="${a.prix||0}" data-km="${a.km||0}" data-titre="${(a.titre||'').toLowerCase()}">
     <div class="annonce-top">
-      <div class="annonce-titre">${a.titre || 'Annonce sans titre'}${doublonBadge}</div>
+      ${thumbHtml}
+      <div style="flex:1;min-width:0">
+        <div class="annonce-titre">${a.titre || 'Annonce sans titre'}${doublonBadge}</div>
+      </div>
       <div class="score-badge" style="color:${color}">${score}/100</div>
     </div>
 
@@ -1839,9 +2003,10 @@ function renderAnnonce(a, searchId, historique = false) {
       ${a.url ? `<a class="btn-annonce" href="${a.url}" target="_blank">Voir l'annonce &#8594;</a>` : ''}
       ${translateUrl ? `<a class="btn-translate" href="${translateUrl}" target="_blank">&#127760; Traduire</a>` : ''}
       <button class="btn-sm btn-oui ${a.interet === 'oui' ? 'active' : ''}"
-        onclick="marquerInteret('${seenIdSafe}','oui','${searchId}')">&#128077; Interesse</button>
+        onclick="marquerInteret('${seenIdSafe}','${a.interet === 'oui' ? 'neutre' : 'oui'}','${searchId}')">&#128077; Interesse</button>
       <button class="btn-sm btn-non ${a.interet === 'non' ? 'active' : ''}"
-        onclick="marquerInteret('${seenIdSafe}','non','${searchId}')">&#128078; Pas interesse</button>
+        onclick="marquerInteret('${seenIdSafe}','${a.interet === 'non' ? 'neutre' : 'non'}','${searchId}')">&#128078; Pas interesse</button>
+      <button class="btn-sm btn-photos" onclick="_telechargerPhotos('${seenIdSafe}')">&#128247; Photos</button>
       ${breakdown ? `<button class="btn-sm btn-detail" onclick="toggleDetail('${seenIdSafe}')">Detail du score</button>` : ''}
     </div>
 
@@ -2005,6 +2170,145 @@ async function marquerInteret(seenId, interet, searchId) {
   } catch { showToast('Erreur de connexion.', false); }
 }
 
+// ── Prix formatés ──────────────────────────────────────────────────────────────
+
+function _prixRaw(el) {
+  return parseFloat(String(el.value).replace(/[\s ]/g, '').replace(',', '.')) || 0;
+}
+function _prixFormat(n) { return isNaN(n) || n === 0 ? '' : n.toLocaleString('fr-FR'); }
+function _onPrixKeydown(e) {
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  e.preventDefault();
+  const n = _prixRaw(e.target) || 0;
+  const step = e.shiftKey ? 5000 : 1000;
+  const next = e.key === 'ArrowUp' ? n + step : Math.max(0, n - step);
+  e.target.value = _prixFormat(next);
+}
+function _setPrix(name, val) {
+  const el = document.querySelector(`[name="${name}"].prix-input`);
+  if (!el) return;
+  const n = parseFloat(String(val).replace(/[\s ]/g, '').replace(',', '.'));
+  el.value = isNaN(n) || n === 0 ? '' : _prixFormat(n);
+}
+
+// ── Options multi-row ──────────────────────────────────────────────────────────
+
+const OPTIONS_LISTE = [
+  { label: 'Caméra de recul',               value: 'camera' },
+  { label: 'Caméra 360°',                   value: 'camera 360' },
+  { label: 'GPS / Navigation',               value: 'navigation' },
+  { label: 'Bluetooth',                      value: 'bluetooth' },
+  { label: 'Apple CarPlay / Android Auto',   value: 'carplay' },
+  { label: 'Toit ouvrant',                   value: 'toit ouvrant' },
+  { label: 'Toit panoramique',               value: 'panoramique' },
+  { label: 'Sièges chauffants',              value: 'sieges chauffants' },
+  { label: 'Sièges ventilés',               value: 'sieges ventiles' },
+  { label: 'Sièges électriques',            value: 'sieges electriques' },
+  { label: 'Volant chauffant',               value: 'volant chauffant' },
+  { label: 'Climatisation automatique',      value: 'climatisation auto' },
+  { label: 'Régulateur de vitesse',          value: 'regulateur' },
+  { label: 'Cruise control adaptatif (ACC)', value: 'acc' },
+  { label: 'Détecteur d\'angles morts',      value: 'angles morts' },
+  { label: 'Radars de stationnement',        value: 'radar' },
+  { label: 'Phares LED',                     value: 'led' },
+  { label: 'Phares Xénon / Bi-Xénon',       value: 'xenon' },
+  { label: 'Démarrage sans clé',             value: 'keyless' },
+  { label: 'Accès mains libres',             value: 'mains libres' },
+  { label: 'Head-up display (HUD)',          value: 'hud' },
+  { label: 'Chargeur sans fil',              value: 'chargeur sans fil' },
+  { label: 'Freinage auto d\'urgence',       value: 'freinage urgence' },
+  { label: 'Attelage / Boule de remorquage', value: 'attelage' },
+  { label: 'Hayon électrique',              value: 'hayon electrique' },
+  { label: 'Coffre électrique',             value: 'coffre electrique' },
+  { label: 'Jantes alliage',                value: 'jantes alliage' },
+  { label: 'Vitres teintées',               value: 'vitres teintees' },
+  { label: 'Pack hiver',                     value: 'pack hiver' },
+  { label: 'Suspension sport',               value: 'suspension sport' },
+];
+
+function _normalise(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(); }
+function _optionLabel(val) { const o = OPTIONS_LISTE.find(o => o.value === val); return o ? o.label : val; }
+function _optionValeur(text) { const t = _normalise(text); const o = OPTIONS_LISTE.find(o => _normalise(o.label) === t); return o ? o.value : text.trim().toLowerCase(); }
+
+function _makeOptionsRow(val, imperatif) {
+  val = val || ''; imperatif = imperatif || false;
+  const row = document.createElement('div');
+  row.className = 'options-row multi-input-row';
+  const label = val ? _optionLabel(val) : '';
+  row.innerHTML = `<input type="text" class="options-input" list="datalist-options" placeholder="Caméra, GPS, toit ouvrant…" autocomplete="off" value="${label.replace(/"/g,'&quot;')}">
+    <label class="options-imperatif"><input type="checkbox" ${imperatif ? 'checked' : ''}> Impératif</label>
+    <button type="button" class="btn-rm-input" onclick="this.closest('.options-row').remove()" title="Supprimer">×</button>`;
+  return row;
+}
+
+function addOptionsRow(val, imp) {
+  const g = document.getElementById('options-group');
+  if (g) g.appendChild(_makeOptionsRow(val || '', imp || false));
+}
+
+function _initOptionsGroup(vals, imps) {
+  const g = document.getElementById('options-group');
+  if (!g) return;
+  g.innerHTML = '';
+  if (!vals || vals.length === 0) { addOptionsRow(); return; }
+  vals.forEach(v => addOptionsRow(v, imps && imps.includes(v)));
+}
+
+// ── Hybride sous-menu ──────────────────────────────────────────────────────────
+
+function _syncHybrideSub() {
+  const cb = document.getElementById('cb-hybride');
+  const sub = document.getElementById('hybride-sub');
+  if (!cb || !sub) return;
+  sub.classList.toggle('visible', cb.checked);
+  if (!cb.checked) {
+    sub.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
+  }
+}
+
+// ── Photos ─────────────────────────────────────────────────────────────────────
+
+// ── Galerie photos ─────────────────────────────────────────────────────────
+let _galerieUrls = [], _galerieIdx = 0;
+
+function _galerieOpen(urls, idx) {
+  _galerieUrls = urls;
+  _galerieIdx = idx;
+  _galerieShow();
+  document.getElementById('galerie-modal').classList.add('open');
+  document.addEventListener('keydown', _galerieKey);
+}
+function _galerieClose() {
+  document.getElementById('galerie-modal').classList.remove('open');
+  document.removeEventListener('keydown', _galerieKey);
+}
+function _galerieShow() {
+  document.getElementById('galerie-img').src = _galerieUrls[_galerieIdx];
+  document.getElementById('galerie-counter').textContent =
+    _galerieUrls.length > 1 ? `${_galerieIdx + 1} / ${_galerieUrls.length}` : '';
+  document.getElementById('galerie-prev').style.display = _galerieUrls.length > 1 ? '' : 'none';
+  document.getElementById('galerie-next').style.display = _galerieUrls.length > 1 ? '' : 'none';
+}
+function _galeriePrev() { _galerieIdx = (_galerieIdx - 1 + _galerieUrls.length) % _galerieUrls.length; _galerieShow(); }
+function _galerieNext() { _galerieIdx = (_galerieIdx + 1) % _galerieUrls.length; _galerieShow(); }
+function _galerieKey(e) {
+  if (e.key === 'ArrowLeft')  _galeriePrev();
+  if (e.key === 'ArrowRight') _galerieNext();
+  if (e.key === 'Escape')     _galerieClose();
+}
+
+async function _telechargerPhotos(seenId) {
+  try {
+    const r = await fetch(`${API}/telecharger-photos`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({seen_id: seenId})
+    }).then(r => r.json());
+    if (r.ok) showToast(`📷 ${r.nb} photo${r.nb > 1 ? 's' : ''} enregistrée${r.nb > 1 ? 's' : ''} dans ${r.dossier}`);
+    else showToast(r.error || 'Erreur téléchargement photos', false);
+  } catch { showToast('Erreur connexion', false); }
+}
+
 // ── Formulaire nouvelle recherche ───────────────────────────────────────────────
 
 async function soumettreRecherche(e) {
@@ -2012,7 +2316,7 @@ async function soumettreRecherche(e) {
   const form = e.target;
   const fd = new FormData(form);
   const body = {};
-  fd.forEach((v, k) => { if (!['carburant','boite','modele','couleur'].includes(k)) body[k] = v === '' ? null : v; });
+  fd.forEach((v, k) => { if (!['carburant','boite','modele','couleur','couleur_imperatif','carrosserie','materiaux_interieur'].includes(k)) body[k] = v === '' ? null : v; });
   body.budget_strict = fd.has('budget_strict');
   const carburants = fd.getAll('carburant');
   body.carburant = carburants.length > 0 ? carburants.join(',') : 'indifferent';
@@ -2022,7 +2326,27 @@ async function soumettreRecherche(e) {
   body.modele = modeles.length > 0 ? modeles.join(',') : null;
   const couleurs = fd.getAll('couleur').map(v => v.trim()).filter(Boolean);
   body.couleur = couleurs.length > 0 ? couleurs.join(',') : null;
-  ['prix_min','budget_max','km_max','annee_min','poids_prix','poids_km','poids_annee',
+  body.couleur_imperatif = fd.has('couleur_imperatif') ? 1 : 0;
+  const carrosseries = fd.getAll('carrosserie');
+  body.carrosserie = carrosseries.length > 0 ? carrosseries.join(',') : null;
+  const materiaux = fd.getAll('materiaux_interieur');
+  body.materiaux_interieur = materiaux.length > 0 ? materiaux.join(',') : null;
+  // Options multi-row
+  const optRows = document.querySelectorAll('#options-group .options-row');
+  const optVals = [], optImps = [];
+  optRows.forEach(row => {
+    const txt = row.querySelector('.options-input')?.value?.trim();
+    if (!txt) return;
+    const val = _optionValeur(txt);
+    optVals.push(val);
+    if (row.querySelector('input[type=checkbox]')?.checked) optImps.push(val);
+  });
+  body.options_recherchees = optVals.length > 0 ? optVals.join(',') : null;
+  body.options_imperatives = optImps.length > 0 ? optImps.join(',') : null;
+  // Prix formaté
+  const budgetEl = form.querySelector('[name="budget_max"].prix-input');
+  if (budgetEl) body.budget_max = _prixRaw(budgetEl) || null;
+  ['km_max','annee_min','poids_prix','poids_km','poids_annee',
    'poids_boite','poids_carburant','poids_options','score_min_notification','max_annonces']
     .forEach(k => { if (body[k]) body[k] = parseFloat(body[k]); });
 
@@ -2555,6 +2879,9 @@ function _chargerSelectConvertisseur() {
   initMarqueSelect();
   _syncRmButtons('modele-group');
   _syncRmButtons('couleur-group');
+  const _cbHybride = document.getElementById('cb-hybride');
+  if (_cbHybride) _cbHybride.addEventListener('change', _syncHybrideSub);
+  addOptionsRow();
   await Promise.all([
     chargerClients(),
     updateStatus(),

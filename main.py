@@ -310,7 +310,7 @@ def cmd_ui():
         insert_client, get_clients, get_client_by_id, archiver_client, reactiver_client, supprimer_client, client_nom_existe,
         ajouter_lien_client, get_liens_client, supprimer_lien_client,
         modifier_client, sauvegarder_note_annonce, get_autres_clients_pour_listing,
-        get_historique_client, get_recherches_sans_client,
+        get_historique_client, get_recherches_sans_client, get_annonce_by_seen_id,
         desactiver_recherche, rattacher_recherche_client,
         get_derniers_runs, get_resume_hebdo,
     )
@@ -599,6 +599,64 @@ def cmd_ui():
                     self._send_json({"ok": True})
                 else:
                     self._send_json({"ok": False, "error": "Parametres invalides"}, 400)
+
+            elif self.path == "/telecharger-photos":
+                seen_id = body.get("seen_id")
+                if not seen_id:
+                    self._send_json({"ok": False, "error": "seen_id manquant"}, 400)
+                    return
+                annonce = get_annonce_by_seen_id(seen_id)
+                if not annonce or (not annonce.get("image_url") and not annonce.get("images_urls")):
+                    self._send_json({"ok": False, "error": "Aucune image disponible"})
+                    return
+                try:
+                    import io, urllib.request
+                    from pillow_heif import register_heif_opener
+                    register_heif_opener()
+                    from PIL import Image
+                except ImportError:
+                    self._send_json({"ok": False, "error": "Module manquant (pillow-heif)"})
+                    return
+                try:
+                    client_id = annonce.get("client_id")
+                    client = get_client_by_id(client_id) if client_id else None
+                    save_dir = (_dossier_client(client["nom"]) / "voitures") if client else (_dossier_clients_root() / "_Non classe")
+                    save_dir.mkdir(parents=True, exist_ok=True)
+
+                    titre_safe = "".join(c for c in (annonce.get("titre") or "annonce") if c.isalnum() or c in " _-")[:40].strip()
+
+                    # Construire la liste des URLs à télécharger
+                    if annonce.get("images_urls"):
+                        urls = [u for u in annonce["images_urls"].split("\n") if u.strip()]
+                    elif annonce.get("image_url"):
+                        urls = [annonce["image_url"]]
+                    else:
+                        urls = []
+
+                    nb_ok = 0
+                    for idx, img_url in enumerate(urls):
+                        try:
+                            req = urllib.request.Request(img_url.strip(), headers={"User-Agent": "Mozilla/5.0"})
+                            data = urllib.request.urlopen(req, timeout=15).read()
+                            img = Image.open(io.BytesIO(data))
+                            suffix = f"_{idx+1}" if len(urls) > 1 else ""
+                            out_nom = f"{titre_safe}{suffix}.jpg"
+                            out_path = save_dir / out_nom
+                            i = 1
+                            while out_path.exists():
+                                out_path = save_dir / f"{titre_safe}{suffix}_{i}.jpg"
+                                i += 1
+                            img.convert("RGB").save(str(out_path), "JPEG", quality=92)
+                            nb_ok += 1
+                        except Exception as e:
+                            print(f"  [WARN] Photo {idx+1} non téléchargée : {e}")
+
+                    if nb_ok > 0:
+                        self._send_json({"ok": True, "nb": nb_ok, "dossier": str(save_dir)})
+                    else:
+                        self._send_json({"ok": False, "error": "Aucune photo téléchargée"})
+                except Exception as e:
+                    self._send_json({"ok": False, "error": str(e)})
 
             elif self.path == "/config":
                 allowed = {"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_DEST", "DOSSIER_CLIENTS"}

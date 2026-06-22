@@ -56,19 +56,26 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     km_max        = recherche.get("km_max")
     annee_min     = recherche.get("annee_min")
     boite_r       = (recherche.get("boite") or "indifferent").lower()
-    carburant_r   = (recherche.get("carburant") or "indifferent").lower()
-    vendeur_r     = (recherche.get("vendeur_filtre") or "indifferent").lower()
-    options_r     = recherche.get("options_recherchees") or ""
+    carburant_r        = (recherche.get("carburant") or "indifferent").lower()
+    vendeur_r          = (recherche.get("vendeur_filtre") or "indifferent").lower()
+    couleur_r          = (recherche.get("couleur") or "").lower()
+    couleur_imperatif  = bool(recherche.get("couleur_imperatif", False))
+    options_r          = recherche.get("options_recherchees") or ""
+    options_imp_r      = recherche.get("options_imperatives") or ""
+    carrosserie_r      = (recherche.get("carrosserie") or "").lower()
+    materiaux_r        = (recherche.get("materiaux_interieur") or "").lower()
+    couleur_int_r      = (recherche.get("couleur_interieure") or "").lower()
 
     prix        = annonce.get("prix")
     km          = annonce.get("km")
     date_immat  = annonce.get("date_immat") or ""
     annee       = int(date_immat[:4]) if date_immat and len(date_immat) >= 4 else annonce.get("annee")
-    boite_a     = (annonce.get("boite") or "").lower().strip()
-    carburant_a = (annonce.get("carburant") or "").lower().strip()
-    vendeur_a   = (annonce.get("vendeur_type") or "").lower()
-    options_a   = (annonce.get("options_texte") or "").lower()
-    date_pub    = annonce.get("date_publication")
+    boite_a       = (annonce.get("boite") or "").lower().strip()
+    carburant_a   = (annonce.get("carburant") or "").lower().strip()
+    vendeur_a     = (annonce.get("vendeur_type") or "").lower()
+    options_a     = (annonce.get("options_texte") or "").lower()
+    carrosserie_a = (annonce.get("carrosserie") or "").lower().strip()
+    date_pub      = annonce.get("date_publication")
 
     annee_actuelle = datetime.now().year
     detail = {}
@@ -201,7 +208,10 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
         score_carburant = p_carburant
     elif not carburant_a:
         score_carburant = round(p_carburant * 0.40, 1)  # inconnu : score partiel
-    elif carburant_a in carburant_list:
+    elif any(
+        carburant_a == c or (c == "hybride" and carburant_a.startswith("hybride"))
+        for c in carburant_list
+    ):
         score_carburant = p_carburant
     else:
         score_carburant = 0
@@ -216,15 +226,48 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
         score_vendeur = -3
     detail["vendeur"] = {"score": score_vendeur, "max": 0}
 
+    # ── Couleur (impératif uniquement) ────────────────────────────────────────
+    couleur_list = [c.strip() for c in couleur_r.split(",") if c.strip()]
+    couleur_a = (annonce.get("couleur") or "").lower()
+    if couleur_imperatif and couleur_list and couleur_a:
+        if any(c in couleur_a for c in couleur_list):
+            malus_couleur = 0
+        else:
+            malus_couleur = -15
+    else:
+        malus_couleur = 0
+    detail["couleur"] = {"score": malus_couleur, "max": 0}
+
+    # ── Carrosserie ───────────────────────────────────────────────────────────
+    carrosserie_list = [c.strip() for c in carrosserie_r.split(",") if c.strip()]
+    if not carrosserie_list:
+        score_carrosserie = 0
+    elif not carrosserie_a:
+        score_carrosserie = 0
+    elif carrosserie_a in carrosserie_list:
+        score_carrosserie = 3
+    else:
+        score_carrosserie = -5
+    detail["carrosserie"] = {"score": score_carrosserie, "max": 3}
+
     # ── Options / mots-clés ───────────────────────────────────────────────────
     mots_cles = [m.strip().lower() for m in options_r.split(",") if m.strip()]
+    imperatives = [m.strip().lower() for m in options_imp_r.split(",") if m.strip()]
+    # Matériaux et couleur intérieure : ajoutés comme mots-clés bonus dans options_texte
+    mat_list = [m.strip().lower() for m in materiaux_r.split(",") if m.strip()]
+    col_int_list = [c.strip().lower() for c in couleur_int_r.split(",") if c.strip()]
+    mots_cles_bonus = mat_list + col_int_list
     if not mots_cles:
         bonus_options = p_options
+        malus_imperatives = 0
     else:
         trouves = sum(1 for m in mots_cles if m in options_a)
         ratio = trouves / len(mots_cles)
         bonus_options = round(p_options * ratio, 1)
-    detail["options"] = {"score": bonus_options, "max": p_options}
+        malus_imperatives = sum(-12 for m in imperatives if m not in options_a)
+    # Petit bonus si matériaux/couleur intérieure trouvés dans l'annonce
+    bonus_extra = sum(2 for m in mots_cles_bonus if m in options_a)
+    detail["options"] = {"score": bonus_options + malus_imperatives + bonus_extra, "max": p_options}
 
     # ── Pénalité champs critiques manquants ────────────────────────────────────
     # Prix, km et année manquants sont déjà pénalisés ci-dessus via leur score.
@@ -252,7 +295,8 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     score_brut = (
         score_prix + score_km + score_annee + bonus_km_an
         + score_boite + score_carburant + score_vendeur
-        + bonus_options - penalite + bonus_fraicheur + malus_inondation
+        + bonus_options - penalite + bonus_fraicheur + malus_inondation + malus_couleur
+        + score_carrosserie
     )
     score_final = max(0.0, min(100.0, score_brut))
 

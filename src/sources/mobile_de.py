@@ -378,10 +378,12 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
             "date_immat": None,
             "boite": item.get("boite") or "",
             "carburant": carburant,
+            "carrosserie": "",
             "couleur": None,
             "vendeur_type": "",
             "ville": item.get("ville") or "",
             "image_url": item.get("image_url"),
+            "images_urls": None,
             "options_texte": "",
             "date_publication": "",
         })
@@ -404,10 +406,29 @@ def _parse_fuel(val: str) -> str:
         "DIESEL": "diesel",
         "PETROL": "essence",
         "ELECTRIC": "electrique",
-        "HYBRID_PETROL": "hybride",
-        "HYBRID_DIESEL": "hybride",
+        "HYBRID_PETROL": "hybride essence",
+        "HYBRID_DIESEL": "hybride diesel",
         "LPG": "gpl",
         "CNG": "gaz",
+    }
+    return mapping.get(val, val.lower() if val else "")
+
+
+def _parse_carrosserie(val: str) -> str:
+    mapping = {
+        "LIMOUSINE": "berline",
+        "SEDAN": "berline",
+        "KOMBI": "break",
+        "ESTATE": "break",
+        "SUV": "suv",
+        "COUPE": "coupé",
+        "CABRIO": "cabriolet",
+        "CONVERTIBLE": "cabriolet",
+        "VAN": "monospace",
+        "MINIVAN": "monospace",
+        "KLEINWAGEN": "citadine",
+        "CITY_CAR": "citadine",
+        "PICKUP": "pickup",
     }
     return mapping.get(val, val.lower() if val else "")
 
@@ -435,6 +456,7 @@ def _parse_item(item: dict) -> dict | None:
         attrs = item.get("attributes") or {}
         boite = _parse_transmission(attrs.get("transmission", ""))
         carburant = _parse_fuel(attrs.get("fuel", ""))
+        carrosserie = _parse_carrosserie(attrs.get("category", "") or attrs.get("bodyType", "") or item.get("category", ""))
 
         seller = item.get("seller") or {}
         vendeur_type = _parse_vendeur(seller.get("type", ""))
@@ -442,6 +464,7 @@ def _parse_item(item: dict) -> dict | None:
 
         images = item.get("images") or []
         image_url = images[0].get("uri") if images else None
+        images_urls = "\n".join(img.get("uri", "") for img in images if img.get("uri")) or None
 
         titre = item.get("title") or item.get("name") or ""
         creation = item.get("creationDate") or item.get("firstActivationDate") or ""
@@ -465,10 +488,12 @@ def _parse_item(item: dict) -> dict | None:
             "date_immat": date_immat,
             "boite": boite,
             "carburant": carburant,
+            "carrosserie": carrosserie,
             "couleur": None,
             "vendeur_type": vendeur_type,
             "ville": ville,
             "image_url": image_url,
+            "images_urls": images_urls,
             "options_texte": options_texte,
             "date_publication": creation,
         }
@@ -603,7 +628,7 @@ def ouvrir_session():
     # pour passer la détection de mobile.de.
     # La fenêtre Chrome apparaîtra brièvement pendant le scraping, c'est normal.
 
-    driver = uc.Chrome(options=options, headless=False, use_subprocess=True)
+    driver = uc.Chrome(options=options, headless=False, use_subprocess=True, version_main=149)
 
     # Charger la homepage pour initialiser le domaine (requis avant add_cookie)
     driver.get("https://www.mobile.de")
