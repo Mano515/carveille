@@ -276,13 +276,13 @@ button:hover { opacity: .88; }
 .btn-note { background: var(--c-bg); color: var(--c-text-muted); border-color: var(--c-border); }
 .btn-photos:hover { background: #e2e8f0; border-color: #94a3b8; color: #1e293b; opacity: 1; }
 .btn-detail { background: var(--c-bg); color: var(--c-text-muted); border-color: var(--c-border); }
-.btn-translate {
-  background: #eff6ff; color: var(--c-accent); border-color: #bfdbfe;
+.btn-original {
+  background: var(--c-bg); color: var(--c-text-subtle); border-color: var(--c-border);
   text-decoration: none; padding: 6px 12px; border-radius: var(--radius-sm);
   font-size: 0.78rem; font-weight: 500; border: 1px solid #bfdbfe;
   display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
 }
-.btn-translate:hover { background: #dbeafe; opacity: 1; }
+.btn-original:hover { background: var(--c-border); opacity: 1; }
 
 .score-breakdown { display: none; padding: 10px 20px 14px; border-top: 1px solid var(--c-border); background: var(--c-bg); }
 .score-breakdown.open { display: block; }
@@ -718,7 +718,7 @@ html[data-theme="dark"] .btn-oui { background: #14401a; color: #4ade80; }
 html[data-theme="dark"] .btn-non { background: #3d0a0a; color: #f87171; }
 html[data-theme="dark"] .btn-oui.active { background: #166534; color: white; }
 html[data-theme="dark"] .btn-non.active { background: #7f1d1d; color: white; }
-html[data-theme="dark"] .btn-translate { background: #1e2545; color: #5c9ef7; }
+html[data-theme="dark"] .btn-original { background: #1c1f2e; color: #5c6494; border-color: #2e3350; }
 
 /* Score breakdown */
 html[data-theme="dark"] .score-label { color: #8b93b8; }
@@ -2058,8 +2058,7 @@ function renderAnnonce(a, searchId, historique = false) {
   const anneeStr  = a.date_immat || (a.annee ? String(a.annee) : '');
   const kmStr     = a.km ? Math.round(a.km).toLocaleString('fr') + ' km' : '';
   const breakdown = renderBreakdown(a.score_detail || '');
-  const translateUrl = a.url
-    ? `https://www.deepl.com/translator#de/fr/${encodeURIComponent(a.url)}` : null;
+  const frUrl = a.url ? _googleTranslateUrl(a.url) : null;
   const seenIdSafe = (a.seen_id || '').replace(/'/g, "\\'");
 
   const sourceBadge = historique && a.nom_recherche
@@ -2119,8 +2118,8 @@ function renderAnnonce(a, searchId, historique = false) {
     </div>
 
     <div class="annonce-actions">
-      ${a.url ? `<a class="btn-annonce" href="${a.url}" target="_blank">Voir l'annonce →</a>` : ''}
-      ${translateUrl ? `<a class="btn-translate" href="${translateUrl}" target="_blank">🌐 Traduire</a>` : ''}
+      ${frUrl ? `<a class="btn-annonce" href="${frUrl}" target="_blank">Voir l'annonce →</a>` : (a.url ? `<a class="btn-annonce" href="${a.url}" target="_blank">Voir l'annonce →</a>` : '')}
+      ${a.url ? `<a class="btn-sm btn-original" href="${a.url}" target="_blank">DE</a>` : ''}
       <button class="btn-sm btn-oui ${a.interet === 'oui' ? 'active' : ''}"
         onclick="marquerInteret('${seenIdSafe}','${a.interet === 'oui' ? 'neutre' : 'oui'}','${searchId}')">👍 Intéressé</button>
       <button class="btn-sm btn-non ${a.interet === 'non' ? 'active' : ''}"
@@ -2137,6 +2136,18 @@ function renderAnnonce(a, searchId, historique = false) {
 
     ${breakdown ? `<div class="score-breakdown" id="bd-${a.seen_id}">${breakdown}</div>` : ''}
   </div>`;
+}
+
+function _googleTranslateUrl(url) {
+  try {
+    const u = new URL(url);
+    const translatedHost = u.hostname.replace(/\./g, '-') + '.translate.goog';
+    u.hostname = translatedHost;
+    u.searchParams.set('_x_tr_sl', 'de');
+    u.searchParams.set('_x_tr_tl', 'fr');
+    u.searchParams.set('_x_tr_hl', 'fr');
+    return u.toString();
+  } catch { return null; }
 }
 
 function toggleDetail(seenId) {
