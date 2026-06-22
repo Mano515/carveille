@@ -265,14 +265,6 @@ def _appliquer_filtre_make_model(driver, make_name: str, model_name: str) -> str
         return None
 
 
-def _build_url(recherche: dict, page: int = 1) -> str:
-    """
-    Construit une URL de recherche mobile.de sans make/model.
-    Les recherches avec marque/modèle passent par _url_via_detailsuche() à l'exécution.
-    """
-    return _build_url_sans_make(recherche, page)
-
-
 def _extract_next_data(html: str) -> dict | None:
     match = re.search(
         r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>',
