@@ -82,56 +82,62 @@ def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notif
             nom = recherche.get("nom_recherche", search_id)
             print(f"\n[--] Recherche : {nom}")
 
-            # 1. Charger et dédoublonner les annonces de la source
-            annonces_brutes = _dedup_liste_interne(_charger_annonces(source, recherche, day))
-            total_lues += len(annonces_brutes)
-            print(f"  -> {len(annonces_brutes)} annonces chargees")
+            try:
+                # 1. Charger et dédoublonner les annonces de la source
+                annonces_brutes = _dedup_liste_interne(_charger_annonces(source, recherche, day))
+                total_lues += len(annonces_brutes)
+                print(f"  -> {len(annonces_brutes)} annonces chargees")
 
-            # 2. Séparer nouvelles vs déjà vues (une seule requête SQL)
-            conn = get_conn()
-            nouvelles = filtrer_nouvelles_annonces(annonces_brutes, search_id, conn)
-            conn.close()
-            ids_nouvelles = {a["listing_id"] for a in nouvelles}
-            deja_vues = [a for a in annonces_brutes if a["listing_id"] not in ids_nouvelles]
-            print(f"  -> {len(nouvelles)} nouvelles, {len(deja_vues)} deja vues")
-            total_nouvelles += len(nouvelles)
+                # 2. Séparer nouvelles vs déjà vues (une seule requête SQL)
+                conn = get_conn()
+                nouvelles = filtrer_nouvelles_annonces(annonces_brutes, search_id, conn)
+                conn.close()
+                ids_nouvelles = {a["listing_id"] for a in nouvelles}
+                deja_vues = [a for a in annonces_brutes if a["listing_id"] not in ids_nouvelles]
+                print(f"  -> {len(nouvelles)} nouvelles, {len(deja_vues)} deja vues")
+                total_nouvelles += len(nouvelles)
 
-            # 3. Scorer + enregistrer les nouvelles annonces
-            annonces_scorees = []
-            for ann in nouvelles:
-                enrichie = _enrichir(ann, search_id, scorer_annonce(ann, recherche), est_nouvelle=True)
-                annonces_scorees.append(enrichie)
-                upsert_annonce(enrichie)
+                # 3. Scorer + enregistrer les nouvelles annonces
+                annonces_scorees = []
+                for ann in nouvelles:
+                    enrichie = _enrichir(ann, search_id, scorer_annonce(ann, recherche), est_nouvelle=True)
+                    annonces_scorees.append(enrichie)
+                    upsert_annonce(enrichie)
 
-            # 4. Mettre à jour les annonces déjà vues et détecter les baisses de prix
-            baisses = []
-            for ann in deja_vues:
-                enrichie = _enrichir(ann, search_id, scorer_annonce(ann, recherche), est_nouvelle=False)
-                _, baisse_detectee = upsert_annonce(enrichie)
-                if baisse_detectee:
-                    # Relire le montant de baisse calculé et stocké par upsert_annonce
-                    conn2 = get_conn()
-                    row = conn2.execute(
-                        "SELECT baisse_prix FROM annonces_vues WHERE search_id=? AND listing_id=?",
-                        (search_id, ann["listing_id"]),
-                    ).fetchone()
-                    conn2.close()
-                    baisses.append({**enrichie, "baisse_prix": row["baisse_prix"] if row else 0})
+                # 4. Mettre à jour les annonces déjà vues et détecter les baisses de prix
+                baisses = []
+                for ann in deja_vues:
+                    enrichie = _enrichir(ann, search_id, scorer_annonce(ann, recherche), est_nouvelle=False)
+                    _, baisse_detectee = upsert_annonce(enrichie)
+                    if baisse_detectee:
+                        conn2 = get_conn()
+                        row = conn2.execute(
+                            "SELECT baisse_prix FROM annonces_vues WHERE search_id=? AND listing_id=?",
+                            (search_id, ann["listing_id"]),
+                        ).fetchone()
+                        conn2.close()
+                        baisses.append({**enrichie, "baisse_prix": row["baisse_prix"] if row else 0})
 
-            if baisses:
-                print(f"  -> {len(baisses)} baisse(s) de prix detectee(s) !")
+                if baisses:
+                    print(f"  -> {len(baisses)} baisse(s) de prix detectee(s) !")
 
-            # 5. Notifier selon les déclencheurs configurés
-            top = selectionner_top_annonces(annonces_scorees, recherche)
-            a_notifier = (top if notify_nouvelles else []) + (baisses if notify_baisses else [])
+                # 5. Notifier selon les déclencheurs configurés
+                top = selectionner_top_annonces(annonces_scorees, recherche)
+                a_notifier = (top if notify_nouvelles else []) + (baisses if notify_baisses else [])
 
-            print(f"  -> {len(a_notifier)} annonce(s) a notifier")
+                print(f"  -> {len(a_notifier)} annonce(s) a notifier")
 
-            if a_notifier:
-                notifier(recherche, a_notifier)
-                for ann in top:
-                    marquer_notifiee(ann["seen_id"])
-                total_notifiees += len(a_notifier)
+                if a_notifier:
+                    notifier(recherche, a_notifier)
+                    for ann in top:
+                        marquer_notifiee(ann["seen_id"])
+                    total_notifiees += len(a_notifier)
+
+            except Exception as e:
+                import traceback
+                print(f"  [ERR] Recherche '{nom}' échouée : {type(e).__name__}: {e}")
+                traceback.print_exc()
+                print("  [INFO] Passage à la recherche suivante...")
 
     finally:
         # Fermer le navigateur même si une erreur survient

@@ -133,8 +133,8 @@ def _load_schedule() -> dict:
             with open(_SCHEDULE_PATH, encoding="utf-8") as f:
                 data = json.load(f)
                 defaults.update(data)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[WARN] Lecture planning ({_SCHEDULE_PATH}) : {e}")
     return defaults
 
 
@@ -159,6 +159,9 @@ def _do_run_with_status(source: str, day: int = 1, notify_nouvelles: bool = True
         _run_status["en_cours"] = True
     try:
         run(source=source, day=day, notify_nouvelles=notify_nouvelles, notify_baisses=notify_baisses)
+    except Exception as e:
+        print(f"[ERR] Run planté : {type(e).__name__}: {e}")
+        import traceback; traceback.print_exc()
     finally:
         with _run_lock:
             _run_status["en_cours"] = False
@@ -443,12 +446,20 @@ def cmd_ui():
             elif self.path == "/status":
                 self._send_json(dict(_run_status))
             else:
+                print(f"[WARN] GET {self.path} : route inconnue (404)")
                 self.send_response(404)
                 self.end_headers()
 
         def do_POST(self):
             length = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(length)) if length else {}
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw)
+            except json.JSONDecodeError as e:
+                print(f"[ERR] POST {self.path} : corps JSON invalide : {e}")
+                self._send_json({"ok": False, "error": "JSON invalide"}, 400)
+                return
+            print(f"[POST] {self.path}")
 
             if self.path == "/clients":
                 data = {
@@ -685,7 +696,7 @@ def cmd_ui():
 
                     self._send_json({"ok": True, "urls": urls})
                 except Exception as e:
-                    # En cas d'erreur réseau (Cloudflare etc.), renvoyer ce qu'on avait
+                    print(f"[ERR] /charger-photos ({seen_id}) : {type(e).__name__}: {e}")
                     self._send_json({"ok": True, "urls": existing_urls, "warn": str(e)})
 
             elif self.path == "/telecharger-photos":
@@ -744,6 +755,7 @@ def cmd_ui():
                     else:
                         self._send_json({"ok": False, "error": "Aucune photo téléchargée"})
                 except Exception as e:
+                    print(f"[ERR] /telecharger-photos ({seen_id}) : {type(e).__name__}: {e}")
                     self._send_json({"ok": False, "error": str(e)})
 
             elif self.path == "/config":
@@ -776,6 +788,7 @@ def cmd_ui():
                 self._send_json({"ok": True})
 
             else:
+                print(f"[WARN] POST {self.path} : route inconnue (404)")
                 self.send_response(404)
                 self.end_headers()
 

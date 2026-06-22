@@ -190,7 +190,8 @@ def _extract_next_data(html: str) -> dict | None:
         return None
     try:
         return json.loads(match.group(1))
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        print(f"  [WARN] __NEXT_DATA__ trouvé mais JSON invalide : {e}")
         return None
 
 
@@ -763,7 +764,7 @@ def _scrape_page(url: str) -> tuple[list, int]:
                 or d.find_elements("css selector", 'a[href*="/fahrzeuge/gebrauchtwagen"]')
             ))
         except Exception:
-            pass
+            print("  [WARN] Timeout 30s : page pas encore prête (on continue quand même)")
 
         time.sleep(2.0)
 
