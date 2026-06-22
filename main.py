@@ -9,6 +9,7 @@ import argparse
 import json
 import os
 import pathlib
+import random
 import shutil
 import subprocess
 import sys
@@ -16,7 +17,7 @@ import threading
 import time
 import uuid
 import webbrowser
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # ── Chemins ─────────────────────────────────────────────────────────────────────
 _BASE = os.path.dirname(__file__)
@@ -186,6 +187,25 @@ def _envoyer_resume_hebdo():
     envoyer_email("\n".join(lignes), sujet="Carveille — Résumé de la semaine")
 
 
+# Cache des heures de déclenchement aléatoires : slot_key → datetime de déclenchement
+_jitter_cache: dict = {}
+
+
+def _fire_time(today: str, heure_str: str, h: int, m: int) -> datetime:
+    """
+    Retourne l'heure de déclenchement pour ce créneau aujourd'hui.
+    On tire un décalage aléatoire entre 0 et 9 minutes AVANT l'heure planifiée,
+    et on le mémorise pour la journée (évite de re-tirer à chaque tick).
+    """
+    key = f"{today}_{heure_str}"
+    if key not in _jitter_cache:
+        jitter = random.randint(0, 9)  # minutes d'avance (0 = pile à l'heure)
+        scheduled = datetime.strptime(f"{today} {h:02d}:{m:02d}", "%Y-%m-%d %H:%M")
+        _jitter_cache[key] = scheduled - timedelta(minutes=jitter)
+        print(f"[PLAN] Créneau {heure_str} → déclenchement à {_jitter_cache[key].strftime('%H:%M')} (jitter -{jitter} min)")
+    return _jitter_cache[key]
+
+
 def _scheduler_thread():
     """Tourne en arriere-plan et declenche les runs automatiques selon le planning."""
     while True:
@@ -199,13 +219,19 @@ def _scheduler_thread():
             derniers_runs = sched.get("derniers_runs", [])
             changed = False
 
+            # Nettoyage du cache des jitters des jours passés
+            for k in list(_jitter_cache.keys()):
+                if not k.startswith(today):
+                    del _jitter_cache[k]
+
             # Résumé hebdomadaire le dimanche
             if sched.get("resume_hebdo") and now.weekday() == 6:
                 semaine_key = f"resume_{now.strftime('%Y-W%U')}"
                 heure_str = sched.get("horaires", ["09:00"])[0]
                 try:
                     h, m = map(int, heure_str.split(":"))
-                    if now.hour == h and now.minute == m and semaine_key not in derniers_runs:
+                    ft = _fire_time(today, heure_str, h, m)
+                    if now.hour == ft.hour and now.minute == ft.minute and semaine_key not in derniers_runs:
                         print("[RESUME] Envoi du résumé hebdomadaire")
                         derniers_runs.append(semaine_key)
                         changed = True
@@ -225,9 +251,10 @@ def _scheduler_thread():
                     h, m = map(int, heure_str.split(":"))
                 except ValueError:
                     continue
+                ft = _fire_time(today, heure_str, h, m)
                 slot_key = f"{today}_{heure_str}"
-                if now.hour == h and now.minute == m and slot_key not in derniers_runs and not _run_status["en_cours"]:
-                    print(f"[RUN] Run automatique a {heure_str}")
+                if now.hour == ft.hour and now.minute == ft.minute and slot_key not in derniers_runs and not _run_status["en_cours"]:
+                    print(f"[RUN] Run automatique (prevu {heure_str}, declenche {ft.strftime('%H:%M')})")
                     derniers_runs.append(slot_key)
                     changed = True
                     t = threading.Thread(
