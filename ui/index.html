@@ -859,6 +859,17 @@ html[data-theme="dark"] .ac-drop { background: #1e2236; border-color: #2e3350; }
 .ac-drop li.ac-marque { font-weight: 600; color: var(--c-accent); }
 .ac-drop li.ac-marque::before { content: '★ '; font-size: 0.7em; opacity: .7; }
 .prix-input { font-variant-numeric: tabular-nums; }
+.prix-spin-wrap { display: flex; align-items: stretch; gap: 0; }
+.prix-spin-wrap .prix-input { flex: 1; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.prix-spin-btns { display: flex; flex-direction: column; }
+.prix-spin-btns button { flex: 1; padding: 0 7px; background: var(--c-card); border: 1.5px solid var(--c-border); border-left: none; cursor: pointer; font-size: 0.6rem; color: var(--c-text); line-height: 1; transition: background .1s; }
+.prix-spin-btns button:first-child { border-radius: 0 var(--radius-sm) 0 0; border-bottom: none; }
+.prix-spin-btns button:last-child  { border-radius: 0 0 var(--radius-sm) 0; }
+.prix-spin-btns button:hover { background: var(--c-border); }
+.input-with-arrow { display: flex; gap: 4px; align-items: center; }
+.input-with-arrow input { flex: 1; }
+.btn-dropdown-arrow { padding: 0 8px; height: 36px; background: var(--c-card); border: 1.5px solid var(--c-border); border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; color: var(--c-text); line-height: 1; transition: background .15s; }
+.btn-dropdown-arrow:hover { background: var(--c-border); }
 .btn-photos { background: #37474f; color: white; border-color: #37474f; }
 .btn-photos:hover { background: #263238; }
 </style>
@@ -999,17 +1010,32 @@ html[data-theme="dark"] .ac-drop { background: #1e2236; border-color: #2e3350; }
             Finition <span class="hint" style="margin-left:0">ex : Sport, S-line, AMG Line, GTI… (cherché dans le titre)</span>
             <span class="imperatif-badge" title="Exclure les annonces sans cette finition" onclick="var cb=this.querySelector('input');cb.checked=!cb.checked"><input type="checkbox" name="finition_imperatif" value="1" onclick="event.stopPropagation()"> Impératif</span>
           </span>
-          <input type="text" name="finition" placeholder="Sport, S-line, AMG Line..." autocomplete="off">
+          <div class="input-with-arrow">
+            <input type="text" name="finition" placeholder="Sport, S-line, AMG Line..." autocomplete="off">
+            <button type="button" class="btn-dropdown-arrow" onmousedown="event.preventDefault()" onclick="var inp=this.previousElementSibling;inp._acOpen?inp._acOpen():inp.focus();" title="Voir les finitions">▾</button>
+          </div>
         </label>
 
         <label>
           Prix maximum (EUR)
-          <input type="text" inputmode="numeric" name="budget_max" placeholder="20 000" class="prix-input" autocomplete="off" onkeydown="_onPrixKeydown(event)">
+          <div class="prix-spin-wrap">
+            <input type="text" inputmode="numeric" name="budget_max" placeholder="20 000" class="prix-input" autocomplete="off" onkeydown="_onPrixKeydown(event)">
+            <div class="prix-spin-btns">
+              <button type="button" onmousedown="event.preventDefault()" onclick="_stepPrix(this.closest('.prix-spin-wrap').querySelector('input'),1000)" title="+1 000">▲</button>
+              <button type="button" onmousedown="event.preventDefault()" onclick="_stepPrix(this.closest('.prix-spin-wrap').querySelector('input'),-1000)" title="-1 000">▼</button>
+            </div>
+          </div>
         </label>
 
         <label>
           Kilometrage maximum
-          <input type="number" name="km_max" placeholder="100000" min="0">
+          <div class="prix-spin-wrap">
+            <input type="text" inputmode="numeric" name="km_max" placeholder="100 000" class="prix-input" autocomplete="off" onkeydown="_onPrixKeydown(event)" onblur="var n=_prixRaw(this);if(n)this.value=_prixFormat(n);">
+            <div class="prix-spin-btns">
+              <button type="button" onmousedown="event.preventDefault()" onclick="_stepPrix(this.closest('.prix-spin-wrap').querySelector('input'),1000)" title="+1 000">▲</button>
+              <button type="button" onmousedown="event.preventDefault()" onclick="_stepPrix(this.closest('.prix-spin-wrap').querySelector('input'),-1000)" title="-1 000">▼</button>
+            </div>
+          </div>
         </label>
         <label>
           Annee minimum
@@ -1908,7 +1934,7 @@ async function editerRecherche(searchId) {
     const modeleVals = (r.modele || '').split(',').map(s => s.trim()).filter(Boolean);
     setMultiInput('modele-group', 'modele', 'list-modele', 'Serie 1, 308...', modeleVals);
     _setPrix('budget_max', r.budget_max || '');
-    set('km_max', r.km_max || '');
+    _setPrix('km_max', r.km_max || '');
     set('annee_min', r.annee_min || '');
     set('finition', r.finition || '');
     // Couleurs multiples
@@ -2482,13 +2508,15 @@ function _prixRaw(el) {
   return parseFloat(String(el.value).replace(/[\s ]/g, '').replace(',', '.')) || 0;
 }
 function _prixFormat(n) { return isNaN(n) || n === 0 ? '' : n.toLocaleString('fr-FR'); }
+function _stepPrix(el, delta) {
+  const next = Math.max(0, (_prixRaw(el) || 0) + delta);
+  el.value = _prixFormat(next);
+  el.dispatchEvent(new Event('input'));
+}
 function _onPrixKeydown(e) {
   if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
   e.preventDefault();
-  const n = _prixRaw(e.target) || 0;
-  const step = e.shiftKey ? 5000 : 1000;
-  const next = e.key === 'ArrowUp' ? n + step : Math.max(0, n - step);
-  e.target.value = _prixFormat(next);
+  _stepPrix(e.target, e.key === 'ArrowUp' ? 1000 : -1000);
 }
 function _setPrix(name, val) {
   const el = document.querySelector(`[name="${name}"].prix-input`);
@@ -2698,9 +2726,6 @@ const FINITIONS_PAR_MARQUE = {
 };
 
 function _normalise(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(); }
-function _optionLabel(val) { return val; }
-function _optionValeur(text) { return text.trim(); }
-
 // Liste pour le champ Options (équipement générique uniquement)
 function _getOptionsListe() {
   return OPTIONS_GENERIQUES.map(o => ({ label: o, groupe: 'general' }));
@@ -2785,12 +2810,11 @@ function _acAttach(input, getListe) {
     if (!q) open(getListe());
   });
   input.addEventListener('blur', () => setTimeout(close, 150));
+  input._acOpen = () => { open(getListe()); input.focus(); };
 }
 
 const OPTIONS_LISTE = OPTIONS_GENERIQUES.map(o => ({ label: o, value: o })); // compat ancien code
 
-function _normalise(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(); }
-function _optionLabel(val) { const o = OPTIONS_LISTE.find(o => o.value === val); return o ? o.label : val; }
 function _optionValeur(text) { const t = _normalise(text); const o = OPTIONS_LISTE.find(o => _normalise(o.label) === t); return o ? o.value : text.trim().toLowerCase(); }
 
 function _makeOptionsRow(val, imperatif) {
@@ -2915,7 +2939,7 @@ async function soumettreRecherche(e) {
   const form = e.target;
   const fd = new FormData(form);
   const body = {};
-  fd.forEach((v, k) => { if (!['carburant','boite','modele','couleur','couleur_imperatif','finition_imperatif','carrosserie','materiaux_interieur'].includes(k)) body[k] = v === '' ? null : v; });
+  fd.forEach((v, k) => { if (!['carburant','boite','modele','couleur','couleur_imperatif','finition_imperatif','carrosserie','materiaux_interieur','budget_max','km_max'].includes(k)) body[k] = v === '' ? null : v; });
   body.budget_strict = fd.has('budget_strict');
   let carburants = fd.getAll('carburant');
   // Si des sous-types hybride sont cochés, supprimer le générique "hybride" pour éviter un match trop large
@@ -2949,7 +2973,9 @@ async function soumettreRecherche(e) {
   // Prix formaté
   const budgetEl = form.querySelector('[name="budget_max"].prix-input');
   if (budgetEl) body.budget_max = _prixRaw(budgetEl) || null;
-  ['km_max','annee_min','poids_prix','poids_km','poids_annee',
+  const kmEl = form.querySelector('[name="km_max"].prix-input');
+  if (kmEl) body.km_max = _prixRaw(kmEl) || null;
+  ['annee_min','poids_prix','poids_km','poids_annee',
    'poids_boite','poids_carburant','poids_options','score_min_notification','max_annonces']
     .forEach(k => { if (body[k]) body[k] = parseFloat(body[k]); });
 

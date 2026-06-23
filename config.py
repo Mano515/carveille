@@ -8,10 +8,6 @@ POIDS_DEFAUT = {
     "options": 5,
 }
 
-# Pénalités pour champs manquants (prix, km, année, boite, carburant)
-PENALITE_PAR_CHAMP = 10
-PENALITE_MAX = 30  # plafond : on ne punit pas plus même si tout manque
-
 # Seuil de notification et nb max d'annonces remontées
 SCORE_MIN_NOTIFICATION = 60
 MAX_ANNONCES = 3
@@ -159,10 +155,24 @@ TRANSMISSION_MOBILE_DE = {
 
 # Mapping carburant → code mobile.de
 FUEL_MOBILE_DE = {
-    "diesel": "DIESEL",
-    "essence": "PETROL",
-    "electrique": "ELECTRIC",
-    "électrique": "ELECTRIC",
-    "hybride": "HYBRID_PETROL",
-    "indifferent": None,
+    "diesel":          "DIESEL",
+    "essence":         "PETROL",
+    "electrique":      "ELECTRIC",
+    "électrique":      "ELECTRIC",
+    "hybride":         "HYBRID_PETROL",
+    "hybride essence": "HYBRID_PETROL",
+    "hybride diesel":  "HYBRID_DIESEL",
+    "indifferent":     None,
+}
+
+# Mapping carrosserie → code mobile.de (paramètre cat=)
+CARROSSERIE_MOBILE_DE = {
+    "berline":    "Limousine",
+    "break":      "Kombi",
+    "suv":        "SUV",
+    "coupé":      "Sportwagen/Coupe",
+    "coupe":      "Sportwagen/Coupe",
+    "cabriolet":  "Cabrio/Roadster",
+    "monospace":  "Van/Minibus",
+    "citadine":   "Kleinwagen",
 }

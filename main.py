@@ -447,7 +447,8 @@ def cmd_ui():
                 from src.sources.mobile_de import progression as _prog
                 self._send_json({**_run_status, "progression": dict(_prog)})
             else:
-                print(f"[WARN] GET {self.path} : route inconnue (404)")
+                if self.path != '/favicon.ico':
+                    print(f"[WARN] GET {self.path} : route inconnue (404)")
                 self.send_response(404)
                 self.end_headers()
 

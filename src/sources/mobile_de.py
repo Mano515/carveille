@@ -13,11 +13,10 @@ import re
 import time
 import random
 from urllib.parse import urlencode, urljoin, urlparse, parse_qs, urlunparse, quote
-from urllib.parse import urlparse as _up, parse_qs as _pqs
 
 from config import (
     MAKES_MOBILE_DE, MODELS_MOBILE_DE,
-    TRANSMISSION_MOBILE_DE, FUEL_MOBILE_DE,
+    TRANSMISSION_MOBILE_DE, FUEL_MOBILE_DE, CARROSSERIE_MOBILE_DE,
 )
 
 BASE_URL = "https://suchen.mobile.de/fahrzeuge/search.html"
@@ -60,7 +59,28 @@ def _build_url(recherche: dict, marque: str = "", modele: str = "", page: int = 
     parts.append(("sb", "doc"))
     parts.append(("vc", "Car"))
 
-    # Filtre couleur (uniquement si impératif)
+    # Boîte de vitesses
+    boite_vals = [b.strip() for b in (recherche.get("boite") or "").split(",")
+                  if b.strip() and b.strip() != "indifferent"]
+    boite_codes = [TRANSMISSION_MOBILE_DE[b] for b in boite_vals if b in TRANSMISSION_MOBILE_DE and TRANSMISSION_MOBILE_DE[b]]
+    if len(boite_codes) == 1:  # si les deux sont cochées = indifférent → on n'envoie rien
+        parts.append(("tr", boite_codes[0]))
+
+    # Carburant (plusieurs valeurs possibles)
+    fuel_vals = [c.strip() for c in (recherche.get("carburant") or "").split(",")
+                 if c.strip() and c.strip() != "indifferent"]
+    fuel_codes = list({FUEL_MOBILE_DE[v] for v in fuel_vals if v in FUEL_MOBILE_DE and FUEL_MOBILE_DE[v]})
+    for code in fuel_codes:
+        parts.append(("fuel", code))
+
+    # Carrosserie (plusieurs valeurs possibles)
+    carro_vals = [c.strip() for c in (recherche.get("carrosserie") or "").split(",") if c.strip()]
+    for v in carro_vals:
+        code = CARROSSERIE_MOBILE_DE.get(v.lower())
+        if code:
+            parts.append(("cat", code))
+
+    # Couleur (uniquement si impératif)
     if recherche.get("couleur_imperatif") and recherche.get("couleur"):
         for c in recherche["couleur"].split(","):
             code = _COULEUR_FR_TO_CODE.get(c.strip().lower())
