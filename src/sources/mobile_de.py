@@ -122,9 +122,10 @@ def _url_via_detailsuche(driver, marque: str, modele: str) -> str | None:
         if not chosen_make:
             print(f"  [WARN] Detailsuche : marque {make_code} non trouvée dans les options")
             return None
-        print(f"  [WEB] Detailsuche : marque sélectionnée ({chosen_make})")
+        print(f"  [WEB] Detailsuche : marque sélectionnée (id={chosen_make})")
         time.sleep(2.5)  # laisser les modèles se charger
 
+        chosen_model = None
         if model_code:
             chosen_model = driver.execute_script("""
                 const code = arguments[0];
@@ -150,29 +151,27 @@ def _url_via_detailsuche(driver, marque: str, modele: str) -> str | None:
                 return null;
             """, model_code)
             if chosen_model:
-                print(f"  [WEB] Detailsuche : modèle sélectionné ({chosen_model})")
+                print(f"  [WEB] Detailsuche : modèle sélectionné (id={chosen_model})")
             else:
-                print(f"  [WEB] Detailsuche : modèle {model_code} non trouvé, continue sans")
-            time.sleep(0.8)
+                print(f"  [WEB] Detailsuche : modèle {model_code} non trouvé, continue sans modèle")
 
-        # Soumettre via JS si le bouton Selenium ne répond pas
-        submitted = driver.execute_script("""
-            const btn = document.querySelector('button[type="submit"], input[type="submit"]');
-            if (btn) { btn.click(); return true; }
-            const form = document.querySelector('form');
-            if (form) { form.submit(); return true; }
-            return false;
-        """)
-        if not submitted:
-            print("  [WARN] Detailsuche : bouton submit non trouvé")
-            return None
-
-        time.sleep(3.0)
-        result_url = driver.current_url
-        if "search.html" not in result_url:
-            print(f"  [WARN] Detailsuche : URL résultat inattendue : {result_url[:80]}")
-            return None
-        print(f"  [WEB] Detailsuche URL résultat : {result_url[:120]}")
+        # Les IDs numériques retournés par les <select> sont les vrais identifiants
+        # internes mobile.de (ex: mk=12600 au lieu de mk=JEEP). On construit l'URL
+        # directement — pas besoin de cliquer un bouton submit dans la SPA React.
+        from urllib.parse import urlencode
+        params = [
+            ("dam", "false"),
+            ("isSearchRequest", "true"),
+            ("mk", chosen_make),
+            ("od", "down"),
+            ("s", "Car"),
+            ("sb", "doc"),
+            ("vc", "Car"),
+        ]
+        if chosen_model:
+            params.append(("mo", chosen_model))
+        result_url = f"https://suchen.mobile.de/fahrzeuge/search.html?{urlencode(params)}"
+        print(f"  [WEB] Detailsuche URL construite : {result_url[:120]}")
         return result_url
 
     except Exception as e:
