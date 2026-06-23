@@ -2199,10 +2199,10 @@ function renderAnnonce(a, searchId, historique = false) {
 
 function _urlFr(url) {
   if (!url) return url;
-  // suchen.mobile.de/fahrzeuge/details.html?id=X → www.mobile.de/fr/voitures/details.html?id=X
   return url
     .replace('suchen.mobile.de/fahrzeuge/', 'www.mobile.de/fr/voitures/')
-    .replace('suchen.mobile.de/', 'www.mobile.de/fr/');
+    .replace('suchen.mobile.de/', 'www.mobile.de/fr/')
+    .replace('www.mobile.de/fahrzeuge/', 'www.mobile.de/fr/voitures/');
 }
 
 function _ouvrirDepuisThumb(el) {
