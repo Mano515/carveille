@@ -268,12 +268,18 @@ def _url_via_detailsuche(driver, marque: str, modele: str, recherche: dict | Non
 
                 # mobile.de met à jour detailsuche avec ms=<makeId>;<modelId> sans naviguer.
                 # Extraire ms= et construire l'URL search.html avec ce paramètre natif.
-                from urllib.parse import urlparse, parse_qs, urlencode
+                from urllib.parse import urlparse, parse_qs, urlencode, quote
                 qs = parse_qs(urlparse(result_url).query, keep_blank_values=True)
                 ms = qs.get("ms", [None])[0]
                 if ms:
-                    print(f"  [WEB] Detailsuche : paramètre natif ms={ms!r} extrait")
-                    return f"https://suchen.mobile.de/fahrzeuge/search.html?ms={ms}&isSearchRequest=true&s=Car&vc=Car&od=down&sb=doc"
+                    # Récupérer les filtres natifs que detailsuche a ajoutés à l'URL
+                    extra = ""
+                    for param in ("ecol", "intCol", "dam"):
+                        val = qs.get(param, [None])[0]
+                        if val:
+                            extra += f"&{param}={quote(val, safe='')}"
+                    print(f"  [WEB] Detailsuche : paramètre natif ms={ms!r} extrait{' + ' + extra.lstrip('&') if extra else ''}")
+                    return f"https://suchen.mobile.de/fahrzeuge/search.html?ms={quote(ms, safe='')}&isSearchRequest=true&s=Car&vc=Car&od=down&sb=doc{extra}"
                 print(f"  [WARN] Detailsuche : ms= absent de l'URL, fallback")
             except Exception as e:
                 print(f"  [WARN] Detailsuche : pas de navigation après submit ({e})")
@@ -1161,8 +1167,12 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
             extra_parsed = urlparse(extra)
             extra_qs = parse_qs(extra_parsed.query, keep_blank_values=True)
             # Fusionner : garder les params detailsuche, ajouter ceux de _build_url qui manquent
+            # Ignorer extCol si detailsuche a déjà ajouté ecol (même filtre, nom natif prioritaire)
+            skip = {"mk", "mo", "s", "vc", "isSearchRequest"}
+            if "ecol" in qs:
+                skip.add("extCol")
             for k, v in extra_qs.items():
-                if k not in qs and k not in ("mk", "mo", "s", "vc", "isSearchRequest"):
+                if k not in qs and k not in skip:
                     qs[k] = v
             new_query = urlencode({k: v[0] for k, v in qs.items()})
             base_url = urlunparse(parsed._replace(query=new_query))
