@@ -2094,8 +2094,9 @@ function renderAnnonce(a, searchId, historique = false) {
   try { zoneInondable = JSON.parse(a.score_detail || '{}')?.inondation?.risque === true; } catch {}
 
   const thumbUrls = a.images_urls ? a.images_urls.split('\n').filter(Boolean) : (a.image_url ? [a.image_url] : []);
+  const thumbClick = a.url ? `window.open(${JSON.stringify(a.url)},'_blank')` : `_galerieOpen(${JSON.stringify(thumbUrls)},0)`;
   const thumbHtml = thumbUrls.length
-    ? `<div class="annonce-thumb-wrap" onclick="_galerieOpen(${JSON.stringify(thumbUrls)},0)">
+    ? `<div class="annonce-thumb-wrap" onclick="${thumbClick}" title="Voir l'annonce">
         <img class="annonce-thumb" src="${thumbUrls[0]}" alt="" loading="lazy" onerror="this.closest('.annonce-thumb-wrap').style.display='none'">
         ${thumbUrls.length > 1 ? `<span class="thumb-count">+${thumbUrls.length - 1}</span>` : ''}
        </div>` : '';
