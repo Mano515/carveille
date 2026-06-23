@@ -310,7 +310,7 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
                 'gold': 'or',
             };
             let couleur = null;
-            // 1. Chercher dans les attributs title/aria-label des éléments de la card
+            // 1. Attributs title/aria-label/data-color (swatches avec label)
             const attrTexts = Array.from(card.querySelectorAll('[title],[aria-label],[data-color],[data-testid*="color"]'))
                 .map(el => (el.getAttribute('title') || el.getAttribute('aria-label') || el.getAttribute('data-color') || '').toLowerCase())
                 .join(' ');
@@ -318,6 +318,50 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
             const cardTextLower = (attrTexts + ' ' + cardText).toLowerCase();
             for (const [de, fr] of Object.entries(couleurMap)) {
                 if (cardTextLower.includes(de)) { couleur = fr; break; }
+            }
+
+            // 3. Swatches CSS : background-color inline (mobile.de utilise souvent des cercles colorés)
+            if (!couleur) {
+                const cssColorMap = {
+                    // Orange et variantes
+                    'rgb(255, 102, 0)': 'orange', 'rgb(255, 128, 0)': 'orange',
+                    'rgb(230, 88, 0)': 'orange', 'rgb(255, 165, 0)': 'orange',
+                    'rgb(255, 140, 0)': 'orange', 'rgb(238, 113, 25)': 'orange',
+                    'orange': 'orange', 'darkorange': 'orange',
+                    // Rouge
+                    'red': 'rouge', 'darkred': 'rouge', 'rgb(255, 0, 0)': 'rouge',
+                    'rgb(197, 0, 0)': 'rouge', 'rgb(180, 0, 0)': 'rouge',
+                    // Noir
+                    'black': 'noir', 'rgb(0, 0, 0)': 'noir', 'rgb(26, 26, 26)': 'noir',
+                    // Blanc
+                    'white': 'blanc', 'rgb(255, 255, 255)': 'blanc',
+                    // Gris
+                    'grey': 'gris', 'gray': 'gris', 'rgb(128, 128, 128)': 'gris',
+                    'silver': 'argent',
+                    // Bleu
+                    'blue': 'bleu', 'navy': 'bleu', 'rgb(0, 0, 255)': 'bleu',
+                    // Vert
+                    'green': 'vert', 'rgb(0, 128, 0)': 'vert',
+                    // Marron/beige
+                    'brown': 'marron', 'beige': 'beige',
+                    // Jaune
+                    'yellow': 'jaune', 'rgb(255, 255, 0)': 'jaune',
+                };
+                for (const el of card.querySelectorAll('[style*="background"]')) {
+                    const bg = (el.style.backgroundColor || el.style.background || '').toLowerCase().trim();
+                    if (!bg) continue;
+                    // Cherche correspondance exacte puis heuristique RGB orange
+                    if (cssColorMap[bg]) { couleur = cssColorMap[bg]; break; }
+                    // Heuristique : orange si R élevé, G moyen, B bas
+                    const m = bg.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+                    if (m) {
+                        const [r, g, b] = [+m[1], +m[2], +m[3]];
+                        if (r > 180 && g > 60 && g < 160 && b < 50) { couleur = 'orange'; break; }
+                        if (r > 180 && g < 50 && b < 50) { couleur = 'rouge'; break; }
+                        if (r < 50 && g < 50 && b < 50) { couleur = 'noir'; break; }
+                        if (r > 200 && g > 200 && b > 200) { couleur = 'blanc'; break; }
+                    }
+                }
             }
 
             listings.push({
@@ -1045,12 +1089,12 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
             new_query = urlencode({k: v[0] for k, v in qs.items()})
             base_url = urlunparse(parsed._replace(query=new_query))
             filtre_url_ok = True
-            print(f"  [WEB] Scraping (detailsuche) : {base_url[:120]}...")
+            print(f"  [WEB] Scraping (detailsuche) : {base_url[:200]}...")
 
     # Priorité 2 : URL directe avec mk/mo (peut être ignoré par mobile.de)
     if not base_url:
         base_url = _build_url(recherche, marque=marque, modele=modele, page=1)
-        print(f"  [WEB] Scraping (fallback URL) : {base_url[:120]}...")
+        print(f"  [WEB] Scraping (fallback URL) : {base_url[:200]}...")
 
     annonces_p1, nb_total = _scrape_page(base_url)
     if not annonces_p1:
@@ -1084,6 +1128,18 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
             avant2 = len(toutes)
             toutes = [a for a in toutes if modele_lower in (a.get("titre") or "").lower()]
             print(f"  [WEB] Filtre modèle '{modele}' : {len(toutes)} annonces (sur {avant2})")
+
+    # Filtre couleur côté client quand impératif et couleur connue (mauvaise couleur → éliminé)
+    couleur_imp = recherche.get("couleur_imperatif") and recherche.get("couleur")
+    if couleur_imp:
+        couleurs_voulues = [c.strip().lower() for c in recherche["couleur"].split(",") if c.strip()]
+        avant_c = len(toutes)
+        toutes = [a for a in toutes if
+                  not a.get("couleur")  # couleur inconnue : garde (scoring appliquera -8)
+                  or any(cv in (a.get("couleur") or "") for cv in couleurs_voulues)]
+        eliminees = avant_c - len(toutes)
+        if eliminees:
+            print(f"  [WEB] Filtre couleur '{recherche['couleur']}' : {eliminees} annonce(s) exclue(s) (mauvaise couleur connue)")
 
     return toutes
 
