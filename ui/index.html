@@ -2050,7 +2050,7 @@ async function lancerRunUne(searchId, nom, btn) {
       // Attendre la fin du run puis recharger les résultats
       const poll = setInterval(async () => {
         try {
-          const s = await fetch(`${API}/run-status`).then(r => r.json());
+          const s = await fetch(`${API}/status`).then(r => r.json());
           if (!s.en_cours) {
             clearInterval(poll);
             btnReset(btn);
