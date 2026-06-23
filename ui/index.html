@@ -2199,10 +2199,12 @@ function renderAnnonce(a, searchId, historique = false) {
 
 function _urlFr(url) {
   if (!url) return url;
-  return url
-    .replace('suchen.mobile.de/fahrzeuge/', 'www.mobile.de/fr/voitures/')
-    .replace('suchen.mobile.de/', 'www.mobile.de/fr/')
-    .replace('www.mobile.de/fahrzeuge/', 'www.mobile.de/fr/voitures/');
+  try {
+    const u = new URL(url);
+    const id = u.searchParams.get('id');
+    if (id) return `https://www.mobile.de/fr/voiture/d%C3%A9tails.html?id=${id}`;
+  } catch {}
+  return url;
 }
 
 function _ouvrirDepuisThumb(el) {
