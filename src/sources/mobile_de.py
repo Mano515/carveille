@@ -75,11 +75,10 @@ def _build_url(recherche: dict, marque: str = "", modele: str = "", page: int = 
     return f"{BASE_URL}?{urlencode(parts)}"
 
 
-def _url_via_detailsuche(driver, marque: str, modele: str) -> str | None:
+def _url_via_detailsuche(driver, marque: str, modele: str, recherche: dict | None = None) -> str | None:
     """
     Navigue vers le formulaire detailsuche de mobile.de, sélectionne marque/modèle
-    via JavaScript (plus fiable que les sélecteurs Selenium), soumet et retourne
-    l'URL résultante (format correct garanti par mobile.de).
+    (et couleur si impérative) via JavaScript, soumet et retourne l'URL résultante.
     """
     make_code = MAKES_MOBILE_DE.get(marque, marque.upper().replace(" ", "_").replace("-", "_")) if marque else ""
     model_code = MODELS_MOBILE_DE.get(modele, modele.upper().replace(" ", "_").replace("-", "_")) if modele else ""
@@ -154,6 +153,40 @@ def _url_via_detailsuche(driver, marque: str, modele: str) -> str | None:
                 print(f"  [WEB] Detailsuche : modèle sélectionné (id={chosen_model})")
             else:
                 print(f"  [WEB] Detailsuche : modèle {model_code} non trouvé, continue sans modèle")
+
+        # Sélectionner la couleur si impérative
+        if recherche and recherche.get("couleur_imperatif") and recherche.get("couleur"):
+            for couleur_fr in [c.strip().lower() for c in recherche["couleur"].split(",") if c.strip()]:
+                couleur_code = _COULEUR_FR_TO_CODE.get(couleur_fr, couleur_fr.upper())
+                chosen_color = driver.execute_script("""
+                    const code = arguments[0];
+                    const selects = document.querySelectorAll('select');
+                    for (const sel of selects) {
+                        const key = (sel.name + sel.id + (sel.getAttribute('data-testid') || '')).toLowerCase();
+                        if (!key.match(/color|farbe|extcol|colour/)) continue;
+                        for (const opt of sel.options) {
+                            if (opt.value.toUpperCase() === code.toUpperCase()) {
+                                sel.value = opt.value;
+                                sel.dispatchEvent(new Event('change', {bubbles: true}));
+                                return opt.value;
+                            }
+                        }
+                        // Fallback : cherche le texte de l'option
+                        for (const opt of sel.options) {
+                            if (opt.text.toUpperCase().includes(code.toUpperCase())) {
+                                sel.value = opt.value;
+                                sel.dispatchEvent(new Event('change', {bubbles: true}));
+                                return opt.value;
+                            }
+                        }
+                    }
+                    return null;
+                """, couleur_code)
+                if chosen_color:
+                    print(f"  [WEB] Detailsuche : couleur sélectionnée (id={chosen_color})")
+                    break
+                else:
+                    print(f"  [WEB] Detailsuche : couleur {couleur_code} non trouvée dans le formulaire")
 
         # Essayer de cliquer le bouton Suchen avec Selenium (plus fiable que JS click sur React)
         url_avant = driver.current_url
@@ -1073,7 +1106,7 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
 
     # Priorité 1 : detailsuche via JS — génère des URLs que mobile.de reconnaît
     if marque:
-        base_url = _url_via_detailsuche(driver, marque, modele)
+        base_url = _url_via_detailsuche(driver, marque, modele, recherche)
         if base_url:
             # Ajouter les filtres supplémentaires (couleur, prix, km, etc.) à l'URL retournée
             from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
