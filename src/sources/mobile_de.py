@@ -183,21 +183,55 @@ def _url_via_detailsuche(driver, marque: str, modele: str, recherche: dict | Non
                     return null;
                 """, couleur_code)
                 if chosen_color:
-                    print(f"  [WEB] Detailsuche : couleur sélectionnée (id={chosen_color})")
+                    print(f"  [WEB] Detailsuche : couleur sélectionnée via select (id={chosen_color})")
+                    break
+
+                # Le filtre couleur n'est pas un <select> — chercher checkbox/swatch cliquable
+                clicked_color = driver.execute_script("""
+                    const code = arguments[0];  // ex: "ORANGE"
+                    const codeLower = code.toLowerCase();
+
+                    // 1. Checkbox avec label ou texte contenant la couleur
+                    for (const inp of document.querySelectorAll('input[type="checkbox"]')) {
+                        const label = inp.labels && inp.labels[0] ? inp.labels[0].textContent.toLowerCase() : '';
+                        const ariaLabel = (inp.getAttribute('aria-label') || '').toLowerCase();
+                        const id = inp.id || '';
+                        // Trouver le label associé via for=
+                        const forLabel = id ? (document.querySelector('label[for="'+id+'"]') || {textContent:''}).textContent.toLowerCase() : '';
+                        if ([label, ariaLabel, forLabel].some(t => t.includes(codeLower))) {
+                            if (!inp.checked) inp.click();
+                            return 'checkbox:' + (label || ariaLabel || forLabel).trim().substring(0, 30);
+                        }
+                    }
+
+                    // 2. Élément cliquable avec data-value, data-color, value ou aria-label = couleur
+                    for (const el of document.querySelectorAll('[data-value],[data-color],[data-testid*="color"],[data-testid*="colour"],[data-testid*="farbe"]')) {
+                        const val = (el.getAttribute('data-value') || el.getAttribute('data-color') || '').toUpperCase();
+                        const label = (el.getAttribute('aria-label') || el.textContent || '').toLowerCase();
+                        if (val === code || label.includes(codeLower)) {
+                            el.click();
+                            return 'swatch:' + val + '/' + label.trim().substring(0, 20);
+                        }
+                    }
+
+                    // 3. Diagnostic : lister les checkboxes et leurs labels
+                    const checks = Array.from(document.querySelectorAll('input[type="checkbox"]')).slice(0, 20).map(inp => {
+                        const label = inp.labels && inp.labels[0] ? inp.labels[0].textContent.trim() : '';
+                        const forEl = inp.id ? (document.querySelector('label[for="'+inp.id+'"]') || {textContent:''}).textContent.trim() : '';
+                        return {id: inp.id, label: label || forEl, value: inp.value};
+                    });
+                    return {error: 'not_found', checkboxes: checks};
+                """, couleur_code)
+
+                if isinstance(clicked_color, str):
+                    print(f"  [WEB] Detailsuche : couleur sélectionnée ({clicked_color})")
                     break
                 else:
-                    # Diagnostic : lister tous les selects pour trouver le bon nom
-                    sel_info = driver.execute_script("""
-                        return Array.from(document.querySelectorAll('select')).map(s => ({
-                            name: s.name, id: s.id,
-                            testid: s.getAttribute('data-testid') || '',
-                            nb_options: s.options.length,
-                            options_sample: Array.from(s.options).slice(0,5).map(o => o.value + '=' + o.text),
-                        }));
-                    """)
-                    print(f"  [WEB] Detailsuche : couleur {couleur_code} non trouvée. Selects ({len(sel_info)}) :")
-                    for s in sel_info:
-                        print(f"         name={s['name']!r} id={s['id']!r} testid={s['testid']!r} opts={s['nb_options']} ex={s['options_sample'][:3]}")
+                    checks = (clicked_color or {}).get("checkboxes", [])
+                    print(f"  [WEB] Detailsuche : couleur {couleur_code} introuvable (pas de select ni checkbox)")
+                    if checks:
+                        print(f"  [DIAG] Checkboxes ({len(checks)}) : {checks[:8]}")
+                    break
 
         # Essayer de cliquer le bouton Suchen avec Selenium (plus fiable que JS click sur React)
         url_avant = driver.current_url
