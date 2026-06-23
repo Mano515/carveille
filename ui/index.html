@@ -2095,7 +2095,7 @@ function renderAnnonce(a, searchId, historique = false) {
 
   const thumbUrls = a.images_urls ? a.images_urls.split('\n').filter(Boolean) : (a.image_url ? [a.image_url] : []);
   const thumbHtml = thumbUrls.length
-    ? `<div class="annonce-thumb-wrap" onclick="_ouvrirDepuisThumb(this)" data-url="${(a.url||'').replace(/"/g,'&quot;')}" title="Voir l'annonce">
+    ? `<div class="annonce-thumb-wrap" onclick="_ouvrirDepuisThumb(this)" data-url="${_urlFr(a.url||'').replace(/"/g,'&quot;')}" title="Voir l'annonce">
         <img class="annonce-thumb" src="${thumbUrls[0]}" alt="" loading="lazy" onerror="this.closest('.annonce-thumb-wrap').style.display='none'">
         ${thumbUrls.length > 1 ? `<span class="thumb-count">+${thumbUrls.length - 1}</span>` : ''}
        </div>` : '';
@@ -2144,7 +2144,7 @@ function renderAnnonce(a, searchId, historique = false) {
     </div>
 
     <div class="annonce-actions">
-      ${a.url ? `<a class="btn-annonce" href="${a.url}" target="_blank">Voir l'annonce →</a>` : ''}
+      ${a.url ? `<a class="btn-annonce" href="${_urlFr(a.url)}" target="_blank">Voir l'annonce →</a>` : ''}
       <button class="btn-sm btn-oui ${a.interet === 'oui' ? 'active' : ''}"
         onclick="marquerInteret('${seenIdSafe}','${a.interet === 'oui' ? 'neutre' : 'oui'}','${searchId}')">👍 Intéressé</button>
       <button class="btn-sm btn-non ${a.interet === 'non' ? 'active' : ''}"
@@ -2163,6 +2163,14 @@ function renderAnnonce(a, searchId, historique = false) {
   </div>`;
 }
 
+
+function _urlFr(url) {
+  if (!url) return url;
+  // suchen.mobile.de/fahrzeuge/details.html?id=X → www.mobile.de/fr/voitures/details.html?id=X
+  return url
+    .replace('suchen.mobile.de/fahrzeuge/', 'www.mobile.de/fr/voitures/')
+    .replace('suchen.mobile.de/', 'www.mobile.de/fr/');
+}
 
 function _ouvrirDepuisThumb(el) {
   const url = el.dataset.url;
