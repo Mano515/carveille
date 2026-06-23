@@ -179,31 +179,23 @@ def _url_via_detailsuche(driver, marque: str, modele: str) -> str | None:
 
         if clicked:
             try:
-                WebDriverWait(driver, 8).until(EC.url_contains("search.html"))
+                # Attendre que l'URL change (pas url_contains — la detailsuche ne contient pas "search.html")
+                WebDriverWait(driver, 10).until(EC.url_changes(url_avant))
+                time.sleep(1.5)
                 result_url = driver.current_url
+                print(f"  [WEB] Detailsuche URL après submit : {result_url[:120]}")
                 if "search.html" in result_url:
-                    print(f"  [WEB] Detailsuche URL mobile.de : {result_url[:120]}")
+                    # URL réelle générée par mobile.de → filtre serveur fiable
                     return result_url
-            except Exception:
-                pass
+                else:
+                    print(f"  [WARN] Detailsuche : URL inattendue après submit, fallback")
+            except Exception as e:
+                print(f"  [WARN] Detailsuche : pas de navigation après submit ({e})")
 
-        # Fallback : construire l'URL avec les IDs numériques des <select>
-        # (mk=12600 peut être ignoré par mobile.de mais le filtre marque côté client prend le relais)
-        from urllib.parse import urlencode
-        params = [
-            ("dam", "false"),
-            ("isSearchRequest", "true"),
-            ("mk", chosen_make),
-            ("od", "down"),
-            ("s", "Car"),
-            ("sb", "doc"),
-            ("vc", "Car"),
-        ]
-        if chosen_model:
-            params.append(("mo", chosen_model))
-        result_url = f"https://suchen.mobile.de/fahrzeuge/search.html?{urlencode(params)}"
-        print(f"  [WEB] Detailsuche URL construite (ids) : {result_url[:120]}")
-        return result_url
+        # Fallback : URL construite avec IDs numériques.
+        # filtre_url_ok reste False → le filtre modèle côté client sera appliqué.
+        # On retourne None pour signaler l'échec → l'appelant bascule sur _build_url.
+        return None
 
     except Exception as e:
         print(f"  [WARN] Detailsuche échoué : {type(e).__name__}: {e}")
@@ -1047,8 +1039,7 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
         toutes = [a for a in toutes if marque_lower in (a.get("titre") or "").lower()]
         print(f"  [WEB] Filtre marque '{marque}' : {len(toutes)} annonces (sur {avant})")
 
-        # Filtre modèle uniquement si l'URL n'est pas validée par detailsuche
-        if not filtre_url_ok and modele:
+        if modele:
             modele_lower = modele.strip().lower()
             avant2 = len(toutes)
             toutes = [a for a in toutes if modele_lower in (a.get("titre") or "").lower()]
