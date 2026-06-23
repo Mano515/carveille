@@ -2535,8 +2535,8 @@ const OPTIONS_GENERIQUES = [
   'Chargeur rapide DC', 'Câble de recharge inclus', 'Batterie > 50 kWh', 'Batterie > 70 kWh', 'Autonomie > 400 km',
 ];
 
-// ── Options par marque (affichées en premier quand la marque est sélectionnée) ──
-const OPTIONS_PAR_MARQUE = {
+// ── Finitions par marque (pour le champ Finition uniquement) ──────────────────
+const FINITIONS_PAR_MARQUE = {
   'BMW': [
     'Pack M', 'M Sport', 'M Performance', 'Pack M Competition',
     'xDrive', 'sDrive', 'iDrive 7', 'iDrive 8', 'Live Cockpit',
@@ -2695,14 +2695,21 @@ function _normalise(s) { return (s||'').toLowerCase().normalize('NFD').replace(/
 function _optionLabel(val) { return val; }
 function _optionValeur(text) { return text.trim(); }
 
-// Construit la liste d'options pour la marque sélectionnée (marque en premier, puis génériques)
+// Liste pour le champ Options (équipement générique uniquement)
 function _getOptionsListe() {
+  return OPTIONS_GENERIQUES.map(o => ({ label: o, groupe: 'general' }));
+}
+
+// Liste pour le champ Finition (finitions de la marque en premier, puis génériques)
+function _getFinitionsListe() {
   const marque = (document.getElementById('form-marque')?.value || '').trim();
-  // Cherche la clé correspondante (case-insensitive)
-  const key = Object.keys(OPTIONS_PAR_MARQUE).find(k => _normalise(k) === _normalise(marque));
-  const specifiques = key ? OPTIONS_PAR_MARQUE[key].map(o => ({ label: o, groupe: 'marque' })) : [];
-  const generiques  = OPTIONS_GENERIQUES.map(o => ({ label: o, groupe: 'general' }));
-  // Dédoublonner
+  const key = Object.keys(FINITIONS_PAR_MARQUE).find(k => _normalise(k) === _normalise(marque));
+  const specifiques = key ? FINITIONS_PAR_MARQUE[key].map(o => ({ label: o, groupe: 'marque' })) : [];
+  // Finitions génériques (communes à toutes marques)
+  const generiques = [
+    'Sport', 'Business', 'Executive', 'Confort', 'Premium', 'Prestige', 'Luxury',
+    'Active', 'Design', 'Style', 'Elegance', 'Edition 1', 'Black Edition', 'Night Edition',
+  ].map(o => ({ label: o, groupe: 'general' }));
   const vus = new Set(specifiques.map(o => _normalise(o.label)));
   return [...specifiques, ...generiques.filter(o => !vus.has(_normalise(o.label)))];
 }
@@ -2710,10 +2717,11 @@ function _getOptionsListe() {
 // Autocomplete custom (remplace datalist)
 let _acCurrent = null; // dropdown actif
 
-function _acAttach(input) {
+function _acAttach(input, getListe) {
   if (input._acAttached) return;
   input._acAttached = true;
-  input.removeAttribute('list'); // ne pas utiliser le datalist natif
+  getListe = getListe || _getOptionsListe;
+  input.removeAttribute('list');
 
   const drop = document.createElement('ul');
   drop.className = 'ac-drop';
@@ -2759,8 +2767,8 @@ function _acAttach(input) {
 
   input.addEventListener('input', () => {
     const q = _normalise(input.value);
-    if (!q) { open(_getOptionsListe()); return; }
-    const all = _getOptionsListe();
+    if (!q) { open(getListe()); return; }
+    const all = getListe();
     // Substring match : commence par > contient
     const starts = all.filter(o => _normalise(o.label).startsWith(q));
     const contains = all.filter(o => !_normalise(o.label).startsWith(q) && _normalise(o.label).includes(q));
@@ -2768,7 +2776,7 @@ function _acAttach(input) {
   });
   input.addEventListener('focus', () => {
     const q = _normalise(input.value);
-    if (!q) open(_getOptionsListe());
+    if (!q) open(getListe());
   });
   input.addEventListener('blur', () => setTimeout(close, 150));
 }
@@ -2787,8 +2795,7 @@ function _makeOptionsRow(val, imperatif) {
     <label class="options-imperatif"><input type="checkbox" ${imperatif ? 'checked' : ''}> Impératif</label>
     <button type="button" class="btn-rm-input" onclick="this.closest('.options-row').remove();if(_acCurrent)_acCurrent.close();" title="Supprimer">×</button>`;
   const input = row.querySelector('input[type=text]');
-  // Attacher après insertion dans le DOM (requestAnimationFrame garantit que l'élément est visible)
-  requestAnimationFrame(() => _acAttach(input));
+  requestAnimationFrame(() => _acAttach(input, _getOptionsListe));
   return row;
 }
 
@@ -3470,6 +3477,8 @@ function _chargerSelectConvertisseur() {
   const _cbHybride = document.getElementById('cb-hybride');
   if (_cbHybride) _cbHybride.addEventListener('change', _syncHybrideSub);
   addOptionsRow();
+  const _finitionInput = document.querySelector('input[name="finition"]');
+  if (_finitionInput) _acAttach(_finitionInput, _getFinitionsListe);
   await Promise.all([
     chargerClients(),
     updateStatus(),
