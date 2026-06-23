@@ -1668,6 +1668,7 @@ function renderClientCard(c) {
         <span class="recherche-criteres">${_criteresCourt(r)}</span>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn-sm" style="background:var(--c-success);color:white;border-color:var(--c-success)" onclick="lancerRunUne('${r.search_id}', '${nomSafe}', this)">🔍 Lancer</button>
         <button class="btn-voir btn-sm" onclick="voirResultats('${r.search_id}', '${nomSafe}')">Résultats</button>
         <button class="btn-sm btn-edit" onclick="editerRecherche('${r.search_id}')">✏️</button>
         <button class="btn-sm btn-delete" onclick="supprimerRecherche('${r.search_id}', '${nomSafe}', this)">🗑️</button>
@@ -1760,6 +1761,7 @@ async function chargerClients() {
           ${_clientsData.length ? `<select class="rattacher-select" id="rattach-${r.search_id}" onchange="rattacherRechercheClient('${r.search_id}', this)">
             <option value="">Rattacher à...</option>${clientOpts}
           </select>` : ''}
+          <button class="btn-sm" style="background:var(--c-success);color:white;border-color:var(--c-success)" onclick="lancerRunUne('${r.search_id}', '${nomSafe}', this)">🔍 Lancer</button>
           <button class="btn-voir btn-sm" onclick="voirResultats('${r.search_id}', '${nomSafe}')">Résultats</button>
           <button class="btn-sm btn-edit" onclick="editerRecherche('${r.search_id}')">✏️</button>
           <button class="btn-sm btn-delete" onclick="supprimerRecherche('${r.search_id}', '${nomSafe}', this)">🗑️</button>
@@ -2026,6 +2028,37 @@ async function lancerRun() {
 
     if (d.ok) {
       startPolling();
+    } else {
+      showToast(d.message || 'Impossible de lancer la recherche.', false);
+    }
+  } catch {
+    showToast('Impossible de se connecter. La fenetre Carveille est-elle ouverte ?', false);
+  }
+}
+
+async function lancerRunUne(searchId, nom, btn) {
+  try {
+    const d = await fetch(`${API}/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: 'mobile.de', search_id: searchId })
+    }).then(r => r.json());
+
+    if (d.ok) {
+      btnLoad(btn, 'En cours…');
+      showToast(`Recherche lancée : ${nom}`);
+      // Attendre la fin du run puis recharger les résultats
+      const poll = setInterval(async () => {
+        try {
+          const s = await fetch(`${API}/run-status`).then(r => r.json());
+          if (!s.en_cours) {
+            clearInterval(poll);
+            btnReset(btn);
+            chargerClients();
+            voirResultats(searchId, nom);
+          }
+        } catch { clearInterval(poll); btnReset(btn); }
+      }, 3000);
     } else {
       showToast(d.message || 'Impossible de lancer la recherche.', false);
     }

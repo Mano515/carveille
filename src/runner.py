@@ -62,12 +62,20 @@ def _enrichir(ann: dict, search_id: str, res: dict, est_nouvelle: bool) -> dict:
     }
 
 
-def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notify_baisses: bool = True):
+def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notify_baisses: bool = True, search_id: str = None):
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
-    print(f"\n[RUN] Run {run_id[:8]} demarre ({source} / day {day})")
+    cible = f"search_id={search_id[:8]}" if search_id else "toutes"
+    print(f"\n[RUN] Run {run_id[:8]} demarre ({source} / {cible})")
 
-    recherches = get_recherches_actives()
+    toutes = get_recherches_actives()
+    if search_id:
+        recherches = [r for r in toutes if r["search_id"] == search_id]
+        if not recherches:
+            print(f"[WARN] Recherche {search_id[:8]} introuvable ou inactive.")
+            return
+    else:
+        recherches = toutes
     if not recherches:
         print("[WARN] Aucune recherche active trouvee.")
         return

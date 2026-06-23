@@ -152,13 +152,13 @@ _run_status = {
 }
 
 
-def _do_run_with_status(source: str, day: int = 1, notify_nouvelles: bool = True, notify_baisses: bool = True):
+def _do_run_with_status(source: str, day: int = 1, notify_nouvelles: bool = True, notify_baisses: bool = True, search_id: str = None):
     """Lance un run et met a jour _run_status."""
     from src.runner import run
     with _run_lock:
         _run_status["en_cours"] = True
     try:
-        run(source=source, day=day, notify_nouvelles=notify_nouvelles, notify_baisses=notify_baisses)
+        run(source=source, day=day, notify_nouvelles=notify_nouvelles, notify_baisses=notify_baisses, search_id=search_id)
     except Exception as e:
         print(f"[ERR] Run planté : {type(e).__name__}: {e}")
         import traceback; traceback.print_exc()
@@ -607,9 +607,10 @@ def cmd_ui():
                     return
                 source = body.get("source", "mobile.de")
                 day = int(body.get("day", 1))
+                search_id = body.get("search_id") or None
                 t = threading.Thread(
                     target=_do_run_with_status,
-                    kwargs={"source": source, "day": day},
+                    kwargs={"source": source, "day": day, "search_id": search_id},
                     daemon=True,
                 )
                 t.start()
