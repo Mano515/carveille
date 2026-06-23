@@ -23,6 +23,9 @@ from config import (
 BASE_URL = "https://suchen.mobile.de/fahrzeuge/search.html"
 BASE_DETAIL_URL = "https://www.mobile.de"
 
+# Progression partagée — lue par main.py via /status
+progression = {"actuel": 0, "total": 0, "etape": ""}
+
 
 def _build_url(recherche: dict, marque: str = "", modele: str = "", page: int = 1) -> str:
     """URL de recherche complète avec make/model en paramètres URL directs."""
@@ -348,7 +351,7 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
             const titleEl = card.querySelector('h2,h3,h1');
             let title = titleEl ? titleEl.innerText.trim() : '';
             // Nettoyer les préfixes "Gesponsert" et "NEU"
-            title = title.replace(/^(gesponsert|neu)\s*/i, '').replace(/\n[\s\S]*/s, '').trim();
+            title = title.replace(/^(gesponsert|neu)\s?/i, '').replace(/\n[\s\S]*/s, '').trim();
 
             // km : "45.321 km" ou "45 321 km"
             const kmMatch = cardText.match(/(\d[\d.\s]+)\s*km/);
@@ -1278,13 +1281,18 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
         sans_couleur = [a for a in toutes if not a.get("couleur") and a.get("url")]
         if sans_couleur:
             print(f"  [WEB] Récupération couleur depuis pages détail ({len(sans_couleur)} annonces)...")
+            progression["total"] = len(sans_couleur)
+            progression["actuel"] = 0
+            progression["etape"] = "couleur"
             for i, ann in enumerate(sans_couleur, 1):
                 couleur = _charger_couleur_depuis_detail(driver, ann["url"])
                 ann["couleur"] = couleur or ""
                 statut = couleur or "inconnue"
                 print(f"    [{i}/{len(sans_couleur)}] {ann.get('titre','?')} → {statut}")
+                progression["actuel"] = i
                 if i < len(sans_couleur):
                     time.sleep(random.uniform(1.5, 2.5))
+            progression["etape"] = ""
 
         # Filtre strict : seules les annonces de la bonne couleur passent
         avant_c = len(toutes)

@@ -444,7 +444,8 @@ def cmd_ui():
             elif self.path == "/planificateur":
                 self._send_json(_load_schedule())
             elif self.path == "/status":
-                self._send_json(dict(_run_status))
+                from src.sources.mobile_de import progression as _prog
+                self._send_json({**_run_status, "progression": dict(_prog)})
             else:
                 print(f"[WARN] GET {self.path} : route inconnue (404)")
                 self.send_response(404)

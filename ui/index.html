@@ -246,6 +246,10 @@ button:hover { opacity: .88; }
   white-space: nowrap;
 }
 .tag-new { background: var(--c-success-light); color: #15803d; font-weight: 600; border-color: #bbf7d0; }
+.prog-wrap { margin-top: 6px; }
+.prog-bar { height: 6px; background: var(--c-border); border-radius: 3px; overflow: hidden; }
+.prog-fill { height: 100%; width: 0%; background: var(--c-accent); border-radius: 3px; transition: width .4s ease; }
+.prog-label { font-size: 0.72rem; color: var(--c-text-muted); margin-top: 3px; }
 .tag-fresh { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
 .tag-baisse { background: #fff7ed; color: #c2410c; font-weight: 700; border-color: #fed7aa; }
 .tag-rejet { background: var(--c-danger-light); color: #b91c1c; border-color: #fecaca; }
@@ -2047,17 +2051,36 @@ async function lancerRunUne(searchId, nom, btn) {
     if (d.ok) {
       btnLoad(btn, 'En cours…');
       showToast(`Recherche lancée : ${nom}`);
-      // Attendre la fin du run puis recharger les résultats
+      // Créer une barre de progression sous le bouton
+      let barWrap = btn.parentElement.querySelector('.prog-wrap');
+      if (!barWrap) {
+        barWrap = document.createElement('div');
+        barWrap.className = 'prog-wrap';
+        barWrap.innerHTML = '<div class="prog-bar"><div class="prog-fill"></div></div><div class="prog-label"></div>';
+        btn.parentElement.appendChild(barWrap);
+      }
+      const progFill  = barWrap.querySelector('.prog-fill');
+      const progLabel = barWrap.querySelector('.prog-label');
+
       const poll = setInterval(async () => {
         try {
           const s = await fetch(`${API}/status`).then(r => r.json());
+          // Mettre à jour la barre si en cours de récup couleur
+          const p = s.progression;
+          if (p && p.etape === 'couleur' && p.total > 0) {
+            const pct = Math.round(p.actuel / p.total * 100);
+            progFill.style.width = pct + '%';
+            progLabel.textContent = `Couleurs : ${p.actuel}/${p.total}`;
+            btnLoad(btn, `Couleurs ${p.actuel}/${p.total}…`);
+          }
           if (!s.en_cours) {
             clearInterval(poll);
+            barWrap.remove();
             btnReset(btn);
             chargerClients();
             voirResultats(searchId, nom);
           }
-        } catch { clearInterval(poll); btnReset(btn); }
+        } catch { clearInterval(poll); barWrap.remove(); btnReset(btn); }
       }, 3000);
     } else {
       showToast(d.message || 'Impossible de lancer la recherche.', false);
