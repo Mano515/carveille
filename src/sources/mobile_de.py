@@ -155,9 +155,40 @@ def _url_via_detailsuche(driver, marque: str, modele: str) -> str | None:
             else:
                 print(f"  [WEB] Detailsuche : modèle {model_code} non trouvé, continue sans modèle")
 
-        # Les IDs numériques retournés par les <select> sont les vrais identifiants
-        # internes mobile.de (ex: mk=12600 au lieu de mk=JEEP). On construit l'URL
-        # directement — pas besoin de cliquer un bouton submit dans la SPA React.
+        # Essayer de cliquer le bouton Suchen avec Selenium (plus fiable que JS click sur React)
+        url_avant = driver.current_url
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.webdriver.support import expected_conditions as EC
+        clicked = False
+        try:
+            # Chercher un bouton visible dont le texte contient un mot-clé de recherche
+            keywords = ["suchen", "ergebnis", "treffer", "anzeigen", "search"]
+            for btn in driver.find_elements(By.CSS_SELECTOR, "button, a[role='button']"):
+                try:
+                    txt = btn.text.strip().lower()
+                    if any(k in txt for k in keywords) and btn.is_displayed() and btn.is_enabled():
+                        btn.click()
+                        clicked = True
+                        print(f"  [WEB] Detailsuche : submit Selenium ({btn.text.strip()!r})")
+                        break
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        if clicked:
+            try:
+                WebDriverWait(driver, 8).until(EC.url_contains("search.html"))
+                result_url = driver.current_url
+                if "search.html" in result_url:
+                    print(f"  [WEB] Detailsuche URL mobile.de : {result_url[:120]}")
+                    return result_url
+            except Exception:
+                pass
+
+        # Fallback : construire l'URL avec les IDs numériques des <select>
+        # (mk=12600 peut être ignoré par mobile.de mais le filtre marque côté client prend le relais)
         from urllib.parse import urlencode
         params = [
             ("dam", "false"),
@@ -171,7 +202,7 @@ def _url_via_detailsuche(driver, marque: str, modele: str) -> str | None:
         if chosen_model:
             params.append(("mo", chosen_model))
         result_url = f"https://suchen.mobile.de/fahrzeuge/search.html?{urlencode(params)}"
-        print(f"  [WEB] Detailsuche URL construite : {result_url[:120]}")
+        print(f"  [WEB] Detailsuche URL construite (ids) : {result_url[:120]}")
         return result_url
 
     except Exception as e:
@@ -1008,15 +1039,20 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
 
     print(f"  [WEB] Total scrape : {len(toutes)} annonces (avant filtre client)")
 
-    # Filtre côté client si l'URL n'est pas certifiée par detailsuche
-    if not filtre_url_ok and marque:
+    if marque:
         marque_lower = marque.strip().lower()
-        modele_lower = modele.strip().lower()
         avant = len(toutes)
-        toutes = [a for a in toutes if
-                  marque_lower in (a.get("titre") or "").lower() and
-                  (not modele_lower or modele_lower in (a.get("titre") or "").lower())]
-        print(f"  [WEB] Après filtre client : {len(toutes)} annonces (sur {avant})")
+        # La marque est toujours filtrée côté client — contrainte dure, pas un critère de score.
+        # mobile.de peut ignorer mk= ou mk=<id> selon son humeur ; on ne fait pas confiance à l'URL.
+        toutes = [a for a in toutes if marque_lower in (a.get("titre") or "").lower()]
+        print(f"  [WEB] Filtre marque '{marque}' : {len(toutes)} annonces (sur {avant})")
+
+        # Filtre modèle uniquement si l'URL n'est pas validée par detailsuche
+        if not filtre_url_ok and modele:
+            modele_lower = modele.strip().lower()
+            avant2 = len(toutes)
+            toutes = [a for a in toutes if modele_lower in (a.get("titre") or "").lower()]
+            print(f"  [WEB] Filtre modèle '{modele}' : {len(toutes)} annonces (sur {avant2})")
 
     return toutes
 
