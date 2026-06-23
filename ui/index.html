@@ -302,12 +302,12 @@ button:hover { opacity: .88; }
 }
 .score-label[data-tooltip]::after {
   content: attr(data-tooltip);
-  position: absolute; left: 0; top: calc(100% + 6px);
+  position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
   background: #1e293b; color: #f1f5f9;
   padding: 7px 11px; border-radius: 7px;
   font-size: 0.72rem; line-height: 1.5;
-  white-space: normal; width: 230px;
-  z-index: 200; pointer-events: none;
+  white-space: normal; width: 220px;
+  z-index: 9999; pointer-events: none;
   opacity: 0; transition: opacity .15s;
   box-shadow: 0 4px 14px rgba(0,0,0,.25);
 }
@@ -2117,7 +2117,7 @@ function renderAnnonce(a, searchId, historique = false) {
   // Badges de statut (seulement les alertes)
   const statusBadges = [
     sourceBadge,
-    a.est_nouvelle ? '<span class="tag tag-new">🆕 Nouvelle annonce</span>' : '',
+    a.est_nouvelle ? '<span class="tag tag-new" title="Carveille n\'avait pas encore vu cette annonce — elle peut avoir été postée il y a plusieurs jours sur mobile.de">🆕 Nouvelle pour Carveille</span>' : '',
     ageBadge(a.date_publication),
     baisse        ? `<span class="tag tag-baisse">↓ Baisse de prix</span>` : '',
     zoneInondable ? '<span class="tag tag-inondation">🌊 Zone inondable</span>' : '',
