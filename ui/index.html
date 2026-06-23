@@ -2069,7 +2069,6 @@ function renderAnnonce(a, searchId, historique = false) {
   const anneeStr  = a.date_immat || (a.annee ? String(a.annee) : '');
   const kmStr     = a.km ? Math.round(a.km).toLocaleString('fr') + ' km' : '';
   const breakdown = renderBreakdown(a.score_detail || '');
-  const frUrl = a.url ? _googleTranslateUrl(a.url) : null;
   const seenIdSafe = (a.seen_id || '').replace(/'/g, "\\'");
 
   const sourceBadge = historique && a.nom_recherche
@@ -2129,8 +2128,7 @@ function renderAnnonce(a, searchId, historique = false) {
     </div>
 
     <div class="annonce-actions">
-      ${frUrl ? `<a class="btn-annonce" href="${frUrl}" target="_blank">Voir l'annonce →</a>` : (a.url ? `<a class="btn-annonce" href="${a.url}" target="_blank">Voir l'annonce →</a>` : '')}
-      ${a.url ? `<a class="btn-sm btn-original" href="${a.url}" target="_blank">DE</a>` : ''}
+      ${a.url ? `<a class="btn-annonce" href="${a.url}" target="_blank">Voir l'annonce →</a>` : ''}
       <button class="btn-sm btn-oui ${a.interet === 'oui' ? 'active' : ''}"
         onclick="marquerInteret('${seenIdSafe}','${a.interet === 'oui' ? 'neutre' : 'oui'}','${searchId}')">👍 Intéressé</button>
       <button class="btn-sm btn-non ${a.interet === 'non' ? 'active' : ''}"
@@ -2149,17 +2147,6 @@ function renderAnnonce(a, searchId, historique = false) {
   </div>`;
 }
 
-function _googleTranslateUrl(url) {
-  try {
-    const u = new URL(url);
-    const translatedHost = u.hostname.replace(/\./g, '-') + '.translate.goog';
-    u.hostname = translatedHost;
-    u.searchParams.set('_x_tr_sl', 'de');
-    u.searchParams.set('_x_tr_tl', 'fr');
-    u.searchParams.set('_x_tr_hl', 'fr');
-    return u.toString();
-  } catch { return null; }
-}
 
 function toggleDetail(seenId) {
   document.getElementById('bd-' + seenId)?.classList.toggle('open');
@@ -2759,8 +2746,7 @@ const AIDE_CONTENU = {
         items: [
           { label: '👍 Intéressé', desc: 'Met l\'annonce en évidence (bordure verte) et l\'ajoute aux Favoris du client. Retrouvez tous vos favoris en cliquant sur le badge ⭐ de la carte client.' },
           { label: '👎 Pas intéressé', desc: 'Masque l\'annonce (grisée). Elle n\'est pas supprimée — vous pouvez la retrouver en rechargeant les résultats.' },
-          { label: 'Voir l\'annonce', desc: 'Ouvre la page de l\'annonce sur mobile.de dans un nouvel onglet Chrome.' },
-          { label: 'Traduire', desc: 'Ouvre l\'annonce traduite automatiquement en français via DeepL. Pratique pour les descriptions en allemand.' },
+          { label: 'Voir l\'annonce', desc: 'Ouvre la page de l\'annonce sur mobile.de dans un nouvel onglet (en allemand).' },
           { label: 'Note personnelle', desc: 'Champ texte sous chaque annonce pour écrire vos propres remarques : "à rappeler lundi", "vu en vrai, moteur OK", "prix négociable"… Cliquez sur "Sauvegarder la note" pour enregistrer.' },
         ]
       },

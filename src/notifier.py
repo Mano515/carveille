@@ -7,8 +7,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DEEPL_URL = "https://www.deepl.com/translator#de/fr/"
-
 
 def _formater_detail(score_detail_json: str) -> str:
     if not score_detail_json:
@@ -64,15 +62,11 @@ def _formater_annonce(ann: dict, idx: int) -> str:
     detail_str = _formater_detail(ann.get("score_detail", ""))
     detail_block = f"\n   Detail :\n{detail_str}" if detail_str else ""
 
-    translate_url = f"{DEEPL_URL}{url}" if url else ""
-    translate_str = f"\n   Traduire : {translate_url}" if translate_url else ""
-
     return (
         f"{idx}. {titre}{baisse_str} -- {prix} -- {km} -- Score : {score}/100\n"
         f"   {ville} | {vendeur.capitalize()} | {boite.capitalize()} | {carburant.capitalize()} | 1ere immat : {annee_str}"
         f"{detail_block}\n"
         f"   {url}"
-        f"{translate_str}"
     )
 
 
