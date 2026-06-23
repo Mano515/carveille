@@ -995,7 +995,10 @@ html[data-theme="dark"] .ac-drop { background: #1e2236; border-color: #2e3350; }
         </label>
 
         <label>
-          Finition <span class="hint">ex : Sport, S-line, AMG Line, GTI, Prestige… (mot-clé cherché dans le titre)</span>
+          <span class="field-header">
+            Finition <span class="hint" style="margin-left:0">ex : Sport, S-line, AMG Line, GTI… (cherché dans le titre)</span>
+            <span class="imperatif-badge" title="Exclure les annonces sans cette finition" onclick="var cb=this.querySelector('input');cb.checked=!cb.checked"><input type="checkbox" name="finition_imperatif" value="1" onclick="event.stopPropagation()"> Impératif</span>
+          </span>
           <input type="text" name="finition" placeholder="Sport, S-line, AMG Line..." autocomplete="off">
         </label>
 
@@ -1936,6 +1939,8 @@ async function editerRecherche(searchId) {
     // Couleur impératif
     const cbCouleurImp = form.elements['couleur_imperatif'];
     if (cbCouleurImp) cbCouleurImp.checked = !!r.couleur_imperatif;
+    const cbFinitionImp = form.elements['finition_imperatif'];
+    if (cbFinitionImp) cbFinitionImp.checked = !!r.finition_imperatif;
     // Options multi-row
     const optVals = (r.options_recherchees || '').split(',').map(s => s.trim()).filter(Boolean);
     const impVals = (r.options_imperatives || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -2910,7 +2915,7 @@ async function soumettreRecherche(e) {
   const form = e.target;
   const fd = new FormData(form);
   const body = {};
-  fd.forEach((v, k) => { if (!['carburant','boite','modele','couleur','couleur_imperatif','carrosserie','materiaux_interieur'].includes(k)) body[k] = v === '' ? null : v; });
+  fd.forEach((v, k) => { if (!['carburant','boite','modele','couleur','couleur_imperatif','finition_imperatif','carrosserie','materiaux_interieur'].includes(k)) body[k] = v === '' ? null : v; });
   body.budget_strict = fd.has('budget_strict');
   let carburants = fd.getAll('carburant');
   // Si des sous-types hybride sont cochés, supprimer le générique "hybride" pour éviter un match trop large
@@ -2923,7 +2928,8 @@ async function soumettreRecherche(e) {
   body.modele = modeles.length > 0 ? modeles.join(',') : null;
   const couleurs = fd.getAll('couleur').map(v => v.trim()).filter(Boolean);
   body.couleur = couleurs.length > 0 ? couleurs.join(',') : null;
-  body.couleur_imperatif = fd.has('couleur_imperatif') ? 1 : 0;
+  body.couleur_imperatif  = fd.has('couleur_imperatif')  ? 1 : 0;
+  body.finition_imperatif = fd.has('finition_imperatif') ? 1 : 0;
   const carrosseries = fd.getAll('carrosserie');
   body.carrosserie = carrosseries.length > 0 ? carrosseries.join(',') : null;
   const materiaux = fd.getAll('materiaux_interieur');

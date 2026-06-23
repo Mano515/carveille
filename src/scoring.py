@@ -63,6 +63,7 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     options_r          = recherche.get("options_recherchees") or ""
     options_imp_r      = recherche.get("options_imperatives") or ""
     finition_r         = (recherche.get("finition") or "").lower().strip()
+    finition_imperatif = bool(recherche.get("finition_imperatif", False))
     carrosserie_r      = (recherche.get("carrosserie") or "").lower()
     materiaux_r        = (recherche.get("materiaux_interieur") or "").lower()
     couleur_int_r      = (recherche.get("couleur_interieure") or "").lower()
@@ -297,7 +298,7 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
         mots_finition = [m.strip() for m in finition_r.split(",") if m.strip()]
         finition_trouvee = any(m in titre_a or m in options_a for m in mots_finition)
         bonus_finition = 5 if finition_trouvee else 0
-        if not finition_trouvee and not raison_rejet:
+        if not finition_trouvee and finition_imperatif and not raison_rejet:
             raison_rejet = f"Finition '{finition_r}' non trouvée dans l'annonce"
     else:
         bonus_finition = 0
