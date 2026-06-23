@@ -296,7 +296,22 @@ button:hover { opacity: .88; }
 .score-breakdown { display: none; padding: 10px 20px 14px; border-top: 1px solid var(--c-border); background: var(--c-bg); }
 .score-breakdown.open { display: block; }
 .score-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; margin-bottom: 6px; }
-.score-label { width: 140px; color: var(--c-text-muted); flex-shrink: 0; font-size: 0.75rem; }
+.score-label {
+  width: 140px; color: var(--c-text-muted); flex-shrink: 0; font-size: 0.75rem;
+  position: relative; cursor: default;
+}
+.score-label[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute; left: 0; top: calc(100% + 6px);
+  background: #1e293b; color: #f1f5f9;
+  padding: 7px 11px; border-radius: 7px;
+  font-size: 0.72rem; line-height: 1.5;
+  white-space: normal; width: 230px;
+  z-index: 200; pointer-events: none;
+  opacity: 0; transition: opacity .15s;
+  box-shadow: 0 4px 14px rgba(0,0,0,.25);
+}
+.score-label[data-tooltip]:hover::after { opacity: 1; }
 .score-bar-bg { flex: 1; height: 5px; background: var(--c-border); border-radius: 3px; overflow: hidden; }
 .score-bar-fill { height: 100%; border-radius: 3px; }
 .score-val { width: 55px; text-align: right; color: var(--c-text); font-weight: 500; font-size: 0.75rem; }
@@ -2045,7 +2060,7 @@ function renderBreakdown(detailJson) {
     const val   = max > 0 ? `${score}/${max}` : `${score > 0 ? '+' : ''}${score}`;
     const barW  = max > 0 ? pct : Math.min(Math.abs(score) * 4, 100);
     return `<div class="score-row">
-      <span class="score-label" title="${title}" style="cursor:help">${label}</span>
+      <span class="score-label" data-tooltip="${title}">${label}</span>
       <div class="score-bar-bg"><div class="score-bar-fill" style="width:${barW}%;background:${color}"></div></div>
       <span class="score-val">${val}</span>
     </div>`;
@@ -2101,7 +2116,7 @@ function renderAnnonce(a, searchId, historique = false) {
   // Badges de statut (seulement les alertes)
   const statusBadges = [
     sourceBadge,
-    a.est_nouvelle ? '<span class="tag tag-new">Nouvelle</span>' : '',
+    a.est_nouvelle ? '<span class="tag tag-new">🆕 Nouvelle annonce</span>' : '',
     ageBadge(a.date_publication),
     baisse        ? `<span class="tag tag-baisse">↓ Baisse de prix</span>` : '',
     zoneInondable ? '<span class="tag tag-inondation">🌊 Zone inondable</span>' : '',
