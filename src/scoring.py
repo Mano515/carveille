@@ -62,6 +62,7 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     couleur_imperatif  = bool(recherche.get("couleur_imperatif", False))
     options_r          = recherche.get("options_recherchees") or ""
     options_imp_r      = recherche.get("options_imperatives") or ""
+    finition_r         = (recherche.get("finition") or "").lower().strip()
     carrosserie_r      = (recherche.get("carrosserie") or "").lower()
     materiaux_r        = (recherche.get("materiaux_interieur") or "").lower()
     couleur_int_r      = (recherche.get("couleur_interieure") or "").lower()
@@ -266,7 +267,10 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
         trouves = sum(1 for m in mots_cles if m in options_a)
         ratio = trouves / len(mots_cles)
         bonus_options = round(p_options * ratio, 1)
-        malus_imperatives = sum(-12 for m in imperatives if m not in options_a)
+        manquantes = [m for m in imperatives if m not in options_a]
+        malus_imperatives = len(manquantes) * -12
+        if manquantes and not raison_rejet:
+            raison_rejet = f"Option(s) impérative(s) manquante(s) : {', '.join(manquantes)}"
     # Petit bonus si matériaux/couleur intérieure trouvés dans l'annonce
     bonus_extra = sum(2 for m in mots_cles_bonus if m in options_a)
     detail["options"] = {"score": bonus_options + malus_imperatives + bonus_extra, "max": p_options}
@@ -287,6 +291,18 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     bonus_fraicheur = BONUS_FRAICHEUR.get(age_pub, 0) if age_pub else 0
     detail["fraicheur"] = {"score": bonus_fraicheur, "max": 5, "age": age_pub}
 
+    # ── Finition ──────────────────────────────────────────────────────────────
+    titre_a = (annonce.get("titre") or "").lower()
+    if finition_r:
+        mots_finition = [m.strip() for m in finition_r.split(",") if m.strip()]
+        finition_trouvee = any(m in titre_a or m in options_a for m in mots_finition)
+        bonus_finition = 5 if finition_trouvee else 0
+        if not finition_trouvee and not raison_rejet:
+            raison_rejet = f"Finition '{finition_r}' non trouvée dans l'annonce"
+    else:
+        bonus_finition = 0
+    detail["finition"] = {"score": bonus_finition, "max": 5}
+
     # ── Risque inondation ──────────────────────────────────────────────────────
     ville_a = (annonce.get("ville") or "").lower().strip()
     zone_inondable = bool(ville_a and any(z in ville_a for z in ZONES_INONDATION))
@@ -298,7 +314,7 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
         score_prix + score_km + score_annee + bonus_km_an
         + score_boite + score_carburant + score_vendeur
         + bonus_options - penalite + bonus_fraicheur + malus_inondation + malus_couleur
-        + score_carrosserie
+        + score_carrosserie + bonus_finition
     )
     score_final = max(0.0, min(100.0, score_brut))
 

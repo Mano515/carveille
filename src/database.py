@@ -126,6 +126,7 @@ def init_db():
             "ALTER TABLE recherches ADD COLUMN couleur_interieure TEXT",
             "ALTER TABLE annonces_vues ADD COLUMN carrosserie TEXT",
             "ALTER TABLE annonces_vues ADD COLUMN images_urls TEXT",
+            "ALTER TABLE recherches ADD COLUMN finition TEXT",
         ]:
             try:
                 conn.execute(sql)
@@ -310,7 +311,7 @@ def insert_recherche(data: dict):
     with get_conn() as conn:
         conn.execute("""
             INSERT OR REPLACE INTO recherches (
-                search_id, nom_recherche, statut, marque, modele,
+                search_id, nom_recherche, statut, marque, modele, finition,
                 budget_max, budget_strict, km_max, annee_min,
                 prix_min, boite, carburant, couleur, couleur_imperatif, vendeur_filtre,
                 options_recherchees, options_imperatives, mobile_de_url,
@@ -319,7 +320,7 @@ def insert_recherche(data: dict):
                 penalite_infos_manquantes, score_min_notification, max_annonces,
                 client_id, created_at, updated_at
             ) VALUES (
-                :search_id, :nom_recherche, :statut, :marque, :modele,
+                :search_id, :nom_recherche, :statut, :marque, :modele, :finition,
                 :budget_max, :budget_strict, :km_max, :annee_min,
                 :prix_min, :boite, :carburant, :couleur, :couleur_imperatif, :vendeur_filtre,
                 :options_recherchees, :options_imperatives, :mobile_de_url,

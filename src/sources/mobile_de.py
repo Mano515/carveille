@@ -1137,7 +1137,7 @@ def _scrape_page(url: str) -> tuple[list, int]:
         return [], 0
 
 
-def charger(recherche: dict, max_pages: int = 3) -> list:
+def charger(recherche: dict, max_pages: int = 10) -> list:
     """
     Charge les annonces depuis mobile.de.
     Utilise `mobile_de_url` si fourni, sinon construit l'URL depuis les critères.

@@ -988,6 +988,11 @@ html[data-theme="dark"] .search-criteria { color: #5c6494; }
         </label>
 
         <label>
+          Finition <span class="hint">ex : Sport, S-line, AMG Line, GTI, Prestige… (mot-clé cherché dans le titre)</span>
+          <input type="text" name="finition" placeholder="Sport, S-line, AMG Line..." autocomplete="off">
+        </label>
+
+        <label>
           Prix maximum (EUR)
           <input type="text" inputmode="numeric" name="budget_max" placeholder="20 000" class="prix-input" autocomplete="off" onkeydown="_onPrixKeydown(event)">
         </label>
@@ -1072,36 +1077,89 @@ html[data-theme="dark"] .search-criteria { color: #5c6494; }
           <div class="multi-input-group" id="options-group"></div>
           <button type="button" class="btn-add-input" onclick="addOptionsRow()">+ Ajouter une option</button>
           <datalist id="datalist-options">
+            <!-- Caméras & vision -->
             <option value="Caméra de recul">
             <option value="Caméra 360°">
+            <option value="Caméra frontale">
+            <!-- Navigation & connectivité -->
             <option value="GPS / Navigation">
             <option value="Bluetooth">
             <option value="Apple CarPlay / Android Auto">
-            <option value="Toit ouvrant">
-            <option value="Toit panoramique">
+            <option value="Chargeur sans fil">
+            <option value="Wi-Fi embarqué">
+            <option value="Son premium (Bose / Harman / Bang & Olufsen)">
+            <!-- Confort sièges -->
             <option value="Sièges chauffants">
             <option value="Sièges ventilés">
             <option value="Sièges électriques">
+            <option value="Sièges massants">
+            <option value="Sièges sport / baquets">
+            <option value="Sièges mémoire">
             <option value="Volant chauffant">
+            <!-- Toit -->
+            <option value="Toit ouvrant">
+            <option value="Toit panoramique">
+            <option value="Toit en verre fixe">
+            <!-- Climatisation -->
             <option value="Climatisation automatique">
+            <option value="Climatisation bi-zone">
+            <option value="Climatisation tri-zone">
+            <option value="Pompe à chaleur">
+            <!-- Aide à la conduite -->
             <option value="Régulateur de vitesse">
             <option value="Cruise control adaptatif (ACC)">
             <option value="Détecteur d'angles morts">
-            <option value="Radars de stationnement">
-            <option value="Phares LED">
-            <option value="Phares Xénon / Bi-Xénon">
+            <option value="Freinage auto d'urgence">
+            <option value="Aide au maintien de voie">
+            <option value="Reconnaissance des panneaux">
+            <option value="Assistant de stationnement">
+            <option value="Stationnement automatique">
+            <option value="Affichage tête haute (HUD)">
+            <!-- Stationnement -->
+            <option value="Radars de stationnement avant">
+            <option value="Radars de stationnement arrière">
+            <option value="Radars de stationnement (AV+AR)">
+            <!-- Accès & démarrage -->
             <option value="Démarrage sans clé">
             <option value="Accès mains libres">
-            <option value="Head-up display (HUD)">
-            <option value="Chargeur sans fil">
-            <option value="Freinage auto d'urgence">
+            <option value="Alarme">
+            <option value="Toit ouvrant panoramique">
+            <!-- Éclairage -->
+            <option value="Phares LED">
+            <option value="Phares Xénon / Bi-Xénon">
+            <option value="Phares matriciels (Matrix LED)">
+            <option value="Feux de jour LED">
+            <!-- Remorquage & utilitaire -->
             <option value="Attelage / Boule de remorquage">
+            <option value="Barres de toit">
+            <!-- Coffre & hayon -->
             <option value="Hayon électrique">
-            <option value="Coffre électrique">
+            <option value="Coffre à ouverture mains libres">
+            <!-- Roues & châssis -->
             <option value="Jantes alliage">
-            <option value="Vitres teintées">
-            <option value="Pack hiver">
+            <option value="Jantes 18 pouces">
+            <option value="Jantes 19 pouces">
+            <option value="Jantes 20 pouces ou +">
             <option value="Suspension sport">
+            <option value="Suspension pilotée / adaptative">
+            <option value="Pneus d'été">
+            <option value="Pneus hiver / 4 saisons">
+            <option value="Roue de secours">
+            <!-- Vitres & carrosserie -->
+            <option value="Vitres teintées">
+            <option value="Toit noir / biton">
+            <option value="Calandre noir">
+            <!-- Packs -->
+            <option value="Pack hiver">
+            <option value="Pack sport">
+            <option value="Pack luxe">
+            <option value="Pack technologie">
+            <!-- Électrique / hybride -->
+            <option value="Chargeur rapide DC">
+            <option value="Câble de recharge inclus">
+            <option value="Batterie > 50 kWh">
+            <option value="Batterie > 70 kWh">
+            <option value="Autonomie > 400 km">
           </datalist>
         </label>
 
@@ -1842,6 +1900,7 @@ async function editerRecherche(searchId) {
     _setPrix('budget_max', r.budget_max || '');
     set('km_max', r.km_max || '');
     set('annee_min', r.annee_min || '');
+    set('finition', r.finition || '');
     // Couleurs multiples
     const couleurVals = (r.couleur || '').split(',').map(s => s.trim()).filter(Boolean);
     setMultiInput('couleur-group', 'couleur', '', 'Blanc, Noir...', couleurVals);
@@ -2307,15 +2366,22 @@ function _afficherResultats(nom) {
   const filtered = _resultatsData
     .filter(a =>
       (a.score || 0) >= 70 &&
+      !a.raison_rejet &&
       (!texte || (a.titre||'').toLowerCase().includes(texte) || (a.ville||'').toLowerCase().includes(texte)) &&
       (prixMax === Infinity || (a.prix && a.prix <= prixMax)) &&
       (kmMax === Infinity || (a.km && a.km <= kmMax))
     )
     .sort((a, b) => (b.score || 0) - (a.score || 0));
-  const hidden = _resultatsData.filter(a => (a.score || 0) < 70).length;
+  const nbRejet = _resultatsData.filter(a => a.raison_rejet).length;
+  const nbBas   = _resultatsData.filter(a => !a.raison_rejet && (a.score || 0) < 70).length;
+  const hidden  = nbRejet + nbBas;
   const el = document.getElementById('resultats-content');
   const nom2 = nom || currentSearchNom;
-  const hiddenNote = hidden > 0 ? `<span style="font-size:0.75rem;color:var(--c-text-subtle);margin-left:8px">(${hidden} sous 70 pts masquée${hidden > 1 ? 's' : ''})</span>` : '';
+  const hiddenParts = [
+    nbRejet > 0 ? `${nbRejet} exclue${nbRejet > 1 ? 's' : ''} (critères impératifs)` : '',
+    nbBas   > 0 ? `${nbBas} sous 70 pts` : '',
+  ].filter(Boolean).join(', ');
+  const hiddenNote = hidden > 0 ? `<span style="font-size:0.75rem;color:var(--c-text-subtle);margin-left:8px">(${hiddenParts} masquée${hidden > 1 ? 's' : ''})</span>` : '';
   el.innerHTML = `<div class="resultats-header">
     <span class="resultats-title">${nom2}</span>
     <span class="resultats-count">${filtered.length} annonce${filtered.length > 1 ? 's' : ''}${hiddenNote}</span>
@@ -2581,7 +2647,10 @@ async function soumettreRecherche(e) {
   const body = {};
   fd.forEach((v, k) => { if (!['carburant','boite','modele','couleur','couleur_imperatif','carrosserie','materiaux_interieur'].includes(k)) body[k] = v === '' ? null : v; });
   body.budget_strict = fd.has('budget_strict');
-  const carburants = fd.getAll('carburant');
+  let carburants = fd.getAll('carburant');
+  // Si des sous-types hybride sont cochés, supprimer le générique "hybride" pour éviter un match trop large
+  const hasHybrideSub = carburants.some(v => v === 'hybride essence' || v === 'hybride diesel');
+  if (hasHybrideSub) carburants = carburants.filter(v => v !== 'hybride');
   body.carburant = carburants.length > 0 ? carburants.join(',') : 'indifferent';
   const boites = fd.getAll('boite');
   body.boite = boites.length > 0 ? boites.join(',') : 'indifferent';

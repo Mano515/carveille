@@ -109,8 +109,10 @@ def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notif
                 annonces_scorees = []
                 for ann in nouvelles:
                     enrichie = _enrichir(ann, sid, scorer_annonce(ann, recherche), est_nouvelle=True)
-                    annonces_scorees.append(enrichie)
                     upsert_annonce(enrichie)
+                    # Exclure de la notification si option impérative manquante
+                    if not enrichie.get("raison_rejet") or "impérative" not in enrichie["raison_rejet"]:
+                        annonces_scorees.append(enrichie)
 
                 # 4. Mettre à jour les annonces déjà vues et détecter les baisses de prix
                 baisses = []
