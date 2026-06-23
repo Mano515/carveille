@@ -296,7 +296,7 @@ button:hover { opacity: .88; }
 .score-breakdown { display: none; padding: 10px 20px 14px; border-top: 1px solid var(--c-border); background: var(--c-bg); }
 .score-breakdown.open { display: block; }
 .score-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; margin-bottom: 6px; }
-.score-label { width: 90px; color: var(--c-text-muted); flex-shrink: 0; font-size: 0.75rem; }
+.score-label { width: 140px; color: var(--c-text-muted); flex-shrink: 0; font-size: 0.75rem; }
 .score-bar-bg { flex: 1; height: 5px; background: var(--c-border); border-radius: 3px; overflow: hidden; }
 .score-bar-fill { height: 100%; border-radius: 3px; }
 .score-val { width: 55px; text-align: right; color: var(--c-text); font-weight: 500; font-size: 0.75rem; }
@@ -860,7 +860,6 @@ html[data-theme="dark"] .search-criteria { color: #5c6494; }
 <!-- ════════════════════════════ NAVIGATION ══════════════════════════════════ -->
 <nav>
   <div class="nav-tab active" onclick="switchTab('voitures')" id="nav-voitures">&#128269; Mes recherches</div>
-  <div class="nav-tab" onclick="switchTab('resultats')" id="nav-resultats">&#128196; Resultats</div>
   <div class="nav-tab" onclick="switchTab('form')" id="nav-form">&#43; Nouvelle recherche</div>
   <div class="nav-tab" onclick="switchTab('outils')" id="nav-outils">&#128736; Outils</div>
   <div class="nav-tab" onclick="switchTab('params')" id="nav-params">&#9881; Parametres</div>
@@ -2026,17 +2025,17 @@ function renderBreakdown(detailJson) {
   let d;
   try { d = JSON.parse(detailJson); } catch { return ''; }
   const defs = [
-    { key:'prix',       label:'Prix' },
-    { key:'km',         label:'Kilometrage' },
-    { key:'annee',      label:'Annee' },
-    { key:'boite',      label:'Boite' },
-    { key:'carburant',  label:'Carburant' },
-    { key:'options',    label:'Options' },
-    { key:'penalite',   label:'Penalite' },
-    { key:'fraicheur',  label:'Fraicheur' },
-    { key:'inondation', label:'Zone inondable' },
+    { key:'prix',       label:'Prix',              title:'Rapport entre le prix demandé et votre budget max' },
+    { key:'km',         label:'Kilométrage',        title:'Kilométrage du véhicule — moins c\'est mieux' },
+    { key:'annee',      label:'Année',              title:'Année de 1ère immatriculation — plus récente, mieux c\'est' },
+    { key:'boite',      label:'Boîte de vitesses',  title:'Automatique ou manuelle, selon votre préférence' },
+    { key:'carburant',  label:'Carburant',          title:'Type de carburant (diesel, essence, hybride, électrique)' },
+    { key:'options',    label:'Options',            title:'Options souhaitées trouvées dans l\'annonce' },
+    { key:'penalite',   label:'Pénalité',           title:'Malus appliqué si un critère impératif n\'est pas respecté (ex : mauvaise couleur)' },
+    { key:'fraicheur',  label:'Fraîcheur',          title:'Bonus pour les annonces mises en ligne récemment (moins de quelques jours)' },
+    { key:'inondation', label:'Zone inondable',     title:'Malus si le vendeur est situé dans une zone à risque d\'inondation' },
   ];
-  return defs.map(({ key, label }) => {
+  return defs.map(({ key, label, title }) => {
     const item = d[key];
     if (!item) return '';
     const score = item.score || 0, max = item.max || 0;
@@ -2046,7 +2045,7 @@ function renderBreakdown(detailJson) {
     const val   = max > 0 ? `${score}/${max}` : `${score > 0 ? '+' : ''}${score}`;
     const barW  = max > 0 ? pct : Math.min(Math.abs(score) * 4, 100);
     return `<div class="score-row">
-      <span class="score-label">${label}</span>
+      <span class="score-label" title="${title}" style="cursor:help">${label}</span>
       <div class="score-bar-bg"><div class="score-bar-fill" style="width:${barW}%;background:${color}"></div></div>
       <span class="score-val">${val}</span>
     </div>`;
@@ -2232,16 +2231,19 @@ function _afficherResultats(nom) {
   const kmMax = parseFloat(document.getElementById('filtre-km-max')?.value) || Infinity;
   const filtered = _resultatsData
     .filter(a =>
+      (a.score || 0) >= 70 &&
       (!texte || (a.titre||'').toLowerCase().includes(texte) || (a.ville||'').toLowerCase().includes(texte)) &&
       (prixMax === Infinity || (a.prix && a.prix <= prixMax)) &&
       (kmMax === Infinity || (a.km && a.km <= kmMax))
     )
     .sort((a, b) => (b.score || 0) - (a.score || 0));
+  const hidden = _resultatsData.filter(a => (a.score || 0) < 70).length;
   const el = document.getElementById('resultats-content');
   const nom2 = nom || currentSearchNom;
+  const hiddenNote = hidden > 0 ? `<span style="font-size:0.75rem;color:var(--c-text-subtle);margin-left:8px">(${hidden} sous 70 pts masquée${hidden > 1 ? 's' : ''})</span>` : '';
   el.innerHTML = `<div class="resultats-header">
     <span class="resultats-title">${nom2}</span>
-    <span class="resultats-count">${filtered.length} / ${_resultatsData.length} annonce${_resultatsData.length > 1 ? 's' : ''}</span>
+    <span class="resultats-count">${filtered.length} annonce${filtered.length > 1 ? 's' : ''}${hiddenNote}</span>
   </div>` + (filtered.length
     ? filtered.map(a => renderAnnonce(a, a.search_id, !_resultatsSearchId)).join('')
     : '<p style="color:#888;padding:16px;text-align:center">Aucune annonce ne correspond aux filtres.</p>');
