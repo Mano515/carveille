@@ -569,6 +569,59 @@ _COULEUR_MAP = {
     "GOLD": "or",
 }
 
+# Mapping mots-clés couleur allemand → couleur française
+_COULEUR_DE_TO_FR = [
+    ("orange",   "orange"),
+    ("rot",      "rouge"),
+    ("schwarz",  "noir"),
+    ("weiß",     "blanc"), ("weiss", "blanc"),
+    ("blau",     "bleu"),
+    ("grün",     "vert"),  ("gruen", "vert"),
+    ("grau",     "gris"),
+    ("silber",   "argent"),
+    ("beige",    "beige"),
+    ("braun",    "marron"),
+    ("gelb",     "jaune"),
+    ("gold",     "or"),
+    ("violett",  "violet"),
+    ("bronze",   "marron"),
+    ("champagner", "beige"),
+    ("burgundy", "rouge"), ("bordeaux", "rouge"),
+]
+
+
+def _couleur_de_vers_fr(texte: str) -> str | None:
+    """Convertit un texte de couleur allemand (ex: 'Grau Metallic') en couleur française."""
+    if not texte:
+        return None
+    t = texte.lower()
+    for mot, fr in _COULEUR_DE_TO_FR:
+        if mot in t:
+            return fr
+    return None
+
+
+def _charger_couleur_depuis_detail(driver, url: str) -> str | None:
+    """
+    Visite la page détail d'une annonce mobile.de et extrait la couleur
+    via data-testid="color-item". Retourne la couleur en français ou None.
+    """
+    try:
+        driver.get(url)
+        time.sleep(2.5)
+        texte = driver.execute_script("""
+            const dt = document.querySelector('[data-testid="color-item"]');
+            if (!dt) return null;
+            const dd = dt.nextElementSibling;
+            return dd ? dd.textContent.trim() : null;
+        """)
+        couleur = _couleur_de_vers_fr(texte)
+        return couleur
+    except Exception as e:
+        print(f"    [WARN] Couleur détail : {e}")
+        return None
+
+
 # Mapping couleur français → code mobile.de pour l'URL (extCol) — codes allemands prioritaires
 _COULEUR_FR_TO_CODE = {
     "orange": "ORANGE", "blanc": "WEISS", "noir": "SCHWARZ", "rouge": "ROT",
@@ -1231,17 +1284,25 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
     couleur_imp = recherche.get("couleur_imperatif") and recherche.get("couleur")
     if couleur_imp:
         couleurs_voulues = [c.strip().lower() for c in recherche["couleur"].split(",") if c.strip()]
+
+        # Récupérer la couleur depuis la page détail pour toutes les annonces sans couleur connue
+        sans_couleur = [a for a in toutes if not a.get("couleur") and a.get("url")]
+        if sans_couleur:
+            print(f"  [WEB] Récupération couleur depuis pages détail ({len(sans_couleur)} annonces)...")
+            for i, ann in enumerate(sans_couleur, 1):
+                couleur = _charger_couleur_depuis_detail(driver, ann["url"])
+                ann["couleur"] = couleur or ""
+                statut = couleur or "inconnue"
+                print(f"    [{i}/{len(sans_couleur)}] {ann.get('titre','?')} → {statut}")
+                if i < len(sans_couleur):
+                    time.sleep(random.uniform(1.5, 2.5))
+
+        # Filtre strict : seules les annonces de la bonne couleur passent
         avant_c = len(toutes)
-        def _couleur_ok(a):
-            c = (a.get("couleur") or "").lower()
-            if c:
-                return any(cv in c for cv in couleurs_voulues)  # couleur connue : doit correspondre
-            # Couleur inconnue : garder seulement si filtre serveur confirmé
-            return bool(a.get("_ecol_ok"))
-        toutes = [a for a in toutes if _couleur_ok(a)]
+        toutes = [a for a in toutes if
+                  any(cv in (a.get("couleur") or "") for cv in couleurs_voulues)]
         eliminees = avant_c - len(toutes)
-        if eliminees:
-            print(f"  [WEB] Filtre couleur '{recherche['couleur']}' : {eliminees} annonce(s) exclue(s)")
+        print(f"  [WEB] Filtre couleur '{recherche['couleur']}' : {len(toutes)} gardées, {eliminees} exclues")
 
     return toutes
 
