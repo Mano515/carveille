@@ -293,6 +293,33 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
             const img = card.querySelector('img[src]');
             const image_url = img ? img.src : null;
 
+            // Couleur : chercher dans le texte ET dans les attributs title/aria-label/data-*
+            // (mobile.de utilise souvent des swatches avec title="Orange Metallic")
+            const couleurMap = {
+                'orange': 'orange', 'rot': 'rouge', 'red': 'rouge',
+                'weiss': 'blanc', 'weiß': 'blanc', 'white': 'blanc',
+                'schwarz': 'noir', 'black': 'noir',
+                'blau': 'bleu', 'blue': 'bleu',
+                'grün': 'vert', 'gruen': 'vert', 'green': 'vert',
+                'grau': 'gris', 'gray': 'gris', 'grey': 'gris',
+                'silber': 'argent', 'silver': 'argent',
+                'beige': 'beige',
+                'braun': 'marron', 'brown': 'marron',
+                'gelb': 'jaune', 'yellow': 'jaune',
+                'violett': 'violet', 'lila': 'violet', 'purple': 'violet',
+                'gold': 'or',
+            };
+            let couleur = null;
+            // 1. Chercher dans les attributs title/aria-label des éléments de la card
+            const attrTexts = Array.from(card.querySelectorAll('[title],[aria-label],[data-color],[data-testid*="color"]'))
+                .map(el => (el.getAttribute('title') || el.getAttribute('aria-label') || el.getAttribute('data-color') || '').toLowerCase())
+                .join(' ');
+            // 2. Texte brut de la card
+            const cardTextLower = (attrTexts + ' ' + cardText).toLowerCase();
+            for (const [de, fr] of Object.entries(couleurMap)) {
+                if (cardTextLower.includes(de)) { couleur = fr; break; }
+            }
+
             listings.push({
                 listing_id: id,
                 url: 'https://suchen.mobile.de/fahrzeuge/details.html?id=' + id,
@@ -304,6 +331,7 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
                 carburant: fuel,
                 ville: ville,
                 image_url: image_url,
+                couleur: couleur,
             });
         }
 
@@ -336,7 +364,7 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
             "boite": item.get("boite") or "",
             "carburant": carburant,
             "carrosserie": "",
-            "couleur": None,
+            "couleur": item.get("couleur") or None,
             "vendeur_type": "",
             "ville": item.get("ville") or "",
             "image_url": item.get("image_url"),
@@ -346,6 +374,12 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
         })
 
     total = result.get("total") or len(annonces)
+
+    # Log diagnostic couleur (1 ligne)
+    avec_couleur = sum(1 for a in annonces if a.get("couleur"))
+    couleurs = list({a["couleur"] for a in annonces if a.get("couleur")})
+    print(f"  [DOM] Couleurs extraites : {avec_couleur}/{len(annonces)} annonces — {couleurs[:8]}")
+
     return annonces, total
 
 
