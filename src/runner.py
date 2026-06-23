@@ -86,8 +86,8 @@ def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notif
     _ouvrir_session_scraping(source)
     try:
         for recherche in recherches:
-            search_id = recherche["search_id"]
-            nom = recherche.get("nom_recherche", search_id)
+            sid = recherche["search_id"]
+            nom = recherche.get("nom_recherche", sid)
             print(f"\n[--] Recherche : {nom}")
 
             try:
@@ -98,7 +98,7 @@ def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notif
 
                 # 2. Séparer nouvelles vs déjà vues (une seule requête SQL)
                 conn = get_conn()
-                nouvelles = filtrer_nouvelles_annonces(annonces_brutes, search_id, conn)
+                nouvelles = filtrer_nouvelles_annonces(annonces_brutes, sid, conn)
                 conn.close()
                 ids_nouvelles = {a["listing_id"] for a in nouvelles}
                 deja_vues = [a for a in annonces_brutes if a["listing_id"] not in ids_nouvelles]
@@ -108,20 +108,20 @@ def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notif
                 # 3. Scorer + enregistrer les nouvelles annonces
                 annonces_scorees = []
                 for ann in nouvelles:
-                    enrichie = _enrichir(ann, search_id, scorer_annonce(ann, recherche), est_nouvelle=True)
+                    enrichie = _enrichir(ann, sid, scorer_annonce(ann, recherche), est_nouvelle=True)
                     annonces_scorees.append(enrichie)
                     upsert_annonce(enrichie)
 
                 # 4. Mettre à jour les annonces déjà vues et détecter les baisses de prix
                 baisses = []
                 for ann in deja_vues:
-                    enrichie = _enrichir(ann, search_id, scorer_annonce(ann, recherche), est_nouvelle=False)
+                    enrichie = _enrichir(ann, sid, scorer_annonce(ann, recherche), est_nouvelle=False)
                     _, baisse_detectee = upsert_annonce(enrichie)
                     if baisse_detectee:
                         conn2 = get_conn()
                         row = conn2.execute(
                             "SELECT baisse_prix FROM annonces_vues WHERE search_id=? AND listing_id=?",
-                            (search_id, ann["listing_id"]),
+                            (sid, ann["listing_id"]),
                         ).fetchone()
                         conn2.close()
                         baisses.append({**enrichie, "baisse_prix": row["baisse_prix"] if row else 0})

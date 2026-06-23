@@ -12,7 +12,8 @@ import json
 import re
 import time
 import random
-from urllib.parse import urlencode, urljoin
+from urllib.parse import urlencode, urljoin, urlparse, parse_qs, urlunparse, quote
+from urllib.parse import urlparse as _up, parse_qs as _pqs
 
 from config import (
     MAKES_MOBILE_DE, MODELS_MOBILE_DE,
@@ -268,7 +269,6 @@ def _url_via_detailsuche(driver, marque: str, modele: str, recherche: dict | Non
 
                 # mobile.de met à jour detailsuche avec ms=<makeId>;<modelId> sans naviguer.
                 # Extraire ms= et construire l'URL search.html avec ce paramètre natif.
-                from urllib.parse import urlparse, parse_qs, urlencode, quote
                 qs = parse_qs(urlparse(result_url).query, keep_blank_values=True)
                 ms = qs.get("ms", [None])[0]
                 if ms:
@@ -1213,7 +1213,6 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
         base_url = _url_via_detailsuche(driver, marque, modele, recherche)
         if base_url:
             # Ajouter les filtres supplémentaires (couleur, prix, km, etc.) à l'URL retournée
-            from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
             parsed = urlparse(base_url)
             qs = parse_qs(parsed.query, keep_blank_values=True)
             extra = _build_url(recherche, page=1)
@@ -1231,11 +1230,6 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
             base_url = urlunparse(parsed._replace(query=new_query))
             filtre_url_ok = True
             print(f"  [WEB] Scraping (detailsuche) : {base_url[:200]}...")
-
-    # Détecter si le filtre couleur a été appliqué côté serveur (ecol= ou extCol= dans l'URL)
-    from urllib.parse import urlparse as _up, parse_qs as _pqs
-    _qs_base = _pqs(_up(base_url).query) if base_url else {}
-    ecol_ok = bool(_qs_base.get("ecol") or _qs_base.get("extCol"))
 
     # Priorité 2 : URL directe avec mk/mo (peut être ignoré par mobile.de)
     if not base_url:
@@ -1258,11 +1252,6 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
         toutes.extend(annonces)
         print(f"  [WEB] Page {page_num} : {len(annonces)} annonces")
         page_num += 1
-
-    # Marquer chaque annonce si le filtre couleur serveur est confirmé
-    if ecol_ok:
-        for a in toutes:
-            a["_ecol_ok"] = True
 
     print(f"  [WEB] Total scrape : {len(toutes)} annonces (avant filtre client)")
 
