@@ -851,7 +851,7 @@ html[data-theme="dark"] .search-criteria { color: #5c6494; }
 .options-imperatif { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; color: #999; cursor: pointer; white-space: nowrap; }
 .options-imperatif input[type=checkbox] { width: 13px; height: 13px; accent-color: #c62828; cursor: pointer; }
 .options-imperatif:has(input:checked) { color: #c62828; }
-.ac-drop { position: absolute; z-index: 10000; background: var(--c-card); border: 1px solid var(--c-border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.13); list-style: none; margin: 0; padding: 4px 0; max-height: 280px; overflow-y: auto; display: none; }
+.ac-drop { position: fixed; z-index: 10000; background: var(--c-card); border: 1px solid var(--c-border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.13); list-style: none; margin: 0; padding: 4px 0; max-height: 280px; overflow-y: auto; display: none; }
 .ac-drop.open { display: block; }
 .ac-drop li { padding: 7px 14px; cursor: pointer; font-size: 0.84rem; color: var(--c-text); }
 .ac-drop li:hover, .ac-drop li.active { background: var(--c-primary-light, #eff6ff); color: var(--c-accent); }
@@ -2721,7 +2721,7 @@ function _acAttach(input) {
 
   function position() {
     const r = input.getBoundingClientRect();
-    drop.style.cssText = `left:${r.left + window.scrollX}px;top:${r.bottom + window.scrollY + 2}px;width:${r.width}px`;
+    drop.style.cssText = `left:${r.left}px;top:${r.bottom + 2}px;width:${r.width}px`;
   }
 
   function close() {
