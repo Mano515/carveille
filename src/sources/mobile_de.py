@@ -186,7 +186,18 @@ def _url_via_detailsuche(driver, marque: str, modele: str, recherche: dict | Non
                     print(f"  [WEB] Detailsuche : couleur sélectionnée (id={chosen_color})")
                     break
                 else:
-                    print(f"  [WEB] Detailsuche : couleur {couleur_code} non trouvée dans le formulaire")
+                    # Diagnostic : lister tous les selects pour trouver le bon nom
+                    sel_info = driver.execute_script("""
+                        return Array.from(document.querySelectorAll('select')).map(s => ({
+                            name: s.name, id: s.id,
+                            testid: s.getAttribute('data-testid') || '',
+                            nb_options: s.options.length,
+                            options_sample: Array.from(s.options).slice(0,5).map(o => o.value + '=' + o.text),
+                        }));
+                    """)
+                    print(f"  [WEB] Detailsuche : couleur {couleur_code} non trouvée. Selects ({len(sel_info)}) :")
+                    for s in sel_info:
+                        print(f"         name={s['name']!r} id={s['id']!r} testid={s['testid']!r} opts={s['nb_options']} ex={s['options_sample'][:3]}")
 
         # Essayer de cliquer le bouton Suchen avec Selenium (plus fiable que JS click sur React)
         url_avant = driver.current_url
