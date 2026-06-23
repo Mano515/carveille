@@ -179,22 +179,28 @@ def _url_via_detailsuche(driver, marque: str, modele: str) -> str | None:
 
         if clicked:
             try:
-                # Attendre que l'URL change (pas url_contains — la detailsuche ne contient pas "search.html")
+                # Attendre que l'URL change — la SPA React met à jour l'URL avec ms=makeId;modelId
                 WebDriverWait(driver, 10).until(EC.url_changes(url_avant))
-                time.sleep(1.5)
+                time.sleep(1.0)
                 result_url = driver.current_url
                 print(f"  [WEB] Detailsuche URL après submit : {result_url[:120]}")
+
                 if "search.html" in result_url:
-                    # URL réelle générée par mobile.de → filtre serveur fiable
                     return result_url
-                else:
-                    print(f"  [WARN] Detailsuche : URL inattendue après submit, fallback")
+
+                # mobile.de met à jour detailsuche avec ms=<makeId>;<modelId> sans naviguer.
+                # Extraire ms= et construire l'URL search.html avec ce paramètre natif.
+                from urllib.parse import urlparse, parse_qs, urlencode
+                qs = parse_qs(urlparse(result_url).query, keep_blank_values=True)
+                ms = qs.get("ms", [None])[0]
+                if ms:
+                    print(f"  [WEB] Detailsuche : paramètre natif ms={ms!r} extrait")
+                    return f"https://suchen.mobile.de/fahrzeuge/search.html?ms={ms}&isSearchRequest=true&s=Car&vc=Car&od=down&sb=doc"
+                print(f"  [WARN] Detailsuche : ms= absent de l'URL, fallback")
             except Exception as e:
                 print(f"  [WARN] Detailsuche : pas de navigation après submit ({e})")
 
-        # Fallback : URL construite avec IDs numériques.
-        # filtre_url_ok reste False → le filtre modèle côté client sera appliqué.
-        # On retourne None pour signaler l'échec → l'appelant bascule sur _build_url.
+        # Fallback : on retourne None → l'appelant utilise _build_url + filtres titre côté client.
         return None
 
     except Exception as e:
