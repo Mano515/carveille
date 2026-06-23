@@ -1179,6 +1179,11 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
             filtre_url_ok = True
             print(f"  [WEB] Scraping (detailsuche) : {base_url[:200]}...")
 
+    # Détecter si le filtre couleur a été appliqué côté serveur (ecol= ou extCol= dans l'URL)
+    from urllib.parse import urlparse as _up, parse_qs as _pqs
+    _qs_base = _pqs(_up(base_url).query) if base_url else {}
+    ecol_ok = bool(_qs_base.get("ecol") or _qs_base.get("extCol"))
+
     # Priorité 2 : URL directe avec mk/mo (peut être ignoré par mobile.de)
     if not base_url:
         base_url = _build_url(recherche, marque=marque, modele=modele, page=1)
@@ -1201,6 +1206,11 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
         print(f"  [WEB] Page {page_num} : {len(annonces)} annonces")
         page_num += 1
 
+    # Marquer chaque annonce si le filtre couleur serveur est confirmé
+    if ecol_ok:
+        for a in toutes:
+            a["_ecol_ok"] = True
+
     print(f"  [WEB] Total scrape : {len(toutes)} annonces (avant filtre client)")
 
     if marque:
@@ -1217,17 +1227,21 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
             toutes = [a for a in toutes if modele_lower in (a.get("titre") or "").lower()]
             print(f"  [WEB] Filtre modèle '{modele}' : {len(toutes)} annonces (sur {avant2})")
 
-    # Filtre couleur côté client quand impératif et couleur connue (mauvaise couleur → éliminé)
+    # Filtre couleur côté client quand impératif
     couleur_imp = recherche.get("couleur_imperatif") and recherche.get("couleur")
     if couleur_imp:
         couleurs_voulues = [c.strip().lower() for c in recherche["couleur"].split(",") if c.strip()]
         avant_c = len(toutes)
-        toutes = [a for a in toutes if
-                  not a.get("couleur")  # couleur inconnue : garde (scoring appliquera -8)
-                  or any(cv in (a.get("couleur") or "") for cv in couleurs_voulues)]
+        def _couleur_ok(a):
+            c = (a.get("couleur") or "").lower()
+            if c:
+                return any(cv in c for cv in couleurs_voulues)  # couleur connue : doit correspondre
+            # Couleur inconnue : garder seulement si filtre serveur confirmé
+            return bool(a.get("_ecol_ok"))
+        toutes = [a for a in toutes if _couleur_ok(a)]
         eliminees = avant_c - len(toutes)
         if eliminees:
-            print(f"  [WEB] Filtre couleur '{recherche['couleur']}' : {eliminees} annonce(s) exclue(s) (mauvaise couleur connue)")
+            print(f"  [WEB] Filtre couleur '{recherche['couleur']}' : {eliminees} annonce(s) exclue(s)")
 
     return toutes
 

@@ -231,11 +231,13 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     couleur_a = (annonce.get("couleur") or "").lower()
     if couleur_imperatif and couleur_list:
         if not couleur_a:
-            malus_couleur = -8   # couleur inconnue : malus léger
+            # Couleur inconnue : pas de malus si filtre serveur confirmé (ecol= dans URL),
+            # gros malus sinon — l'annonce ne devrait pas être là.
+            malus_couleur = 0 if annonce.get("_ecol_ok") else -40
         elif any(c in couleur_a for c in couleur_list):
             malus_couleur = 0    # bonne couleur
         else:
-            malus_couleur = -15  # mauvaise couleur
+            malus_couleur = -40  # mauvaise couleur confirmée
     else:
         malus_couleur = 0
     detail["couleur"] = {"score": malus_couleur, "max": 0}
