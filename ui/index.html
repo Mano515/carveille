@@ -851,6 +851,12 @@ html[data-theme="dark"] .search-criteria { color: #5c6494; }
 .options-imperatif { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; color: #999; cursor: pointer; white-space: nowrap; }
 .options-imperatif input[type=checkbox] { width: 13px; height: 13px; accent-color: #c62828; cursor: pointer; }
 .options-imperatif:has(input:checked) { color: #c62828; }
+.ac-drop { position: absolute; z-index: 10000; background: var(--c-card); border: 1px solid var(--c-border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.13); list-style: none; margin: 0; padding: 4px 0; max-height: 280px; overflow-y: auto; display: none; }
+.ac-drop.open { display: block; }
+.ac-drop li { padding: 7px 14px; cursor: pointer; font-size: 0.84rem; color: var(--c-text); }
+.ac-drop li:hover, .ac-drop li.active { background: var(--c-primary-light, #eff6ff); color: var(--c-accent); }
+.ac-drop li.ac-marque { font-weight: 600; color: var(--c-accent); }
+.ac-drop li.ac-marque::before { content: '★ '; font-size: 0.7em; opacity: .7; }
 .prix-input { font-variant-numeric: tabular-nums; }
 .btn-photos { background: #37474f; color: white; border-color: #37474f; }
 .btn-photos:hover { background: #263238; }
@@ -2487,38 +2493,287 @@ function _setPrix(name, val) {
 
 // ── Options multi-row ──────────────────────────────────────────────────────────
 
-const OPTIONS_LISTE = [
-  { label: 'Caméra de recul',               value: 'camera' },
-  { label: 'Caméra 360°',                   value: 'camera 360' },
-  { label: 'GPS / Navigation',               value: 'navigation' },
-  { label: 'Bluetooth',                      value: 'bluetooth' },
-  { label: 'Apple CarPlay / Android Auto',   value: 'carplay' },
-  { label: 'Toit ouvrant',                   value: 'toit ouvrant' },
-  { label: 'Toit panoramique',               value: 'panoramique' },
-  { label: 'Sièges chauffants',              value: 'sieges chauffants' },
-  { label: 'Sièges ventilés',               value: 'sieges ventiles' },
-  { label: 'Sièges électriques',            value: 'sieges electriques' },
-  { label: 'Volant chauffant',               value: 'volant chauffant' },
-  { label: 'Climatisation automatique',      value: 'climatisation auto' },
-  { label: 'Régulateur de vitesse',          value: 'regulateur' },
-  { label: 'Cruise control adaptatif (ACC)', value: 'acc' },
-  { label: 'Détecteur d\'angles morts',      value: 'angles morts' },
-  { label: 'Radars de stationnement',        value: 'radar' },
-  { label: 'Phares LED',                     value: 'led' },
-  { label: 'Phares Xénon / Bi-Xénon',       value: 'xenon' },
-  { label: 'Démarrage sans clé',             value: 'keyless' },
-  { label: 'Accès mains libres',             value: 'mains libres' },
-  { label: 'Head-up display (HUD)',          value: 'hud' },
-  { label: 'Chargeur sans fil',              value: 'chargeur sans fil' },
-  { label: 'Freinage auto d\'urgence',       value: 'freinage urgence' },
-  { label: 'Attelage / Boule de remorquage', value: 'attelage' },
-  { label: 'Hayon électrique',              value: 'hayon electrique' },
-  { label: 'Coffre électrique',             value: 'coffre electrique' },
-  { label: 'Jantes alliage',                value: 'jantes alliage' },
-  { label: 'Vitres teintées',               value: 'vitres teintees' },
-  { label: 'Pack hiver',                     value: 'pack hiver' },
-  { label: 'Suspension sport',               value: 'suspension sport' },
+// ── Options génériques ──────────────────────────────────────────────────────────
+const OPTIONS_GENERIQUES = [
+  // Caméras
+  'Caméra de recul', 'Caméra 360°', 'Caméra frontale',
+  // Navigation & connectivité
+  'GPS / Navigation', 'Bluetooth', 'Apple CarPlay', 'Android Auto', 'Apple CarPlay / Android Auto',
+  'Wi-Fi embarqué', 'Chargeur sans fil', 'Son premium (Bose / Harman / Bang & Olufsen)',
+  // Sièges
+  'Sièges chauffants', 'Sièges ventilés', 'Sièges électriques', 'Sièges massants',
+  'Sièges sport / baquets', 'Sièges mémoire', 'Cuir', 'Alcantara',
+  'Volant chauffant', 'Volant sport',
+  // Toit
+  'Toit ouvrant', 'Toit panoramique', 'Toit en verre', 'Toit vitré',
+  // Clim
+  'Climatisation automatique', 'Climatisation bi-zone', 'Climatisation tri-zone', 'Pompe à chaleur',
+  // Aide à la conduite
+  'Régulateur de vitesse', 'Cruise control adaptatif (ACC)', 'Détecteur d\'angles morts',
+  'Freinage auto d\'urgence', 'Aide au maintien de voie', 'Reconnaissance des panneaux',
+  'Assistant de stationnement', 'Stationnement automatique', 'Affichage tête haute (HUD)',
+  // Stationnement
+  'Radars de stationnement avant', 'Radars de stationnement arrière', 'Radars de stationnement (AV+AR)',
+  // Accès
+  'Démarrage sans clé', 'Accès mains libres', 'Alarme', 'Coffre à ouverture mains libres',
+  // Éclairage
+  'Phares LED', 'Phares Xénon / Bi-Xénon', 'Phares matriciels (Matrix LED)', 'Feux de jour LED',
+  // Remorquage
+  'Attelage / Boule de remorquage', 'Barres de toit',
+  // Hayon / coffre
+  'Hayon électrique',
+  // Jantes
+  'Jantes alliage', 'Jantes 18 pouces', 'Jantes 19 pouces', 'Jantes 20 pouces ou +',
+  // Châssis
+  'Suspension sport', 'Suspension pilotée / adaptative', 'Transmission intégrale (4x4)',
+  'Pneus hiver / 4 saisons', 'Roue de secours',
+  // Carrosserie
+  'Vitres teintées', 'Toit noir / biton',
+  // Packs
+  'Pack hiver', 'Pack sport', 'Pack luxe', 'Pack technologie', 'Pack sécurité',
+  // Électrique
+  'Chargeur rapide DC', 'Câble de recharge inclus', 'Batterie > 50 kWh', 'Batterie > 70 kWh', 'Autonomie > 400 km',
 ];
+
+// ── Options par marque (affichées en premier quand la marque est sélectionnée) ──
+const OPTIONS_PAR_MARQUE = {
+  'BMW': [
+    'Pack M', 'M Sport', 'M Performance', 'Pack M Competition',
+    'xDrive', 'sDrive', 'iDrive 7', 'iDrive 8', 'Live Cockpit',
+    'Sportline', 'Business', 'Luxury Line', 'Urban Line', 'Individual',
+    'Pack Innovation', 'Pack Confort', 'Pack Vision', 'Pack Professional',
+    'Adaptive LED', 'Laser Light', 'Harman Kardon', 'Bowers & Wilkins',
+    'Toit en verre Sky Lounge',
+  ],
+  'Audi': [
+    'S-line', 'S-line Plus', 'RS', 'Quattro', 'Quattro ultra',
+    'Sport', 'Sport Edition', 'Design', 'Ambition', 'Business Line',
+    'S tronic', 'Tiptronic', 'Virtual Cockpit', 'MMI Navigation Plus',
+    'Matrix LED', 'Laser Light', 'Bang & Olufsen', 'B&O Sound System',
+    'Pack Competition', 'Pack Technology', 'Black Edition', 'Edition 1',
+  ],
+  'Mercedes': [
+    'AMG Line', 'AMG Pack', 'AMG Night', 'Pack AMG',
+    '4Matic', '4Matic+', 'Avantgarde', 'Avantgarde Plus',
+    'Elegance', 'Executive', 'Night Edition', 'Edition 1',
+    'Burmester', 'MBUX', 'Widescreen Cockpit',
+    'Distronic Plus', 'Driving Assistance Pack',
+    'Pack Premium', 'Pack Premium Plus', 'Designo',
+  ],
+  'Volkswagen': [
+    'R-Line', 'GTI', 'GTD', 'GTE', 'R',
+    '4Motion', 'DSG', 'Highline', 'Comfortline', 'Business',
+    'Active Info Display', 'Discover Pro', 'We Connect',
+    'Pack Winter', 'Pack Driver Assistance', 'IQ.Drive',
+    'Black Style', 'Style', 'Life', 'Move',
+  ],
+  'Peugeot': [
+    'GT', 'GT Line', 'GT Pack', 'Allure', 'Allure Pack',
+    'Active Pack', 'Business', 'Business Pack', 'Première Edition',
+    'EAT8', 'e-EAT8',
+    'Pack Drive Assist', 'Pack Visibility', 'Pack Safety Plus',
+    'Night Vision',
+  ],
+  'Renault': [
+    'RS', 'R.S.', 'Initiale Paris', 'Intens', 'Zen', 'Business',
+    'EDC', 'Bose Edition', 'Pack Drive', 'Pack City Plus', 'Pack Techno',
+    'Easy Link', 'R-Link 2',
+    'Pack Winter', 'Pack Look',
+  ],
+  'Citroën': [
+    'C-Series', 'Feel', 'Feel Pack', 'Shine', 'Shine Pack', 'Business',
+    'Advanced Comfort', 'EAT8',
+    'Pack Safety Plus', 'Pack Drive Assist',
+  ],
+  'Dacia': [
+    'Prestige', 'Comfort', 'Essential', 'Journey', 'Extreme',
+    'Media Nav', 'Pack City Plus', 'Pack Visio Plus', 'Pack Safety',
+  ],
+  'Toyota': [
+    'GR Sport', 'GR', 'Lounge', 'Collection', 'Business', 'Executive',
+    'Style', 'Dynamic', 'Active', 'Comfort',
+    'Pack Premium', 'Pack Technology', 'Safety Sense',
+    'Toyota Touch 2', 'JBL Sound System',
+  ],
+  'Honda': [
+    'Sport', 'Advance', 'Executive', 'Elegance', 'Lifestyle',
+    'Honda Sensing', 'Honda Connect',
+  ],
+  'Jeep': [
+    'Trailhawk', 'Limited', 'Longitude', 'Sport', 'Night Eagle',
+    'Overland', 'Sahara', 'Rubicon', 'Summit', '80th Anniversary',
+    'Pack Safety', 'Pack Techno',
+  ],
+  'Ford': [
+    'ST', 'ST-Line', 'ST-Line X', 'Titanium', 'Titanium X', 'Vignale',
+    'Active', 'Puma ST', 'Sync 3', 'B&O Sound System',
+    'Pack Winter', 'Pack Driver Assistance',
+  ],
+  'Hyundai': [
+    'N Line', 'N', 'Premium', 'Creative', 'Executive',
+    'BlueLink', 'Bluelink Connect',
+    'Pack Safety', 'Pack Confort',
+  ],
+  'Kia': [
+    'GT-Line', 'GT', 'Executive', 'Motion', 'Design', 'Active',
+    'Pack Premium', 'Pack Tech',
+  ],
+  'Seat': [
+    'FR', 'FR+', 'Xcellence', 'Style', 'Reference',
+    'SEAT Connect', 'Full Link',
+  ],
+  'Skoda': [
+    'RS', 'Sportline', 'Ambition', 'Style', 'Scout',
+    'Laurin & Klement', 'Columbus',
+    'Pack Canton Sound', 'Virtual Cockpit',
+  ],
+  'Volvo': [
+    'R-Design', 'Inscription', 'Inscription Expression', 'Momentum',
+    'Cross Country', 'Polestar Engineered',
+    'Sensus Navigation', 'Bowers & Wilkins', 'Pilot Assist',
+    'Pack Winter', 'Pack Climate', 'Pack Intelligence',
+  ],
+  'Porsche': [
+    'Carrera', 'S', 'GTS', 'Turbo', 'Turbo S', '4S',
+    'Sport Chrono', 'PDCC', 'PASM', 'PVTS', 'Sport Exhaust',
+    'PCM', 'Bose', 'Burmester', 'Panorama Roof', 'Alcantara',
+    'Lane Change Assist', 'Night Vision Assist',
+  ],
+  'Nissan': [
+    'N-Sport', 'Tekna', 'Tekna+', 'Acenta', 'Acenta Premium', 'Visia',
+    'NissanConnect', 'ProPilot', 'e-Pedal',
+  ],
+  'Mazda': [
+    'Signature', 'Exclusive-Line', 'Selection', 'Homura',
+    'i-Activsense', 'Mazda Connect',
+    'Pack Confort', 'Pack Driver',
+  ],
+  'Mitsubishi': [
+    'Intense', 'Intense Plus', 'Instyle',
+    'Mi-Pilot', 'Super All Wheel Control (S-AWC)',
+  ],
+  'Subaru': [
+    'Premium', 'Exclusive', 'Sport', 'Lineartronic',
+    'EyeSight', 'X-Mode',
+  ],
+  'Alfa Romeo': [
+    'Veloce', 'Sprint', 'Ti', 'Edizione Speciale', 'Super',
+    'Q4', 'Quadrifoglio', 'Alfa DNA Pro',
+    'Pack Sport', 'Pack Premium',
+  ],
+  'Fiat': [
+    'Dolcevita', 'Sport', 'Cross', 'Red', 'Opening Edition',
+    'Pack City', 'Pack Sport',
+  ],
+  'Opel': [
+    'GS Line', 'GS', 'Elegance', 'Business Edition',
+    'Intellilink', 'IntelliDrive', 'Pack Safety',
+  ],
+  'Tesla': [
+    'Long Range', 'Performance', 'Standard Range Plus',
+    'Autopilot', 'Full Self-Driving (FSD)', 'Enhanced Autopilot',
+    'Premium Connectivity', 'White Interior', 'Black & White Interior',
+  ],
+  'Land Rover': [
+    'SE', 'HSE', 'HSE Dynamic', 'Autobiography', 'First Edition',
+    'D300', 'P400e', 'MHEV',
+    'Meridian Sound', 'Pivi Pro', 'ClearSight',
+    'Terrain Response', 'Wade Sensing',
+  ],
+  'Lexus': [
+    'Luxe', 'Executive', 'F Sport', 'Takumi',
+    'Mark Levinson', 'Panoramic View Monitor',
+    'Lexus Safety System+',
+  ],
+  'Cupra': [
+    'Born', 'Formentor', 'Ateca', 'Leon', 'VZ',
+    'e-Boost', 'Pack Drive Profile', 'Akrapovič Exhaust',
+  ],
+};
+
+function _normalise(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(); }
+function _optionLabel(val) { return val; }
+function _optionValeur(text) { return text.trim(); }
+
+// Construit la liste d'options pour la marque sélectionnée (marque en premier, puis génériques)
+function _getOptionsListe() {
+  const marque = (document.getElementById('form-marque')?.value || '').trim();
+  // Cherche la clé correspondante (case-insensitive)
+  const key = Object.keys(OPTIONS_PAR_MARQUE).find(k => _normalise(k) === _normalise(marque));
+  const specifiques = key ? OPTIONS_PAR_MARQUE[key].map(o => ({ label: o, groupe: 'marque' })) : [];
+  const generiques  = OPTIONS_GENERIQUES.map(o => ({ label: o, groupe: 'general' }));
+  // Dédoublonner
+  const vus = new Set(specifiques.map(o => _normalise(o.label)));
+  return [...specifiques, ...generiques.filter(o => !vus.has(_normalise(o.label)))];
+}
+
+// Autocomplete custom (remplace datalist)
+let _acCurrent = null; // dropdown actif
+
+function _acAttach(input) {
+  if (input._acAttached) return;
+  input._acAttached = true;
+  input.removeAttribute('list'); // ne pas utiliser le datalist natif
+
+  const drop = document.createElement('ul');
+  drop.className = 'ac-drop';
+  document.body.appendChild(drop);
+
+  function position() {
+    const r = input.getBoundingClientRect();
+    drop.style.cssText = `left:${r.left + window.scrollX}px;top:${r.bottom + window.scrollY + 2}px;width:${r.width}px`;
+  }
+
+  function close() {
+    drop.classList.remove('open');
+    _acCurrent = null;
+  }
+
+  function open(items) {
+    if (!items.length) { close(); return; }
+    if (_acCurrent && _acCurrent.drop !== drop) _acCurrent.close();
+    position();
+    let cursor = -1;
+    drop.innerHTML = items.slice(0, 30).map((it, i) =>
+      `<li data-i="${i}" class="${it.groupe === 'marque' ? 'ac-marque' : ''}">${it.label}</li>`
+    ).join('');
+    drop.querySelectorAll('li').forEach(li => {
+      li.addEventListener('mousedown', e => {
+        e.preventDefault();
+        input.value = items[parseInt(li.dataset.i)].label;
+        close();
+      });
+    });
+    drop.classList.add('open');
+    _acCurrent = { drop, close };
+
+    // Navigation clavier
+    input.onkeydown = e => {
+      const lis = drop.querySelectorAll('li');
+      if (e.key === 'ArrowDown') { e.preventDefault(); cursor = Math.min(cursor+1, lis.length-1); lis.forEach((l,i)=>l.classList.toggle('active',i===cursor)); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); cursor = Math.max(cursor-1, 0); lis.forEach((l,i)=>l.classList.toggle('active',i===cursor)); }
+      else if (e.key === 'Enter' && cursor >= 0) { e.preventDefault(); input.value = items[cursor].label; close(); }
+      else if (e.key === 'Escape') { close(); }
+    };
+  }
+
+  input.addEventListener('input', () => {
+    const q = _normalise(input.value);
+    if (!q) { open(_getOptionsListe()); return; }
+    const all = _getOptionsListe();
+    // Substring match : commence par > contient
+    const starts = all.filter(o => _normalise(o.label).startsWith(q));
+    const contains = all.filter(o => !_normalise(o.label).startsWith(q) && _normalise(o.label).includes(q));
+    open([...starts, ...contains]);
+  });
+  input.addEventListener('focus', () => {
+    const q = _normalise(input.value);
+    if (!q) open(_getOptionsListe());
+  });
+  input.addEventListener('blur', () => setTimeout(close, 150));
+}
+
+const OPTIONS_LISTE = OPTIONS_GENERIQUES.map(o => ({ label: o, value: o })); // compat ancien code
 
 function _normalise(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(); }
 function _optionLabel(val) { const o = OPTIONS_LISTE.find(o => o.value === val); return o ? o.label : val; }
@@ -2528,10 +2783,12 @@ function _makeOptionsRow(val, imperatif) {
   val = val || ''; imperatif = imperatif || false;
   const row = document.createElement('div');
   row.className = 'options-row multi-input-row';
-  const label = val ? _optionLabel(val) : '';
-  row.innerHTML = `<input type="text" class="options-input" list="datalist-options" placeholder="Caméra, GPS, toit ouvrant…" autocomplete="off" value="${label.replace(/"/g,'&quot;')}">
+  row.innerHTML = `<input type="text" class="options-input" placeholder="Caméra, Pack M, toit ouvrant…" autocomplete="off" value="${val.replace(/"/g,'&quot;')}">
     <label class="options-imperatif"><input type="checkbox" ${imperatif ? 'checked' : ''}> Impératif</label>
-    <button type="button" class="btn-rm-input" onclick="this.closest('.options-row').remove()" title="Supprimer">×</button>`;
+    <button type="button" class="btn-rm-input" onclick="this.closest('.options-row').remove();if(_acCurrent)_acCurrent.close();" title="Supprimer">×</button>`;
+  const input = row.querySelector('input[type=text]');
+  // Attacher après insertion dans le DOM (requestAnimationFrame garantit que l'élément est visible)
+  requestAnimationFrame(() => _acAttach(input));
   return row;
 }
 
