@@ -235,7 +235,7 @@ def _scheduler_thread():
                 heure_str = sched.get("horaires", ["09:00"])[0]
                 try:
                     ft = _fire_time(today, heure_str)
-                    if now.hour == ft.hour and now.minute == ft.minute and semaine_key not in derniers_runs:
+                    if ft <= now < ft + timedelta(minutes=2) and semaine_key not in derniers_runs:
                         print("[RESUME] Envoi du résumé hebdomadaire")
                         derniers_runs.append(semaine_key)
                         changed = True
@@ -255,7 +255,7 @@ def _scheduler_thread():
                     continue
                 ft = _fire_time(today, heure_str)
                 slot_key = f"{today}_{heure_str}"
-                if now.hour == ft.hour and now.minute == ft.minute and slot_key not in derniers_runs and not _run_status["en_cours"]:
+                if ft <= now < ft + timedelta(minutes=2) and slot_key not in derniers_runs and not _run_status["en_cours"]:
                     print(f"[RUN] Run automatique (prevu {heure_str}, declenche {ft.strftime('%H:%M')})")
                     derniers_runs.append(slot_key)
                     changed = True
