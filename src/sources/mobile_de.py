@@ -370,8 +370,8 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
             // Titre : h2 ou h3 dans la card
             const titleEl = card.querySelector('h2,h3,h1');
             let title = titleEl ? titleEl.innerText.trim() : '';
-            // Nettoyer les préfixes "Gesponsert" et "NEU"
-            title = title.replace(/^(gesponsert|neu)\s?/i, '').replace(/\n[\s\S]*/s, '').trim();
+            // Supprimer tous les préfixes "Gesponsert" / "NEU" consécutifs (parfois collés ou séparés par \n)
+            title = title.replace(/^((?:gesponsert|neu)[\s]*)+/i, '').replace(/\n[\s\S]*/s, '').trim();
 
             // km : "45.321 km" ou "45 321 km"
             const kmMatch = cardText.match(/(\d[\d.\s]+)\s*km/);
