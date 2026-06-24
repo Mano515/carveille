@@ -1212,7 +1212,11 @@ html[data-theme="dark"] .ac-drop { background: #1e2236; border-color: #2e3350; }
               <input type="checkbox" name="budget_strict">
               Budget strict (refuser toute annonce au-dessus du budget, sans tolerance)
             </label>
-            <label>Score minimum pour etre alerte (0-100)
+            <label class="full" style="background:var(--c-card);border:1.5px solid var(--c-accent);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input type="checkbox" name="notifications_actives" value="1" style="width:18px;height:18px;accent-color:var(--c-accent)">
+              <span><strong>Recevoir les alertes email</strong> <span class="hint" style="margin-left:4px">Envoyer un email lors de chaque run planifié avec des nouvelles annonces</span></span>
+            </label>
+            <label>Score minimum pour notification (0-100)
               <input type="number" name="score_min_notification" value="60" min="0" max="100">
             </label>
             <label>Nombre max d'annonces par alerte
@@ -1972,6 +1976,8 @@ async function editerRecherche(searchId) {
     const impVals = (r.options_imperatives || '').split(',').map(s => s.trim()).filter(Boolean);
     _initOptionsGroup(optVals, impVals);
     set('mobile_de_url', r.mobile_de_url || '');
+    const cbNotif = form.elements['notifications_actives'];
+    if (cbNotif) cbNotif.checked = !!r.notifications_actives;
     set('score_min_notification', r.score_min_notification ?? 60);
     set('max_annonces', r.max_annonces ?? 3);
     set('poids_prix', r.poids_prix ?? 30);
@@ -2939,7 +2945,7 @@ async function soumettreRecherche(e) {
   const form = e.target;
   const fd = new FormData(form);
   const body = {};
-  fd.forEach((v, k) => { if (!['carburant','boite','modele','couleur','couleur_imperatif','finition_imperatif','carrosserie','materiaux_interieur','budget_max','km_max'].includes(k)) body[k] = v === '' ? null : v; });
+  fd.forEach((v, k) => { if (!['carburant','boite','modele','couleur','couleur_imperatif','finition_imperatif','notifications_actives','carrosserie','materiaux_interieur','budget_max','km_max'].includes(k)) body[k] = v === '' ? null : v; });
   body.budget_strict = fd.has('budget_strict');
   let carburants = fd.getAll('carburant');
   // Si des sous-types hybride sont cochés, supprimer le générique "hybride" pour éviter un match trop large
@@ -2953,7 +2959,8 @@ async function soumettreRecherche(e) {
   const couleurs = fd.getAll('couleur').map(v => v.trim()).filter(Boolean);
   body.couleur = couleurs.length > 0 ? couleurs.join(',') : null;
   body.couleur_imperatif  = fd.has('couleur_imperatif')  ? 1 : 0;
-  body.finition_imperatif = fd.has('finition_imperatif') ? 1 : 0;
+  body.finition_imperatif    = fd.has('finition_imperatif')    ? 1 : 0;
+  body.notifications_actives = fd.has('notifications_actives') ? 1 : 0;
   const carrosseries = fd.getAll('carrosserie');
   body.carrosserie = carrosseries.length > 0 ? carrosseries.join(',') : null;
   const materiaux = fd.getAll('materiaux_interieur');

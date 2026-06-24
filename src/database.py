@@ -128,6 +128,7 @@ def init_db():
             "ALTER TABLE annonces_vues ADD COLUMN images_urls TEXT",
             "ALTER TABLE recherches ADD COLUMN finition TEXT",
             "ALTER TABLE recherches ADD COLUMN finition_imperatif INTEGER DEFAULT 0",
+            "ALTER TABLE recherches ADD COLUMN notifications_actives INTEGER DEFAULT 0",
         ]:
             try:
                 conn.execute(sql)
@@ -317,6 +318,7 @@ def insert_recherche(data: dict):
                 prix_min, boite, carburant, couleur, couleur_imperatif, vendeur_filtre,
                 options_recherchees, options_imperatives, mobile_de_url,
                 carrosserie, materiaux_interieur, couleur_interieure,
+                notifications_actives,
                 poids_prix, poids_km, poids_annee, poids_boite, poids_carburant, poids_options,
                 penalite_infos_manquantes, score_min_notification, max_annonces,
                 client_id, created_at, updated_at
@@ -326,6 +328,7 @@ def insert_recherche(data: dict):
                 :prix_min, :boite, :carburant, :couleur, :couleur_imperatif, :vendeur_filtre,
                 :options_recherchees, :options_imperatives, :mobile_de_url,
                 :carrosserie, :materiaux_interieur, :couleur_interieure,
+                :notifications_actives,
                 :poids_prix, :poids_km, :poids_annee, :poids_boite, :poids_carburant, :poids_options,
                 :penalite_infos_manquantes, :score_min_notification, :max_annonces,
                 :client_id, :created_at, :updated_at

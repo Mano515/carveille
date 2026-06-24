@@ -70,14 +70,20 @@ def _formater_annonce(ann: dict, idx: int) -> str:
     )
 
 
-def formater_message(recherche: dict, annonces: list) -> str:
-    nom = recherche.get("nom_recherche", "Recherche")
-    nb = len(annonces)
-    lignes = [f"Carveille -- {nb} nouvelle{'s' if nb > 1 else ''} annonce{'s' if nb > 1 else ''} pour \"{nom}\""]
-    lignes.append("-" * 60)
-    for i, ann in enumerate(annonces, 1):
-        lignes.append(_formater_annonce(ann, i))
-        lignes.append("")
+def formater_message_global(resultats: list) -> str:
+    """Formate un message unique regroupant toutes les recherches notifiables."""
+    total = sum(len(anns) for _, anns in resultats)
+    lignes = [
+        f"Carveille — {total} nouvelle{'s' if total > 1 else ''} annonce{'s' if total > 1 else ''}",
+        "=" * 60,
+    ]
+    for recherche, annonces in resultats:
+        nom = recherche.get("nom_recherche", "Recherche")
+        lignes.append(f"\n▶ {nom}  ({len(annonces)} annonce{'s' if len(annonces) > 1 else ''})")
+        lignes.append("-" * 40)
+        for i, ann in enumerate(annonces, 1):
+            lignes.append(_formater_annonce(ann, i))
+            lignes.append("")
     return "\n".join(lignes)
 
 
@@ -121,14 +127,17 @@ def envoyer_email(message: str, sujet: str = "Carveille -- Nouvelles annonces") 
         return False
 
 
-def notifier(recherche: dict, annonces: list):
-    if not annonces:
+def notifier_global(resultats: list):
+    """Envoie un unique message groupant toutes les recherches notifiables du run."""
+    if not resultats:
         return
-    message = formater_message(recherche, annonces)
+    message = formater_message_global(resultats)
     print("\n" + message)
 
     canal = os.getenv("CANAL_NOTIFICATION", "console").lower()
     if canal == "telegram":
         envoyer_telegram(message)
     elif canal == "email":
-        envoyer_email(message)
+        total = sum(len(anns) for _, anns in resultats)
+        sujet = f"Carveille — {total} nouvelle{'s' if total > 1 else ''} annonce{'s' if total > 1 else ''}"
+        envoyer_email(message, sujet)

@@ -8,7 +8,7 @@ from src.database import (
 )
 from src.scoring import scorer_annonce, selectionner_top_annonces
 from src.dedup import filtrer_nouvelles_annonces
-from src.notifier import notifier
+from src.notifier import notifier_global
 
 
 def _charger_annonces(source: str, recherche: dict, day: int = 1) -> list:
@@ -81,6 +81,8 @@ def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notif
         return
 
     total_lues = total_nouvelles = total_notifiees = 0
+    # Résultats à notifier : liste de (recherche, annonces) pour les recherches avec notifications activées
+    a_notifier_global = []
 
     # Ouvrir le navigateur une seule fois pour toutes les recherches du run
     _ouvrir_session_scraping(source)
@@ -110,7 +112,6 @@ def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notif
                 for ann in nouvelles:
                     enrichie = _enrichir(ann, sid, scorer_annonce(ann, recherche), est_nouvelle=True)
                     upsert_annonce(enrichie)
-                    # Exclure de la notification si option impérative manquante
                     if not enrichie.get("raison_rejet") or "impérative" not in enrichie["raison_rejet"]:
                         annonces_scorees.append(enrichie)
 
@@ -131,17 +132,18 @@ def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notif
                 if baisses:
                     print(f"  -> {len(baisses)} baisse(s) de prix detectee(s) !")
 
-                # 5. Notifier selon les déclencheurs configurés
+                # 5. Préparer les annonces à notifier pour cette recherche
                 top = selectionner_top_annonces(annonces_scorees, recherche)
-                a_notifier = (top if notify_nouvelles else []) + (baisses if notify_baisses else [])
+                candidats = (top if notify_nouvelles else []) + (baisses if notify_baisses else [])
+                print(f"  -> {len(candidats)} annonce(s) candidate(s) a la notification")
 
-                print(f"  -> {len(a_notifier)} annonce(s) a notifier")
-
-                if a_notifier:
-                    notifier(recherche, a_notifier)
+                if candidats:
                     for ann in top:
                         marquer_notifiee(ann["seen_id"])
-                    total_notifiees += len(a_notifier)
+                    total_notifiees += len(candidats)
+                    # N'envoyer l'email que si la recherche a les notifications activées
+                    if recherche.get("notifications_actives"):
+                        a_notifier_global.append((recherche, candidats))
 
             except Exception as e:
                 import traceback
@@ -150,10 +152,13 @@ def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notif
                 print("  [INFO] Passage à la recherche suivante...")
 
     finally:
-        # Fermer le navigateur même si une erreur survient
         _fermer_session_scraping(source)
 
-    # 6. Sauvegarder le bilan du run
+    # 6. Envoyer UN seul email groupé si des notifications sont en attente
+    if a_notifier_global:
+        notifier_global(a_notifier_global)
+
+    # 7. Sauvegarder le bilan du run
     save_run({
         "run_id": run_id,
         "started_at": started_at,
