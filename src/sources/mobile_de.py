@@ -17,6 +17,7 @@ from urllib.parse import urlencode, urljoin, urlparse, parse_qs, urlunparse, quo
 from config import (
     MAKES_MOBILE_DE, MODELS_MOBILE_DE,
     TRANSMISSION_MOBILE_DE, FUEL_MOBILE_DE, CARROSSERIE_MOBILE_DE,
+    FINITION_KEYWORD_DE,
 )
 
 BASE_URL = "https://suchen.mobile.de/fahrzeuge/search.html"
@@ -79,6 +80,13 @@ def _build_url(recherche: dict, marque: str = "", modele: str = "", page: int = 
         code = CARROSSERIE_MOBILE_DE.get(v.lower())
         if code:
             parts.append(("cat", code))
+
+    # Finition impérative → mot-clé libre fd= (pré-filtre mobile.de côté serveur)
+    if recherche.get("finition_imperatif") and recherche.get("finition"):
+        for mot in [m.strip().lower() for m in recherche["finition"].split(",") if m.strip()]:
+            kw = FINITION_KEYWORD_DE.get(mot, recherche["finition"].strip())
+            parts.append(("fd", kw))
+            break  # un seul mot-clé suffit
 
     # Couleur (uniquement si impératif)
     if recherche.get("couleur_imperatif") and recherche.get("couleur"):

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone, timedelta
-from config import BONUS_FRAICHEUR, ZONES_INONDATION
+from config import BONUS_FRAICHEUR, ZONES_INONDATION, FINITION_ALIASES
 
 
 def _age_annonce(date_publication: str | None) -> str | None:
@@ -296,7 +296,11 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     titre_a = (annonce.get("titre") or "").lower()
     if finition_r:
         mots_finition = [m.strip() for m in finition_r.split(",") if m.strip()]
-        finition_trouvee = any(m in titre_a or m in options_a for m in mots_finition)
+        # Pour chaque mot de finition, chercher aussi ses aliases (termes allemands équivalents)
+        termes = []
+        for m in mots_finition:
+            termes.extend(FINITION_ALIASES.get(m, [m]))
+        finition_trouvee = any(t in titre_a or t in options_a for t in termes)
         bonus_finition = 5 if finition_trouvee else 0
         if not finition_trouvee and finition_imperatif and not raison_rejet:
             raison_rejet = f"Finition '{finition_r}' non trouvée dans l'annonce"

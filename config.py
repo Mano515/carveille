@@ -165,6 +165,51 @@ FUEL_MOBILE_DE = {
     "indifferent":     None,
 }
 
+# Aliases finition : termes français → équivalents cherchés dans les titres allemands
+# Utilisés aussi pour construire le mot-clé fd= dans l'URL mobile.de
+FINITION_ALIASES = {
+    "pack m":       ["pack m", "m paket", "m-paket", "m sport", "m-sport", "m sportpaket", "m sport paket"],
+    "m sport":      ["m sport", "m-sport", "m paket", "m-paket", "pack m"],
+    "s line":       ["s line", "s-line", "sline"],
+    "s-line":       ["s line", "s-line", "sline"],
+    "amg line":     ["amg line", "amg-line"],
+    "r line":       ["r line", "r-line"],
+    "r-line":       ["r line", "r-line"],
+    "gti":          ["gti"],
+    "gts":          ["gts"],
+    "gt":           ["gt"],
+    "rs":           ["rs"],
+    "st":           ["st"],
+    "fr":           ["fr"],
+    "sport":        ["sport"],
+    "business":     ["business"],
+    "executive":    ["executive"],
+    "prestige":     ["prestige"],
+    "premium":      ["premium"],
+    "luxury":       ["luxury"],
+    "allure":       ["allure"],
+    "active":       ["active"],
+    "elegance":     ["elegance", "élégance"],
+    "dynamique":    ["dynamique", "dynamic"],
+    "titanium":     ["titanium"],
+    "ambition":     ["ambition"],
+    "black edition":["black edition", "black line"],
+    "night edition":["night edition", "night"],
+}
+
+# Mot-clé mobile.de (fd=) pour le pré-filtre URL quand finition est impérative
+FINITION_KEYWORD_DE = {
+    "pack m":    "M Paket",
+    "m sport":   "M Sport",
+    "s line":    "S-line",
+    "s-line":    "S-line",
+    "amg line":  "AMG Line",
+    "r line":    "R-line",
+    "r-line":    "R-line",
+    "gti":       "GTI",
+    "gts":       "GTS",
+}
+
 # Mapping carrosserie → code mobile.de (paramètre cat=)
 CARROSSERIE_MOBILE_DE = {
     "berline":    "Limousine",
