@@ -17,7 +17,6 @@ from urllib.parse import urlencode, urljoin, urlparse, parse_qs, urlunparse, quo
 from config import (
     MAKES_MOBILE_DE, MODELS_MOBILE_DE,
     TRANSMISSION_MOBILE_DE, FUEL_MOBILE_DE, CARROSSERIE_MOBILE_DE,
-    FINITION_KEYWORD_DE,
 )
 
 BASE_URL = "https://suchen.mobile.de/fahrzeuge/search.html"
@@ -80,13 +79,6 @@ def _build_url(recherche: dict, marque: str = "", modele: str = "", page: int = 
         code = CARROSSERIE_MOBILE_DE.get(v.lower())
         if code:
             parts.append(("cat", code))
-
-    # Finition impérative → mot-clé libre fd= (pré-filtre mobile.de côté serveur)
-    if recherche.get("finition_imperatif") and recherche.get("finition"):
-        for mot in [m.strip().lower() for m in recherche["finition"].split(",") if m.strip()]:
-            kw = FINITION_KEYWORD_DE.get(mot, recherche["finition"].strip())
-            parts.append(("fd", kw))
-            break  # un seul mot-clé suffit
 
     # Couleur (uniquement si impératif)
     if recherche.get("couleur_imperatif") and recherche.get("couleur"):
@@ -375,11 +367,12 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
             const priceStr = priceMatch ? priceMatch[1].replace(/[\s.]/g, '') : '';
             const price = priceStr ? parseInt(priceStr) : null;
 
-            // Titre : h2 ou h3 dans la card
+            // Titre : h2 ou h3, garder les 2 premières lignes (ex: "BMW 320d\nM Sport Touring")
             const titleEl = card.querySelector('h2,h3,h1');
-            let title = titleEl ? titleEl.innerText.trim() : '';
-            // Supprimer tous les préfixes "Gesponsert" / "NEU" consécutifs (parfois collés ou séparés par \n)
-            title = title.replace(/^((?:gesponsert|neu)[\s]*)+/i, '').replace(/\n[\s\S]*/s, '').trim();
+            let titleRaw = titleEl ? titleEl.innerText.trim() : '';
+            titleRaw = titleRaw.replace(/^((?:gesponsert|neu)[\s]*)+/i, '');
+            const titleLines = titleRaw.split('\n').map(l => l.trim()).filter(Boolean);
+            const title = titleLines.slice(0, 2).join(' ').trim();
 
             // km : "45.321 km" ou "45 321 km"
             const kmMatch = cardText.match(/(\d[\d.\s]+)\s*km/);
@@ -479,6 +472,17 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
                 }
             }
 
+            // Équipements : lignes de la carte qui ne sont pas titre/prix/km/date/ville
+            const equipLignes = lignes.filter(l =>
+                l.length > 2 && l.length < 100 &&
+                !titleLines.includes(l) &&
+                !/^\d+$/.test(l) &&
+                !/\d+[\s.]*(km|€|EUR)/i.test(l) &&
+                !/^\d{2}\/\d{4}$/.test(l) &&
+                !/^(Automatik|Schaltgetriebe|Diesel|Benzin|Elektro|Hybrid)$/i.test(l)
+            );
+            const options_texte = equipLignes.join(' ').toLowerCase();
+
             listings.push({
                 listing_id: id,
                 url: 'https://suchen.mobile.de/fahrzeuge/details.html?id=' + id,
@@ -491,6 +495,7 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
                 ville: ville,
                 image_url: image_url,
                 couleur: couleur,
+                options_texte: options_texte,
             });
         }
 
