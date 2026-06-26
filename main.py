@@ -721,8 +721,6 @@ def cmd_ui():
                     self._send_json({"ok": False, "error": "Parametres invalides"}, 400)
 
             elif self.path == "/charger-photos":
-                # Récupère toutes les URLs d'images depuis la page de détail mobile.de
-                # et les stocke en base. Retourne la liste des URLs.
                 seen_id = body.get("seen_id")
                 if not seen_id:
                     self._send_json({"ok": False, "error": "seen_id manquant"}, 400)
@@ -732,50 +730,13 @@ def cmd_ui():
                     self._send_json({"ok": False, "urls": []})
                     return
 
-                # Si déjà plusieurs images en base, on retourne directement
+                # Priorité : images_urls (multi), sinon image_url (miniature SRP)
                 existing = annonce.get("images_urls") or ""
-                existing_urls = [u for u in existing.split("\n") if u.strip()]
-                if len(existing_urls) > 1:
-                    self._send_json({"ok": True, "urls": existing_urls})
-                    return
+                urls = [u for u in existing.split("\n") if u.strip()]
+                if not urls and annonce.get("image_url"):
+                    urls = [annonce["image_url"]]
 
-                detail_url = annonce.get("url") or ""
-                if not detail_url:
-                    # Rien à récupérer, renvoyer ce qu'on a
-                    self._send_json({"ok": True, "urls": existing_urls})
-                    return
-
-                try:
-                    req = urllib.request.Request(detail_url, headers={
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                        "Accept-Language": "fr-FR,fr;q=0.9",
-                    })
-                    html = urllib.request.urlopen(req, timeout=12).read().decode("utf-8", errors="replace")
-                    raw = re.findall(
-                        r'https?://(?:img\.mobile\.de|i\.ebayimg\.com|images\.mobile\.de|pic\.classistatic\.de)'
-                        r'/[^\s"\'<>]+\.(?:jpg|jpeg|png|webp|avif)',
-                        html, re.IGNORECASE
-                    )
-                    # Dédupliquer en gardant l'ordre
-                    seen_u: set = set()
-                    urls = []
-                    for u in raw:
-                        # Préférer les grandes versions (éviter les miniatures _s / _t / thumb)
-                        if any(x in u.lower() for x in ["_thumb", "/tn/", "_s.", "_xs.", "48x48", "100x"]):
-                            continue
-                        if u not in seen_u:
-                            seen_u.add(u)
-                            urls.append(u)
-
-                    if urls:
-                        update_images_urls(seen_id, "\n".join(urls))
-                    elif existing_urls:
-                        urls = existing_urls  # garder ce qu'on avait
-
-                    self._send_json({"ok": True, "urls": urls})
-                except Exception as e:
-                    print(f"[ERR] /charger-photos ({seen_id}) : {type(e).__name__}: {e}")
-                    self._send_json({"ok": True, "urls": existing_urls, "warn": str(e)})
+                self._send_json({"ok": True, "urls": urls})
 
             elif self.path == "/telecharger-photos":
                 seen_id = body.get("seen_id")
