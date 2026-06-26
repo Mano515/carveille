@@ -461,6 +461,16 @@ def cmd_ui():
                 for a in annonces:
                     a["autres_clients"] = get_autres_clients_pour_listing(a["listing_id"], a["search_id"])
                 self._send_json(annonces)
+            elif self.path.startswith("/search-url/"):
+                search_id = self.path.split("/search-url/")[1]
+                r = get_recherche_by_id(search_id)
+                if r:
+                    from src.sources.mobile_de import _build_url
+                    url = r.get("mobile_de_url") or _build_url(r, r.get("marque",""), r.get("modele",""))
+                    self._send_json({"url": url})
+                else:
+                    self._send_json({"url": None}, 404)
+
             elif self.path.startswith("/resultats/"):
                 search_id = self.path.split("/resultats/")[1]
                 annonces = get_derniers_resultats(search_id)
