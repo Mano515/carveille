@@ -2,8 +2,8 @@ curl_cffi
 python-dotenv
 pillow
 pillow-heif
-playwright
 undetected-chromedriver
 selenium
 setuptools
 browser-cookie3
+psutil
