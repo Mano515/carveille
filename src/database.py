@@ -507,6 +507,12 @@ def get_derniers_resultats(search_id: str, limit: int = 200) -> list[dict]:
     return result
 
 
+def vider_resultats(search_id: str):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM annonces_vues WHERE search_id=?", (search_id,))
+        conn.execute("DELETE FROM historique_prix WHERE search_id=?", (search_id,))
+
+
 def get_historique_prix(search_id: str, listing_id: str) -> list[dict]:
     with get_conn() as conn:
         rows = conn.execute("""

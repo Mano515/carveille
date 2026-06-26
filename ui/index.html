@@ -2487,12 +2487,25 @@ function _afficherResultats(nom) {
   el.innerHTML = `<div class="resultats-header">
     <span class="resultats-title">${nom2}</span>
     <span class="resultats-count">${filtered.length} annonce${filtered.length > 1 ? 's' : ''}${hiddenNote}</span>
+    <button class="btn-sm" style="margin-left:auto;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca" onclick="viderResultats('${_resultatsSearchId || (filtered[0]?.search_id||'')}', '${nom2.replace(/'/g,"\\'")}')">🗑 Vider les résultats</button>
   </div>` + (filtered.length
     ? filtered.map(a => renderAnnonce(a, a.search_id, !_resultatsSearchId)).join('')
     : '<p style="color:#888;padding:16px;text-align:center">Aucune annonce ne correspond aux filtres.</p>');
 }
 
 function filtrerResultats() { _afficherResultats(); }
+
+async function viderResultats(searchId, nom) {
+  if (!searchId) return;
+  if (!confirm(`Vider tous les résultats de "${nom}" ?\n\nLes annonces seront supprimées de la base — elles réapparaîtront comme nouvelles au prochain run.`)) return;
+  const r = await fetch(`/vider-resultats/${searchId}`, { method: 'POST' });
+  if (r.ok) {
+    _resultatsData = [];
+    document.getElementById('resultats-content').innerHTML = '<p style="color:#888;padding:16px;text-align:center">Résultats vidés. Lancez un nouveau run pour les rafraîchir.</p>';
+  } else {
+    alert('Erreur lors de la suppression.');
+  }
+}
 
 function reinitialiserFiltres() {
   const f = document.getElementById('filtre-texte');

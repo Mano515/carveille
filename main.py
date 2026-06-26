@@ -671,6 +671,12 @@ def cmd_ui():
                 modifier_client(client_id, {"nom": nom, "contact": body.get("contact", ""), "notes": body.get("notes", "")})
                 self._send_json({"ok": True})
 
+            elif self.path.startswith("/vider-resultats/"):
+                search_id = self.path.split("/vider-resultats/")[1]
+                from src.database import vider_resultats
+                vider_resultats(search_id)
+                self._send_json({"ok": True})
+
             elif self.path == "/interet":
                 seen_id = body.get("seen_id")
                 interet = body.get("interet")
