@@ -2461,11 +2461,14 @@ function _afficherResultats(nom) {
   const prixOk    = a => prixMax === Infinity || (a.prix && a.prix <= prixMax);
   const kmOk      = a => kmMax  === Infinity || (a.km  && a.km  <= kmMax);
 
-  // Filtre finition : si une finition impérative est configurée (fin.cherche présent),
-  // on n'affiche que les annonces où elle est confirmée. Si pas de finition requise → tout passe.
+  // Filtre finition : si la recherche a une finition impérative (_finition_imperatif=true),
+  // on n'affiche que les annonces où elle est confirmée dans score_detail.
+  // Pour les vieilles annonces sans fin.cherche : on filtre strictement si impératif,
+  // on laisse passer si la recherche n'a pas de finition requise.
   const finitionOk = a => {
+    if (!a._finition_imperatif) return true;
     const fin = a._sd?.finition;
-    if (!fin?.cherche) return true;
+    if (!fin?.cherche) return false; // vieille donnée sans évaluation → masquer par sécurité
     return fin.trouve && fin.trouve !== 'non trouvé';
   };
 

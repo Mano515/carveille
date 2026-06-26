@@ -486,13 +486,25 @@ def get_tous_resultats(limit: int = 500) -> list[dict]:
 
 def get_derniers_resultats(search_id: str, limit: int = 200) -> list[dict]:
     with get_conn() as conn:
+        recherche = conn.execute(
+            "SELECT finition, finition_imperatif FROM recherches WHERE search_id=?",
+            (search_id,)
+        ).fetchone()
         rows = conn.execute("""
             SELECT * FROM annonces_vues
             WHERE search_id=? AND (interet IS NULL OR interet != 'non')
             ORDER BY score DESC, date_premiere_vue DESC
             LIMIT ?
         """, (search_id, limit)).fetchall()
-    return [dict(r) for r in rows]
+    fin_imp = bool(recherche["finition_imperatif"]) if recherche else False
+    fin_nom = (recherche["finition"] or "").lower() if recherche else ""
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["_finition_imperatif"] = fin_imp
+        d["_finition_nom"] = fin_nom
+        result.append(d)
+    return result
 
 
 def get_historique_prix(search_id: str, listing_id: str) -> list[dict]:
