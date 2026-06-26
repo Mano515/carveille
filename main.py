@@ -736,6 +736,7 @@ def cmd_ui():
                 if not urls and annonce.get("image_url"):
                     urls = [annonce["image_url"]]
 
+                print(f"[DEBUG] charger-photos seen_id={seen_id[:8]} image_url={annonce.get('image_url','(vide)')} images_urls_count={len(urls)}")
                 self._send_json({"ok": True, "urls": urls})
 
             elif self.path == "/telecharger-photos":
