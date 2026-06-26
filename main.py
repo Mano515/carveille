@@ -492,7 +492,9 @@ def cmd_ui():
                 import urllib.parse
                 qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 url = qs.get("url", [""])[0]
-                if not url or not url.startswith("https://"):
+                # Autoriser uniquement les CDN connus (sécurité minimale)
+                _cdn_ok = ["mobile.de", "classistatic.de", "ebayimg.com"]
+                if not url or not url.startswith("https://") or not any(d in url for d in _cdn_ok):
                     self.send_response(403); self.end_headers(); return
                 try:
                     req = urllib.request.Request(url, headers={

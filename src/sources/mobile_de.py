@@ -910,33 +910,41 @@ def fetch_images_annonce(url: str) -> list[str]:
         # Récupérer le source complet (inclut les <script> RSC avec les données)
         source = driver.page_source
 
-        # Regex large : toutes les URLs des CDN mobile.de dans le source
+        # mobile.de utilise img.classistatic.de pour les photos du carrousel
         CDN_PATTERN = re.compile(
-            r'https?://(?:img\.mobile\.de|i\.ebayimg\.com|images\.mobile\.de|pic\.classistatic\.de)'
+            r'https?://(?:img\.classistatic\.de|img\.mobile\.de|i\.ebayimg\.com|images\.mobile\.de|pic\.classistatic\.de)'
             r'/[^\s"\'\\,\]>\}]{5,}',
             re.IGNORECASE
         )
         raw = CDN_PATTERN.findall(source)
 
-        # Dédupliquer, nettoyer (supprimer suffixes JSON/HTML parasites), filtrer miniatures
-        THUMB_MARKERS = ('_thumb', '/tn/', '_xs.', '48x48', '100x', '_s.', 'favicon', 'logo', 'icon')
+        # Nettoyer et dédupliquer
         seen: set = set()
-        full, thumbs = [], []
+        all_urls = []
         for u in raw:
-            # Couper au premier caractère non-URL
             u = re.split(r'["\'\s\\,\]>\}]', u)[0]
-            if u in seen:
-                continue
-            seen.add(u)
-            low = u.lower()
-            if any(m in low for m in THUMB_MARKERS):
-                thumbs.append(u)
-            else:
-                full.append(u)
+            if u not in seen:
+                seen.add(u)
+                all_urls.append(u)
 
-        result = full if full else thumbs
-        print(f"  [IMG] {len(result)} images trouvées ({len(full)} full, {len(thumbs)} thumbs)")
-        return result
+        # Préférer rule=mo-1600 (pleine résolution).
+        # Pour chaque image (même chemin de base), ne garder que la plus grande.
+        def base_path(u):
+            return u.split('?')[0]
+
+        full_res = [u for u in all_urls if 'mo-1600' in u or 'rule=mo-1600' in u]
+        if not full_res:
+            # Fallback : garder toutes les URLs uniques par chemin de base
+            bases: set = set()
+            full_res = []
+            for u in all_urls:
+                b = base_path(u)
+                if b not in bases and 'favicon' not in u and 'logo' not in u:
+                    bases.add(b)
+                    full_res.append(u)
+
+        print(f"  [IMG] {len(full_res)} images pleine résolution trouvées")
+        return full_res
     except Exception as e:
         print(f"  [WARN] fetch_images_annonce : {e}")
         return []
