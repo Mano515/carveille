@@ -492,8 +492,7 @@ def cmd_ui():
                 import urllib.parse
                 qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 url = qs.get("url", [""])[0]
-                _cdn = ["img.mobile.de", "i.ebayimg.com", "images.mobile.de", "pic.classistatic.de", "mobile.de"]
-                if not url or not any(d in url for d in _cdn):
+                if not url or not url.startswith("https://"):
                     self.send_response(403); self.end_headers(); return
                 try:
                     req = urllib.request.Request(url, headers={
@@ -501,9 +500,9 @@ def cmd_ui():
                         "Referer": "https://www.mobile.de/",
                         "Accept": "image/avif,image/webp,image/*,*/*;q=0.8",
                     })
-                    data = urllib.request.urlopen(req, timeout=15).read()
-                    low = url.lower()
-                    ct = "image/avif" if ".avif" in low else ("image/webp" if ".webp" in low else "image/jpeg")
+                    resp = urllib.request.urlopen(req, timeout=15)
+                    data = resp.read()
+                    ct = resp.headers.get("Content-Type") or "image/jpeg"
                     self.send_response(200)
                     self.send_header("Content-Type", ct)
                     self.send_header("Content-Length", str(len(data)))
@@ -511,7 +510,7 @@ def cmd_ui():
                     self.end_headers()
                     self.wfile.write(data)
                 except Exception as e:
-                    print(f"[WARN] /photo-proxy : {e}")
+                    print(f"[WARN] /photo-proxy {url[:60]} : {e}")
                     self.send_response(502); self.end_headers()
             else:
                 if self.path != '/favicon.ico':
