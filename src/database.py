@@ -513,6 +513,21 @@ def vider_resultats(search_id: str):
         conn.execute("DELETE FROM historique_prix WHERE search_id=?", (search_id,))
 
 
+def purger_annonces_absentes(search_id: str, listing_ids_vus: set) -> int:
+    """Supprime les annonces qui ne sont plus dans le SRP (vendues/retirées).
+    Conserve celles marquées interet='non' pour éviter de les revoir."""
+    if not listing_ids_vus:
+        return 0
+    placeholders = ",".join("?" * len(listing_ids_vus))
+    params = [search_id] + list(listing_ids_vus)
+    with get_conn() as conn:
+        n = conn.execute(
+            f"DELETE FROM annonces_vues WHERE search_id=? AND listing_id NOT IN ({placeholders}) AND (interet IS NULL OR interet != 'non')",
+            params,
+        ).rowcount
+    return n
+
+
 def get_historique_prix(search_id: str, listing_id: str) -> list[dict]:
     with get_conn() as conn:
         rows = conn.execute("""

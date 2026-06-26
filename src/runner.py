@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from src.database import (
     get_recherches_actives, upsert_annonce, save_run,
-    marquer_notifiee, get_conn,
+    marquer_notifiee, get_conn, purger_annonces_absentes,
 )
 from src.scoring import scorer_annonce, selectionner_top_annonces
 from src.dedup import filtrer_nouvelles_annonces
@@ -131,6 +131,12 @@ def run(source: str = "mock", day: int = 1, notify_nouvelles: bool = True, notif
 
                 if baisses:
                     print(f"  -> {len(baisses)} baisse(s) de prix detectee(s) !")
+
+                # 4b. Purger les annonces disparues du SRP
+                ids_vus = {a["listing_id"] for a in annonces_brutes}
+                n_purges = purger_annonces_absentes(sid, ids_vus)
+                if n_purges:
+                    print(f"  -> {n_purges} annonce(s) vendues/retirees supprimees")
 
                 # 5. Préparer les annonces à notifier pour cette recherche
                 top = selectionner_top_annonces(annonces_scorees, recherche)
