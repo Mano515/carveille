@@ -760,10 +760,11 @@ def cmd_ui():
 
                     client_id = annonce.get("client_id")
                     client = get_client_by_id(client_id) if client_id else None
-                    save_dir = (_dossier_client(client["nom"]) / "voitures") if client else (_dossier_clients_root() / "_Non classe")
+                    titre_safe = "".join(c for c in (annonce.get("titre") or "annonce") if c.isalnum() or c in " _-")[:50].strip()
+                    base_dir = (_dossier_client(client["nom"]) / "voitures") if client else (_dossier_clients_root() / "_Non classe")
+                    # Dossier propre à cette annonce
+                    save_dir = base_dir / titre_safe
                     save_dir.mkdir(parents=True, exist_ok=True)
-
-                    titre_safe = "".join(c for c in (annonce.get("titre") or "annonce") if c.isalnum() or c in " _-")[:40].strip()
 
                     nb_ok = 0
                     for idx, img_url in enumerate(urls):
@@ -775,13 +776,7 @@ def cmd_ui():
                             })
                             data = urllib.request.urlopen(req, timeout=15).read()
                             img = Image.open(io.BytesIO(data))
-                            suffix = f"_{idx+1}" if len(urls) > 1 else ""
-                            out_nom = f"{titre_safe}{suffix}.jpg"
-                            out_path = save_dir / out_nom
-                            i = 1
-                            while out_path.exists():
-                                out_path = save_dir / f"{titre_safe}{suffix}_{i}.jpg"
-                                i += 1
+                            out_path = save_dir / f"{idx+1:02d}.jpg"
                             img.convert("RGB").save(str(out_path), "JPEG", quality=92)
                             nb_ok += 1
                         except Exception as e:

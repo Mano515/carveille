@@ -833,39 +833,67 @@ _JS_LIRE_COULEUR = """
 """
 
 # JS pour extraire toutes les URLs d'images depuis la fiche détail.
-# Parcourt récursivement __NEXT_DATA__ pour trouver les champs "uri" d'images.
+# Cherche dans __NEXT_DATA__, les <script> RSC/JSON, et les attributs img (src/data-src/srcset).
 _JS_LIRE_IMAGES = """
-    function walk(obj, found) {
-        if (!obj || typeof obj !== 'object') return;
-        if (Array.isArray(obj)) { obj.forEach(i => walk(i, found)); return; }
-        if (typeof obj.uri === 'string' && obj.uri.startsWith('http')) found.push(obj.uri);
-        for (const k of Object.keys(obj)) {
-            if (typeof obj[k] === 'object') walk(obj[k], found);
-        }
-    }
-    const found = [];
-    try { walk(window.__NEXT_DATA__, found); } catch(e) {}
-    if (found.length === 0) {
-        for (const img of document.querySelectorAll('img')) {
-            const s = img.src || '';
-            if (s.startsWith('http') && (s.includes('mobile.de') || s.includes('ebayimg.com'))) found.push(s);
-        }
-    }
-    // Dédupliquer et exclure miniatures
-    const seen = new Set();
-    return found.filter(u => {
+    const CDN = ['img.mobile.de', 'i.ebayimg.com', 'images.mobile.de', 'pic.classistatic.de'];
+    function isImageUrl(u) {
+        if (!u || typeof u !== 'string') return false;
+        if (!u.startsWith('http')) return false;
+        if (!CDN.some(d => u.includes(d))) return false;
         const low = u.toLowerCase();
-        if (seen.has(u)) return false;
+        // Exclure miniatures/icônes
+        return !low.includes('favicon') && !low.includes('logo') && !low.includes('icon');
+    }
+    function isThumbnail(u) {
+        const low = u.toLowerCase();
+        return low.includes('_thumb') || low.includes('/tn/') || low.includes('_xs.')
+            || low.includes('48x48') || low.includes('100x') || low.includes('_s.');
+    }
+
+    const seen = new Set();
+    const full = [], thumbs = [];
+    function add(u) {
+        u = u.split('?')[0]; // supprimer query string
+        if (!isImageUrl(u) || seen.has(u)) return;
         seen.add(u);
-        return !low.includes('thumb') && !low.includes('/tn/') && !low.includes('_xs') && !low.includes('48x48') && !low.includes('favicon');
-    });
+        (isThumbnail(u) ? thumbs : full).push(u);
+    }
+
+    // 1. Extraire toutes les URLs des textes des <script> (RSC payload, __NEXT_DATA__)
+    for (const s of document.querySelectorAll('script')) {
+        const txt = s.textContent || s.innerText || '';
+        const matches = txt.match(/https?:\\/\\/[^"'\\s,\\]\\[{}()<>]+/g) || [];
+        matches.forEach(add);
+    }
+
+    // 2. Parcourir window.__NEXT_DATA__ récursivement
+    function walk(obj) {
+        if (!obj || typeof obj !== 'object') return;
+        if (Array.isArray(obj)) { obj.forEach(walk); return; }
+        for (const v of Object.values(obj)) {
+            if (typeof v === 'string') add(v);
+            else if (typeof v === 'object') walk(v);
+        }
+    }
+    try { walk(window.__NEXT_DATA__); } catch(e) {}
+
+    // 3. Attributs des <img> (src, data-src, srcset)
+    for (const img of document.querySelectorAll('img')) {
+        [img.src, img.dataset.src, img.dataset.lazySrc].forEach(u => u && add(u));
+        const ss = img.getAttribute('srcset') || '';
+        ss.split(',').map(p => p.trim().split(' ')[0]).forEach(u => u && add(u));
+    }
+
+    // Préférer les full-size ; si aucun, retourner les thumbs
+    return full.length ? full : thumbs;
 """
 
 
 def fetch_images_annonce(url: str) -> list[str]:
     """
     Visite la fiche détail avec Selenium et retourne toutes les URLs d'images.
-    Ouvre une session si aucune n'est active (à fermer par l'appelant).
+    Scrolle la page pour déclencher le lazy-loading du carrousel.
+    Ouvre une session si aucune n'est active.
     """
     session_ouverte_ici = False
     if _session is None:
@@ -873,7 +901,20 @@ def fetch_images_annonce(url: str) -> list[str]:
         session_ouverte_ici = True
     driver = _session["driver"]
     try:
-        urls = _detail_execute_script(driver, url, _JS_LIRE_IMAGES)
+        driver.get(url)
+        time.sleep(2.5)
+        if _est_bloquee(driver):
+            print(f"  [BLOCK] fetch_images_annonce bloqué sur {url[-60:]}")
+            return []
+        # Scroller pour déclencher le lazy-loading des images du carrousel
+        driver.execute_script("window.scrollTo(0, 400);")
+        time.sleep(0.8)
+        driver.execute_script("window.scrollTo(0, 800);")
+        time.sleep(0.8)
+        driver.execute_script("window.scrollTo(0, 0);")
+        time.sleep(0.5)
+        urls = driver.execute_script(_JS_LIRE_IMAGES)
+        print(f"  [IMG] {len(urls or [])} images trouvées sur la fiche")
         return urls or []
     except BlockedError:
         print(f"  [BLOCK] fetch_images_annonce bloqué sur {url[-60:]}")
