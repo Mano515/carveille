@@ -465,8 +465,8 @@ def cmd_ui():
                 search_id = self.path.split("/search-url/")[1]
                 r = get_recherche_by_id(search_id)
                 if r:
-                    from src.sources.mobile_de import _build_url
-                    url = r.get("mobile_de_url") or _build_url(r, r.get("marque",""), r.get("modele",""))
+                    from src.sources.mobile_de import build_url_fr
+                    url = r.get("mobile_de_url") or build_url_fr(r, r.get("marque",""), r.get("modele",""))
                     self._send_json({"url": url})
                 else:
                     self._send_json({"url": None}, 404)

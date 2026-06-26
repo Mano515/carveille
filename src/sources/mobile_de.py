@@ -121,6 +121,81 @@ def _build_url(recherche: dict, marque: str = "", modele: str = "", page: int = 
     return f"{BASE_URL}?{urlencode(parts)}"
 
 
+# IDs numériques mobile.de pour le format d'URL français (ms=makeId;modelId)
+# Confirmés depuis les URLs de recherche mobile.de/fr
+_MS_IDS: dict[str, dict[str, str]] = {
+    "BMW":            {"_make": "3500", "Série 1": "1", "Serie 1": "1", "Série 2": "2", "Serie 2": "2",
+                       "Série 3": "10", "Serie 3": "10", "320": "10",
+                       "Série 4": "4", "Série 5": "5", "Serie 5": "5",
+                       "Série 6": "6", "Série 7": "7",
+                       "X1": "32", "X2": "25", "X3": "34", "X4": "35", "X5": "36", "X6": "37", "X7": "38",
+                       "Z4": "20", "M3": "12", "M5": "14"},
+    "Audi":           {"_make": "1900", "A1": "1", "A3": "3", "A4": "4", "A5": "5", "A6": "6",
+                       "A7": "7", "A8": "8", "Q2": "33", "Q3": "18", "Q5": "20", "Q7": "19", "Q8": "28",
+                       "TT": "11", "R8": "16", "e-tron": "26"},
+    "Mercedes-Benz":  {"_make": "17200", "Classe A": "1", "Classe B": "3", "Classe C": "4",
+                       "Classe E": "6", "Classe S": "10", "GLA": "26", "GLB": "36", "GLC": "22",
+                       "GLE": "16", "GLS": "17", "CLA": "19", "CLS": "20"},
+    "Peugeot":        {"_make": "23600", "208": "61", "308": "62", "408": "64", "508": "63",
+                       "2008": "56", "3008": "57", "5008": "58"},
+    "Volkswagen":     {"_make": "30000", "Golf": "6", "Polo": "8", "Passat": "7", "Tiguan": "15",
+                       "Touareg": "16", "T-Roc": "19", "ID.3": "25", "ID.4": "26"},
+    "Renault":        {"_make": "24100", "Clio": "3", "Mégane": "14", "Captur": "26",
+                       "Kadjar": "34", "Austral": "45"},
+    "Citroën":        {"_make": "6500", "C3": "5", "C4": "6", "C5": "10"},
+    "Porsche":        {"_make": "24000", "911": "1", "Cayenne": "7", "Macan": "8", "Panamera": "9",
+                       "Taycan": "11"},
+}
+
+
+def build_url_fr(recherche: dict, marque: str = "", modele: str = "") -> str:
+    """URL de recherche au format mobile.de/fr — directement utilisable sans redirection."""
+    BASE_FR = "https://www.mobile.de/fr/voiture/recherche.html"
+    parts: list[tuple] = [("isSearchRequest", "true"), ("s", "Car"), ("vc", "Car")]
+
+    # Marque + modèle via IDs numériques si disponibles, sinon on laisse sans filtre
+    make_ids = _MS_IDS.get(marque, {})
+    make_id = make_ids.get("_make", "")
+    model_id = make_ids.get(modele, "") if modele else ""
+    if make_id and model_id:
+        parts.append(("ms", f"{make_id};{model_id}"))
+    elif make_id:
+        parts.append(("ms", f"{make_id};"))
+
+    if recherche.get("prix_min") or recherche.get("budget_max"):
+        p_min = int(recherche["prix_min"]) if recherche.get("prix_min") else ""
+        p_max = int(recherche["budget_max"]) if recherche.get("budget_max") else ""
+        parts.append(("p", f"{p_min}:{p_max}"))
+
+    if recherche.get("annee_min"):
+        parts.append(("fr", str(int(recherche["annee_min"]))))
+
+    if recherche.get("km_max"):
+        parts.append(("ml", f":{int(recherche['km_max'])}"))
+
+    # Carburant : ft= au lieu de fuel=
+    fuel_vals = [c.strip() for c in (recherche.get("carburant") or "").split(",")
+                 if c.strip() and c.strip() != "indifferent"]
+    from config import FUEL_MOBILE_DE
+    for v in fuel_vals:
+        code = FUEL_MOBILE_DE.get(v)
+        if code:
+            parts.append(("ft", code))
+
+    # Boîte
+    boite_vals = [b.strip() for b in (recherche.get("boite") or "").split(",")
+                  if b.strip() and b.strip() != "indifferent"]
+    from config import TRANSMISSION_MOBILE_DE
+    boite_codes = [TRANSMISSION_MOBILE_DE[b] for b in boite_vals if b in TRANSMISSION_MOBILE_DE and TRANSMISSION_MOBILE_DE[b]]
+    if len(boite_codes) == 1:
+        parts.append(("tr", boite_codes[0]))
+
+    vendeur = (recherche.get("vendeur_filtre") or "pro").lower()
+    parts.append(("seller", "private" if vendeur == "particulier" else "dealer"))
+
+    return f"{BASE_FR}?{urlencode(parts)}"
+
+
 def _url_via_detailsuche(driver, marque: str, modele: str, recherche: dict | None = None) -> str | None:
     """
     Navigue vers le formulaire detailsuche de mobile.de, sélectionne marque/modèle
