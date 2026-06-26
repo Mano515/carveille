@@ -832,6 +832,59 @@ _JS_LIRE_COULEUR = """
     return dd ? dd.textContent.trim() : null;
 """
 
+# JS pour extraire toutes les URLs d'images depuis la fiche détail.
+# Parcourt récursivement __NEXT_DATA__ pour trouver les champs "uri" d'images.
+_JS_LIRE_IMAGES = """
+    function walk(obj, found) {
+        if (!obj || typeof obj !== 'object') return;
+        if (Array.isArray(obj)) { obj.forEach(i => walk(i, found)); return; }
+        if (typeof obj.uri === 'string' && obj.uri.startsWith('http')) found.push(obj.uri);
+        for (const k of Object.keys(obj)) {
+            if (typeof obj[k] === 'object') walk(obj[k], found);
+        }
+    }
+    const found = [];
+    try { walk(window.__NEXT_DATA__, found); } catch(e) {}
+    if (found.length === 0) {
+        for (const img of document.querySelectorAll('img')) {
+            const s = img.src || '';
+            if (s.startsWith('http') && (s.includes('mobile.de') || s.includes('ebayimg.com'))) found.push(s);
+        }
+    }
+    // Dédupliquer et exclure miniatures
+    const seen = new Set();
+    return found.filter(u => {
+        const low = u.toLowerCase();
+        if (seen.has(u)) return false;
+        seen.add(u);
+        return !low.includes('thumb') && !low.includes('/tn/') && !low.includes('_xs') && !low.includes('48x48') && !low.includes('favicon');
+    });
+"""
+
+
+def fetch_images_annonce(url: str) -> list[str]:
+    """
+    Visite la fiche détail avec Selenium et retourne toutes les URLs d'images.
+    Ouvre une session si aucune n'est active (à fermer par l'appelant).
+    """
+    session_ouverte_ici = False
+    if _session is None:
+        ouvrir_session()
+        session_ouverte_ici = True
+    driver = _session["driver"]
+    try:
+        urls = _detail_execute_script(driver, url, _JS_LIRE_IMAGES)
+        return urls or []
+    except BlockedError:
+        print(f"  [BLOCK] fetch_images_annonce bloqué sur {url[-60:]}")
+        return []
+    except Exception as e:
+        print(f"  [WARN] fetch_images_annonce : {e}")
+        return []
+    finally:
+        if session_ouverte_ici:
+            fermer_session()
+
 
 def _chercher_finition_sur_detail(driver, url: str, termes: list[str]) -> tuple[str | None, str | None, bool]:
     """

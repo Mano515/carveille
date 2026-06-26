@@ -720,33 +720,14 @@ def cmd_ui():
                 else:
                     self._send_json({"ok": False, "error": "Parametres invalides"}, 400)
 
-            elif self.path == "/charger-photos":
-                seen_id = body.get("seen_id")
-                if not seen_id:
-                    self._send_json({"ok": False, "error": "seen_id manquant"}, 400)
-                    return
-                annonce = get_annonce_by_seen_id(seen_id)
-                if not annonce:
-                    self._send_json({"ok": False, "urls": []})
-                    return
-
-                # Priorité : images_urls (multi), sinon image_url (miniature SRP)
-                existing = annonce.get("images_urls") or ""
-                urls = [u for u in existing.split("\n") if u.strip()]
-                if not urls and annonce.get("image_url"):
-                    urls = [annonce["image_url"]]
-
-                print(f"[DEBUG] charger-photos seen_id={seen_id[:8]} image_url={annonce.get('image_url','(vide)')} images_urls_count={len(urls)}")
-                self._send_json({"ok": True, "urls": urls})
-
             elif self.path == "/telecharger-photos":
                 seen_id = body.get("seen_id")
                 if not seen_id:
                     self._send_json({"ok": False, "error": "seen_id manquant"}, 400)
                     return
                 annonce = get_annonce_by_seen_id(seen_id)
-                if not annonce or (not annonce.get("image_url") and not annonce.get("images_urls")):
-                    self._send_json({"ok": False, "error": "Aucune image disponible"})
+                if not annonce:
+                    self._send_json({"ok": False, "error": "Annonce introuvable"})
                     return
                 try:
                     import io
@@ -757,20 +738,32 @@ def cmd_ui():
                     self._send_json({"ok": False, "error": "Module manquant (pillow-heif)"})
                     return
                 try:
+                    # 1. URLs déjà en base
+                    existing = annonce.get("images_urls") or ""
+                    urls = [u for u in existing.split("\n") if u.strip()]
+                    if not urls and annonce.get("image_url"):
+                        urls = [annonce["image_url"]]
+
+                    # 2. Si on n'a qu'une seule image (miniature SRP), aller chercher
+                    #    toutes les photos de la fiche via Selenium
+                    if len(urls) <= 1 and annonce.get("url"):
+                        print(f"[INFO] /telecharger-photos : scraping fiche pour toutes les photos ({seen_id[:8]})")
+                        from src.sources.mobile_de import fetch_images_annonce
+                        scraped = fetch_images_annonce(annonce["url"])
+                        if scraped:
+                            urls = scraped
+                            update_images_urls(seen_id, "\n".join(urls))
+
+                    if not urls:
+                        self._send_json({"ok": False, "error": "Aucune image disponible"})
+                        return
+
                     client_id = annonce.get("client_id")
                     client = get_client_by_id(client_id) if client_id else None
                     save_dir = (_dossier_client(client["nom"]) / "voitures") if client else (_dossier_clients_root() / "_Non classe")
                     save_dir.mkdir(parents=True, exist_ok=True)
 
                     titre_safe = "".join(c for c in (annonce.get("titre") or "annonce") if c.isalnum() or c in " _-")[:40].strip()
-
-                    # Construire la liste des URLs à télécharger
-                    if annonce.get("images_urls"):
-                        urls = [u for u in annonce["images_urls"].split("\n") if u.strip()]
-                    elif annonce.get("image_url"):
-                        urls = [annonce["image_url"]]
-                    else:
-                        urls = []
 
                     nb_ok = 0
                     for idx, img_url in enumerate(urls):

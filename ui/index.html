@@ -2351,7 +2351,7 @@ function renderAnnonce(a, searchId, historique = false) {
         onclick="marquerInteret('${seenIdSafe}','${a.interet === 'oui' ? 'neutre' : 'oui'}','${searchId}')">👍 Intéressé</button>
       <button class="btn-sm btn-non ${a.interet === 'non' ? 'active' : ''}"
         onclick="marquerInteret('${seenIdSafe}','${a.interet === 'non' ? 'neutre' : 'non'}','${searchId}')">👎 Non</button>
-      <button class="btn-sm btn-photos" onclick="_ouvrirPhotos('${seenIdSafe}')">📷 Photos</button>
+      <button class="btn-sm btn-photos" onclick="_telechargerPhotos('${seenIdSafe}')">📷 Télécharger les photos</button>
       ${breakdown ? `<button class="btn-sm btn-detail" onclick="toggleDetail('${seenIdSafe}')">Score</button>` : ''}
       <button class="btn-sm btn-note" onclick="toggleNote('${seenIdSafe}')">${hasNote ? '📝 Note' : '+ Note'}</button>
     </div>
@@ -3005,14 +3005,16 @@ async function _ouvrirPhotos(seenId) {
 
 async function _telechargerPhotos(seenId) {
   try {
+    showToast('⏳ Récupération des photos en cours…', true, 0);
     const r = await fetch(`${API}/telecharger-photos`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({seen_id: seenId})
     }).then(r => r.json());
+    _hideToast();
     if (r.ok) showToast(`📷 ${r.nb} photo${r.nb > 1 ? 's' : ''} sauvegardée${r.nb > 1 ? 's' : ''} → ${r.dossier}`);
     else showToast(r.error || 'Erreur téléchargement photos', false);
-  } catch { showToast('Erreur connexion', false); }
+  } catch { _hideToast(); showToast('Erreur connexion', false); }
 }
 
 function _hideToast() {
