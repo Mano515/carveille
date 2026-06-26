@@ -891,9 +891,9 @@ _JS_LIRE_IMAGES = """
 
 def fetch_images_annonce(url: str) -> list[str]:
     """
-    Visite la fiche détail avec Selenium et retourne toutes les URLs d'images.
-    Scrolle la page pour déclencher le lazy-loading du carrousel.
-    Ouvre une session si aucune n'est active.
+    Visite la fiche détail avec Selenium, récupère le code source complet
+    et extrait toutes les URLs d'images par regex.
+    Les URLs sont dans le payload RSC/JSON de la page, pas dans le DOM rendu.
     """
     session_ouverte_ici = False
     if _session is None:
@@ -902,23 +902,41 @@ def fetch_images_annonce(url: str) -> list[str]:
     driver = _session["driver"]
     try:
         driver.get(url)
-        time.sleep(2.5)
+        time.sleep(3.0)
         if _est_bloquee(driver):
             print(f"  [BLOCK] fetch_images_annonce bloqué sur {url[-60:]}")
             return []
-        # Scroller pour déclencher le lazy-loading des images du carrousel
-        driver.execute_script("window.scrollTo(0, 400);")
-        time.sleep(0.8)
-        driver.execute_script("window.scrollTo(0, 800);")
-        time.sleep(0.8)
-        driver.execute_script("window.scrollTo(0, 0);")
-        time.sleep(0.5)
-        urls = driver.execute_script(_JS_LIRE_IMAGES)
-        print(f"  [IMG] {len(urls or [])} images trouvées sur la fiche")
-        return urls or []
-    except BlockedError:
-        print(f"  [BLOCK] fetch_images_annonce bloqué sur {url[-60:]}")
-        return []
+
+        # Récupérer le source complet (inclut les <script> RSC avec les données)
+        source = driver.page_source
+
+        # Regex large : toutes les URLs des CDN mobile.de dans le source
+        CDN_PATTERN = re.compile(
+            r'https?://(?:img\.mobile\.de|i\.ebayimg\.com|images\.mobile\.de|pic\.classistatic\.de)'
+            r'/[^\s"\'\\,\]>\}]{5,}',
+            re.IGNORECASE
+        )
+        raw = CDN_PATTERN.findall(source)
+
+        # Dédupliquer, nettoyer (supprimer suffixes JSON/HTML parasites), filtrer miniatures
+        THUMB_MARKERS = ('_thumb', '/tn/', '_xs.', '48x48', '100x', '_s.', 'favicon', 'logo', 'icon')
+        seen: set = set()
+        full, thumbs = [], []
+        for u in raw:
+            # Couper au premier caractère non-URL
+            u = re.split(r'["\'\s\\,\]>\}]', u)[0]
+            if u in seen:
+                continue
+            seen.add(u)
+            low = u.lower()
+            if any(m in low for m in THUMB_MARKERS):
+                thumbs.append(u)
+            else:
+                full.append(u)
+
+        result = full if full else thumbs
+        print(f"  [IMG] {len(result)} images trouvées ({len(full)} full, {len(thumbs)} thumbs)")
+        return result
     except Exception as e:
         print(f"  [WARN] fetch_images_annonce : {e}")
         return []
