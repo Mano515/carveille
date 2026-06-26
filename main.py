@@ -331,6 +331,38 @@ def cmd_run(source: str, day: int):
     run(source=source, day=day)
 
 
+def cmd_autorun():
+    """
+    Mode non-interactif : init DB → run mobile.de → exit.
+    Pas de serveur HTTP, pas de navigateur UI.
+    Force UTF-8 sur stdout/stderr pour éviter les erreurs 'charmap' sur Windows
+    quand le process tourne en arrière-plan (sans terminal interactif).
+    """
+    import sys
+    import io
+    # Windows en mode non-interactif utilise 'charmap' par défaut → les caractères
+    # comme € ou les accents lèvent UnicodeEncodeError et font planter le scraping.
+    if hasattr(sys.stdout, 'buffer'):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    if hasattr(sys.stderr, 'buffer'):
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+    from src.database import init_db
+    from src.runner import run
+
+    init_db()
+    print("[AUTO] Démarrage du run mobile.de...", flush=True)
+    try:
+        run(source="mobile.de")
+    except Exception as e:
+        import traceback
+        print(f"[ERR] Run planté : {e}", flush=True)
+        traceback.print_exc()
+        sys.exit(1)
+    print("[AUTO] Run terminé.", flush=True)
+    sys.exit(0)
+
+
 def cmd_ui():
     import http.server
     from src.database import (
@@ -823,14 +855,14 @@ def cmd_ui():
     # Demarrer le planificateur en arriere-plan
     threading.Thread(target=_scheduler_thread, daemon=True).start()
 
-    # Ouvrir Chrome apres un court delai (laisse le temps au serveur de demarrer)
+    # Ouvrir Chrome après un court délai
     def _open_browser():
         time.sleep(1.5)
         _open_chrome(url)
     threading.Thread(target=_open_browser, daemon=True).start()
-
     print(f"[WEB] Carveille demarre sur http://localhost:{port}")
     print("      Fermez cette fenetre pour arreter.")
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -848,8 +880,16 @@ def main():
     run_p.add_argument("--day", type=int, default=1)
     sub.add_parser("ui")
 
+    # --autorun : scrape toutes les recherches actives et s'arrête.
+    # Pas de serveur HTTP, pas de navigateur UI — juste le runner, puis exit.
+    # Conçu pour être appelé par le Planificateur de tâches Windows (en admin).
+    parser.add_argument("--autorun", action="store_true",
+                        help="Lance un run mobile.de sur toutes les recherches actives et quitte")
+
     args = parser.parse_args()
-    if args.cmd == "init":
+    if args.autorun:
+        cmd_autorun()
+    elif args.cmd == "init":
         cmd_init()
     elif args.cmd == "seed":
         cmd_seed()
@@ -858,7 +898,8 @@ def main():
     elif args.cmd == "ui":
         cmd_ui()
     else:
-        parser.print_help()
+        # Pas de sous-commande : mode UI par défaut (double-clic sur le .bat)
+        cmd_ui()
 
 
 if __name__ == "__main__":

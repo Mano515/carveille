@@ -9,8 +9,8 @@ POIDS_DEFAUT = {
 }
 
 # Seuil de notification et nb max d'annonces remontées
-SCORE_MIN_NOTIFICATION = 60
-MAX_ANNONCES = 3
+SCORE_MIN_NOTIFICATION = 50
+MAX_ANNONCES = 10
 
 # Tolérances
 TOLERANCE_PRIX_SOUPLE = 1.05
@@ -166,10 +166,13 @@ FUEL_MOBILE_DE = {
 }
 
 # Aliases finition : termes français → équivalents cherchés dans les titres allemands
-# Utilisés aussi pour construire le mot-clé fd= dans l'URL mobile.de
 FINITION_ALIASES = {
-    "pack m":       ["pack m", "m paket", "m-paket", "m sport", "m-sport", "m sportpaket", "m sport paket"],
-    "m sport":      ["m sport", "m-sport", "m paket", "m-paket", "pack m"],
+    # "m performance" et "m competition" exclus : trop génériques, présents dans
+    # les signatures de concessionnaires ("partenaire BMW M Performance") → faux positifs.
+    "pack m":       ["pack m", "m paket", "m-paket", "m sport", "m-sport", "m sportpaket", "m sport paket",
+                     "m sportpaket+", "m sport pro", "m sport plus", "msport"],
+    "m sport":      ["m sport", "m-sport", "m paket", "m-paket", "pack m", "m sportpaket",
+                     "m sportpaket+", "m sport pro", "msport"],
     "s line":       ["s line", "s-line", "sline"],
     "s-line":       ["s line", "s-line", "sline"],
     "amg line":     ["amg line", "amg-line"],

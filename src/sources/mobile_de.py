@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Scraper mobile.de
 
@@ -12,15 +13,35 @@ import json
 import re
 import time
 import random
+import psutil
 from urllib.parse import urlencode, urljoin, urlparse, parse_qs, urlunparse, quote
 
 from config import (
-    MAKES_MOBILE_DE, MODELS_MOBILE_DE,
+    MAKES_MOBILE_DE, MODELS_MOBILE_DE, FINITION_ALIASES,
     TRANSMISSION_MOBILE_DE, FUEL_MOBILE_DE, CARROSSERIE_MOBILE_DE,
 )
 
+# Mots-clés de titre pour retrouver un modèle dans les titres allemands mobile.de.
+# Ex : "Série 3" → chercher "320", "330", "3er"… car mobile.de affiche "BMW 320d" et pas "Série 3".
+MODEL_TITLE_KEYWORDS = {
+    "Série 1": ["116", "118", "120", "125", "130", "serie 1", "1er"],
+    "Serie 1":  ["116", "118", "120", "125", "130", "serie 1", "1er"],
+    "Série 2": ["218", "220", "225", "230", "serie 2", "2er"],
+    "Serie 2":  ["218", "220", "225", "230", "serie 2", "2er"],
+    "Série 3": ["316", "318", "320", "325", "328", "330", "335", "340", "serie 3", "3er"],
+    "Serie 3":  ["316", "318", "320", "325", "328", "330", "335", "340", "serie 3", "3er"],
+    "Série 4": ["418", "420", "425", "430", "435", "440", "serie 4", "4er"],
+    "Serie 4":  ["418", "420", "425", "430", "435", "440", "serie 4", "4er"],
+    "Série 5": ["518", "520", "523", "525", "528", "530", "535", "540", "serie 5", "5er"],
+    "Série 7": ["730", "735", "740", "745", "750", "serie 7", "7er"],
+    "Classe A": ["a 180", "a 200", "a 220", "a 250", "a-klasse"],
+    "Classe C": ["c 180", "c 200", "c 220", "c 250", "c 300", "c-klasse"],
+    "Classe E": ["e 200", "e 220", "e 250", "e 300", "e 350", "e-klasse"],
+}
+
 BASE_URL = "https://suchen.mobile.de/fahrzeuge/search.html"
 BASE_DETAIL_URL = "https://www.mobile.de"
+LANG_PARAM = ("lang", "fr")
 
 # Progression partagée — lue par main.py via /status
 progression = {"actuel": 0, "total": 0, "etape": ""}
@@ -96,6 +117,7 @@ def _build_url(recherche: dict, marque: str = "", modele: str = "", page: int = 
     if page > 1:
         parts.append(("pgn", page))
 
+    parts.append(LANG_PARAM)
     return f"{BASE_URL}?{urlencode(parts)}"
 
 
@@ -228,7 +250,7 @@ def _url_via_detailsuche(driver, marque: str, modele: str, recherche: dict | Non
                         }
                     }
 
-                    // 2. Élément cliquable avec data-value, data-color, value ou aria-label = couleur
+                    // 2. Ãlément cliquable avec data-value, data-color, value ou aria-label = couleur
                     for (const el of document.querySelectorAll('[data-value],[data-color],[data-testid*="color"],[data-testid*="colour"],[data-testid*="farbe"]')) {
                         const val = (el.getAttribute('data-value') || el.getAttribute('data-color') || '').toUpperCase();
                         const label = (el.getAttribute('aria-label') || el.textContent || '').toLowerCase();
@@ -281,7 +303,7 @@ def _url_via_detailsuche(driver, marque: str, modele: str, recherche: dict | Non
 
         if clicked:
             try:
-                # Attendre que l'URL change — la SPA React met à jour l'URL avec ms=makeId;modelId
+                # Attendre que l'URL change — la SPA React met Ã  jour l'URL avec ms=makeId;modelId
                 WebDriverWait(driver, 10).until(EC.url_changes(url_avant))
                 time.sleep(1.0)
                 result_url = driver.current_url
@@ -290,12 +312,12 @@ def _url_via_detailsuche(driver, marque: str, modele: str, recherche: dict | Non
                 if "search.html" in result_url:
                     return result_url
 
-                # mobile.de met à jour detailsuche avec ms=<makeId>;<modelId> sans naviguer.
+                # mobile.de met Ã  jour detailsuche avec ms=<makeId>;<modelId> sans naviguer.
                 # Extraire ms= et construire l'URL search.html avec ce paramètre natif.
                 qs = parse_qs(urlparse(result_url).query, keep_blank_values=True)
                 ms = qs.get("ms", [None])[0]
                 if ms:
-                    # Récupérer les filtres natifs que detailsuche a ajoutés à l'URL
+                    # Récupérer les filtres natifs que detailsuche a ajoutés Ã  l'URL
                     extra = ""
                     for param in ("ecol", "intCol", "dam"):
                         val = qs.get(param, [None])[0]
@@ -472,7 +494,7 @@ def _parse_dom_listings(driver) -> tuple[list, int]:
                 }
             }
 
-            // Équipements : lignes de la carte qui ne sont pas titre/prix/km/date/ville
+            // Ãquipements : lignes de la carte qui ne sont pas titre/prix/km/date/ville
             const equipLignes = lignes.filter(l =>
                 l.length > 2 && l.length < 100 &&
                 !titleLines.includes(l) &&
@@ -637,28 +659,141 @@ def _couleur_de_vers_fr(texte: str) -> str | None:
     return None
 
 
-def _charger_couleur_depuis_detail(driver, url: str) -> str | None:
+_TITRES_BLOCAGE = ("zugriff verweigert", "access denied", "datadome", "robot", "captcha")
+
+def _est_bloquee(driver) -> bool:
+    """Retourne True si la page actuelle est une page de blocage anti-bot."""
+    titre = (driver.title or "").lower()
+    return any(mot in titre for mot in _TITRES_BLOCAGE)
+
+
+def _detail_execute_script(driver, url: str, js: str, *args):
     """
-    Visite la page détail d'une annonce mobile.de et extrait la couleur
-    via data-testid="color-item". Retourne la couleur en français ou None.
+    Navigue vers `url` (fiche détail) et exécute `js` dans le contexte de la page.
+    Lève BlockedError si mobile.de renvoie une page anti-bot.
+    Le sleep est géré par l'appelant (un seul appel = un seul sleep, évite les doublons).
+    """
+    driver.get(url)
+    # Attente minimale pour laisser la SPA charger son contenu (React/Vue hydration)
+    time.sleep(2.0)
+    if _est_bloquee(driver):
+        raise BlockedError(driver.title)
+    return driver.execute_script(js, *args)
+
+
+class BlockedError(Exception):
+    """Levée quand mobile.de renvoie une page de blocage anti-bot."""
+    pass
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JS injecté dans la fiche détail pour détecter un terme de finition.
+#
+# Stratégie en 3 passes (du plus fiable au moins fiable) :
+#
+#   1. h1 — le titre principal (très stable, jamais du texte vendeur)
+#   2. Éléments <li> courts (< 120 car.) — les équipements sont listés en
+#      puces courtes sur mobile.de ; les descriptions vendeur sont en prose.
+#   3. Page complète (fallback) — mais uniquement sur des lignes courtes
+#      (< 120 car.) pour éviter d'attraper les signatures de concessionnaire
+#      du type "Ihrem Partner für BMW M Performance".
+#
+# Retourne { terme, source, extrait } ou null.
+# ─────────────────────────────────────────────────────────────────────────────
+_JS_CHERCHER_FINITION = """
+    const termes = arguments[0];
+
+    // Cherche un terme dans `texte`. Si trouvé, renvoie { terme, source, extrait }.
+    function match(texte, source) {
+        if (!texte) return null;
+        const t = texte.toLowerCase();
+        for (const terme of termes) {
+            if (t.includes(terme)) {
+                const idx   = t.indexOf(terme);
+                const debut = Math.max(0, idx - 50);
+                const fin   = Math.min(texte.length, idx + terme.length + 50);
+                const extrait = texte.substring(debut, fin).replace(/\\s+/g, ' ').trim();
+                return { terme, source, extrait };
+            }
+        }
+        return null;
+    }
+
+    // Passe 1 : titre h1 (jamais du texte vendeur)
+    const h1 = document.querySelector('h1');
+    const r1 = match(h1 ? h1.innerText : '', 'Titre de la fiche');
+    if (r1) return r1;
+
+    // Passe 2 : éléments <li> courts → les fiches équipement mobile.de
+    // sont structurées en listes de puces, contrairement aux descriptions vendeur.
+    for (const li of document.querySelectorAll('li')) {
+        const txt = (li.innerText || '').trim();
+        if (txt.length > 0 && txt.length < 120) {
+            const r = match(txt, 'Liste equipements');
+            if (r) return r;
+        }
+    }
+
+    // Passe 3 : fallback page complète, mais seulement sur les lignes courtes.
+    // Une ligne > 120 car. est très probablement de la prose (description vendeur,
+    // mention de marque) et non un libellé d'équipement.
+    const lignes = document.body.innerText.split('\\n');
+    for (const ligne of lignes) {
+        const t = ligne.trim();
+        if (t.length > 0 && t.length < 120) {
+            const r = match(t, 'Page complete (ligne courte)');
+            if (r) return r;
+        }
+    }
+
+    return null;
+"""
+
+# JS injecte pour lire la couleur via le data-testid stable de mobile.de.
+_JS_LIRE_COULEUR = """
+    const dt = document.querySelector('[data-testid="color-item"]');
+    if (!dt) return null;
+    const dd = dt.nextElementSibling;
+    return dd ? dd.textContent.trim() : null;
+"""
+
+
+def _chercher_finition_sur_detail(driver, url: str, termes: list[str]) -> tuple[str | None, str | None, bool]:
+    """
+    Visite la fiche détail et cherche les termes de finition dans la page.
+    Retourne (terme_trouvé, citation, bloquée) :
+      - (terme, citation, False) → Pack M trouvé
+      - (None, None, False)     → Pack M absent (fiche lue correctement)
+      - (None, None, True)      → page bloquée par anti-bot (résultat incertain)
     """
     try:
-        driver.get(url)
-        time.sleep(2.5)
-        texte = driver.execute_script("""
-            const dt = document.querySelector('[data-testid="color-item"]');
-            if (!dt) return null;
-            const dd = dt.nextElementSibling;
-            return dd ? dd.textContent.trim() : null;
-        """)
-        couleur = _couleur_de_vers_fr(texte)
-        return couleur
+        result = _detail_execute_script(driver, url, _JS_CHERCHER_FINITION, termes)
+        if result:
+            citation = f"{result['terme']} — {result['source']} : « {result['extrait']} »"
+            return result["terme"], citation, False
+        return None, None, False
+    except BlockedError as e:
+        print(f"      [BLOCK] Anti-bot sur fiche ({url[-50:]}) : {e}")
+        return None, None, True
     except Exception as e:
-        print(f"    [WARN] Couleur détail : {e}")
+        print(f"      [WARN] Fiche inaccessible ({url[-50:]}) : {e}")
+        return None, None, False
+
+
+def _charger_couleur_depuis_detail(driver, url: str) -> str | None:
+    """
+    Visite la fiche detail et extrait la couleur via data-testid="color-item".
+    Retourne la couleur en francais (ex : "noir") ou None si non trouvee.
+    Pas de sleep ici — l'appelant gere le delai.
+    """
+    try:
+        texte = _detail_execute_script(driver, url, _JS_LIRE_COULEUR)
+        return _couleur_de_vers_fr(texte)
+    except Exception as e:
+        print(f"    [WARN] Couleur detail inaccessible ({url[:60]}...) : {e}")
         return None
 
 
-# Mapping couleur français → code mobile.de pour l'URL (extCol) — codes allemands prioritaires
 _COULEUR_FR_TO_CODE = {
     "orange": "ORANGE", "blanc": "WEISS", "noir": "SCHWARZ", "rouge": "ROT",
     "bleu": "BLAU", "vert": "GRUEN", "gris": "GRAU", "argent": "SILBER",
@@ -862,46 +997,68 @@ def ouvrir_session():
         return
 
     import undetected_chromedriver as uc
+    import tempfile
 
-    print("[WEB] Ouverture de Chrome pour le scraping mobile.de...")
+    print("[WEB] Ouverture de Chrome...")
+
+    # Tuer les Chrome orphelins de Carveille (profil carveille_chrome_*)
+    # avant de créer une nouvelle session, pour éviter les conflits de port.
+    try:
+        for proc in psutil.process_iter(['name', 'cmdline']):
+            if 'chrome' in (proc.info['name'] or '').lower():
+                cmdline = ' '.join(proc.info['cmdline'] or [])
+                if 'carveille_chrome_' in cmdline:
+                    proc.kill()
+                    print(f"  [WEB] Chrome orphelin tué (pid {proc.pid})")
+    except Exception as e:
+        print(f"  [WARN] Nettoyage Chrome orphelins : {e}")
 
     options = uc.ChromeOptions()
-    # Pas de --start-minimized : document.visibilityState doit être "visible"
-    # pour passer la détection de mobile.de.
-    # La fenêtre Chrome apparaîtra brièvement pendant le scraping, c'est normal.
+    # Profil isolé dans un dossier temp dédié → évite les conflits avec
+    # Chrome normal de l'utilisateur et les sessions orphelines précédentes.
+    _profile_dir = tempfile.mkdtemp(prefix="carveille_chrome_")
+    options.add_argument(f"--user-data-dir={_profile_dir}")
+    options.add_argument("--no-first-run")
+    options.add_argument("--no-default-browser-check")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--no-sandbox")
+    print(f"  [WEB] Profil Chrome isolé : {_profile_dir}")
 
-    driver = uc.Chrome(options=options, headless=False, use_subprocess=True, version_main=149)
+    # Compter les Chrome avant lancement pour diagnostiquer
+    chromes_avant = [p for p in psutil.process_iter(['name']) if 'chrome' in (p.info['name'] or '').lower()]
+    print(f"  [WEB] Processus Chrome avant lancement : {len(chromes_avant)}")
 
-    # Charger la homepage pour initialiser le domaine (requis avant add_cookie)
-    driver.get("https://www.mobile.de")
-    # Attente plus longue : DataDome peut afficher un challenge JS avant de laisser passer
+    driver = uc.Chrome(options=options, headless=False, use_subprocess=False, version_main=149)
+
+    time.sleep(1)
+    chromes_apres = [p for p in psutil.process_iter(['name']) if 'chrome' in (p.info['name'] or '').lower()]
+    print(f"  [WEB] Processus Chrome après lancement : {len(chromes_apres)}")
+
+    # Charger la homepage en français pour initialiser le domaine
+    driver.get("https://www.mobile.de/?lang=fr")
     time.sleep(5.0)
 
-    # Vérifier si bloqué par DataDome / "Zugriff verweigert" — attendre jusqu'à 20s
+    # Vérifier si bloqué par DataDome / anti-bot
     for _attempt in range(4):
         title = driver.title
         if "verweigert" not in title.lower() and "denied" not in title.lower() and "datadome" not in title.lower():
             break
-        print(f"  [WEB] Challenge détecté (tentative {_attempt+1}/4), attente 5s...")
+        print(f"  [WARN] Anti-bot détecté (tentative {_attempt+1}/4), attente 5s...")
         time.sleep(5.0)
 
-    # Diagnostic : vérifier si la homepage elle-même est bloquée
     title = driver.title
-    src_debut = driver.page_source[:200].replace('\n', ' ')
-    print(f"  [DIAG] Homepage titre : {title!r}")
     if "verweigert" in title.lower() or "denied" in title.lower():
-        print(f"  [WARN] Homepage toujours bloquée après attentes. Continuation quand même.")
+        print(f"  [ERR] Homepage bloquée : {title!r} — continuation quand même")
+    else:
+        print(f"  [OK] Homepage chargée : {title!r}")
 
-    # Accepter le bandeau GDPR (bloque le chargement des annonces sans ça)
     _accepter_cookies_gdpr(driver)
-
-    # Injecter les cookies du vrai Chrome → session authentique
     _injecter_cookies_chrome(driver)
-
     time.sleep(1.0)
 
     _session = {"driver": driver}
-    print("[WEB] Chrome prêt.")
+    print("[OK] Chrome prêt.")
 
 
 def fermer_session():
@@ -1005,7 +1162,7 @@ def _injecter_intercepteur(driver):
 
 
 def _scrape_page(url: str) -> tuple[list, int]:
-    """Scrape une page de résultats avec le driver Chrome déjà ouvert."""
+    """Scrape une page de résultats avec le driver Chrome déjÃ  ouvert."""
     from selenium.webdriver.support.ui import WebDriverWait
 
     if _session is None:
@@ -1047,12 +1204,8 @@ def _scrape_page(url: str) -> tuple[list, int]:
 
         time.sleep(2.0)
 
-        # Diagnostic URL + titre (pour vérifier que la page est un vrai SRP)
         current_url = driver.current_url
         page_title = driver.title
-        print(f"  [DIAG] URL actuelle : {current_url[:120]}")
-        print(f"  [DIAG] Titre page   : {page_title!r}")
-
 
         # Essayer d'abord les données via l'API interceptée ou JS
         api_data = _intercepter_api(driver)
@@ -1064,109 +1217,49 @@ def _scrape_page(url: str) -> tuple[list, int]:
                 if annonces:
                     return annonces, nb_total
             except Exception as e:
-                print(f"  [WARN] Parse API data : {e}")
+                print(f"  [WARN] API parse échouée : {e}")
 
         # Extraire directement depuis le DOM (Next.js App Router — plus de __NEXT_DATA__)
         dom_annonces, dom_total = _parse_dom_listings(driver)
         if dom_annonces:
             first = dom_annonces[0]
-            print(f"  [WEB] DOM parser : {len(dom_annonces)} annonces | ex: titre={first['titre']!r} prix={first['prix']} km={first['km']} annee={first['annee']}")
+            m_sport_count = sum(1 for a in dom_annonces if any(
+                t in (a.get('titre') or '').lower() for t in ['m sport', 'msport', 'm paket', 'm-paket']
+            ))
+            extra = f" dont {m_sport_count} M Sport" if m_sport_count else ""
+            print(f"  [OK] {len(dom_annonces)} annonces extraites{extra} — ex: {first['titre']!r} {int(first['prix'] or 0):,}€ {int(first['km'] or 0):,}km".replace(',', ' '))
             return dom_annonces, dom_total
 
-        # Fallback : parser le HTML complet (pour les pages encore SSR)
+        # Fallback : parser le HTML complet
         html = driver.page_source
         result = _parse_html(html, url)
 
-        # Diagnostic de la structure d'une card (premier appel seulement)
-        if not getattr(_scrape_page, '_diag_card_done', False):
-            _scrape_page._diag_card_done = True
-            try:
-                card_html = driver.execute_script(r"""
-                    const a = document.querySelector('a[href*="details.html?id="]');
-                    if (!a) return 'Pas de lien details';
-                    // Remonter jusqu'à trouver un container avec prix ET km
-                    let card = a;
-                    for (let i = 0; i < 10; i++) {
-                        const p = card.parentElement;
-                        if (!p || p.tagName === 'MAIN' || p.tagName === 'BODY') break;
-                        card = p;
-                        const hasPrice = !!(card.querySelector('[class*="price"],[class*="Price"]'));
-                        const hasMileage = card.innerText.includes(' km');
-                        if (hasPrice && hasMileage) break;
-                    }
-                    return {
-                        html: card.outerHTML.substring(0, 2000),
-                        innerText: card.innerText.substring(0, 300),
-                        priceEl: (card.querySelector('[class*="price"],[class*="Price"]') || {}).outerHTML || 'absent',
-                        titleEl: (card.querySelector('h2,h3,h1,[class*="title"],[class*="Title"]') || {}).innerText || 'absent',
-                    };
-                """)
-                print(f"  [DIAG-CARD] innerText : {str(card_html.get('innerText',''))[:200]!r}")
-                print(f"  [DIAG-CARD] priceEl   : {str(card_html.get('priceEl',''))[:200]}")
-                print(f"  [DIAG-CARD] titleEl   : {str(card_html.get('titleEl',''))[:100]!r}")
-                print(f"  [DIAG-CARD] HTML (2k) : {str(card_html.get('html',''))[:800]}")
-            except Exception as e:
-                print(f"  [DIAG-CARD] Erreur : {e}")
-
-        # Diagnostic si toujours vide
+        # Page vide — diagnostic détaillé uniquement dans ce cas
         if not result[0]:
-            # Afficher les appels API capturés
+            print(f"  [ERR] Aucune annonce extraite — URL: {current_url[:100]!r} | Titre: {page_title!r}")
             try:
                 api_logs = driver.execute_script("return window.__carveille_api_logs__ || []")
-                print(f"  [DIAG] Appels réseau ({len(api_logs)}) :")
-                for log in api_logs[:15]:
-                    print(f"         {log.get('status')} {log.get('url','')[:100]}")
+                if api_logs:
+                    print(f"  [ERR] Appels réseau capturés ({len(api_logs)}) :")
+                    for log in api_logs[:10]:
+                        print(f"        {log.get('status','?')} {log.get('url','')[:100]}")
+            except Exception:
+                pass
+            try:
+                info = driver.execute_script("""
+                    const articles = document.querySelectorAll('article').length;
+                    const prix = document.querySelectorAll('[class*="price"],[class*="Price"]').length;
+                    const liens = Array.from(document.querySelectorAll('a[href]'))
+                        .map(a=>a.href).filter(h=>h.includes('/fahrzeuge/')&&h.includes('/details')).slice(0,3);
+                    return {articles, prix, liens};
+                """)
+                print(f"  [ERR] DOM : {info['articles']} articles, {info['prix']} éléments prix, liens: {info['liens']}")
             except Exception:
                 pass
 
-            info = driver.execute_script("""
-                // Articles et structure DOM
-                const articles = Array.from(document.querySelectorAll('article'));
-                const firstArt = articles[0];
-
-                // Chercher les liens d'annonces (détails véhicule)
-                const liensDetails = Array.from(document.querySelectorAll('a[href]'))
-                    .map(a => a.href)
-                    .filter(h => h.includes('/fahrzeuge/') && h.includes('/details'))
-                    .slice(0, 5);
-
-                // Chercher les éléments avec prix
-                const elsPrix = Array.from(document.querySelectorAll('[class*="price"],[class*="Price"],[data-testid*="price"]'));
-
-                // Chercher les éléments ressemblant à des listing cards
-                const listingEls = Array.from(document.querySelectorAll(
-                    '[class*="listing"],[class*="Listing"],[class*="result-item"],[class*="VehicleCard"],[class*="vehicleCard"],[class*="SearchResult"]'
-                ));
-
-                // data-testids présents dans la page
-                const testids = [...new Set(
-                    Array.from(document.querySelectorAll('[data-testid]'))
-                        .map(el => el.getAttribute('data-testid'))
-                )];
-
-                // Premier article HTML
-                const srp = document.querySelector('[data-testid="srp"]');
-
-                return {
-                    nb_articles: articles.length,
-                    first_article_html: firstArt ? firstArt.outerHTML.substring(0, 800) : 'aucun',
-                    nb_prix: elsPrix.length,
-                    nb_listing_els: listingEls.length,
-                    first_listing_html: listingEls[0] ? listingEls[0].outerHTML.substring(0, 400) : 'aucun',
-                    liens_details: liensDetails,
-                    testids: testids.slice(0, 30),
-                    srp_present: !!srp,
-                };
-            """)
-            print(f"  [DIAG] articles={info['nb_articles']}, prix={info['nb_prix']}, listing_els={info['nb_listing_els']}")
-            print(f"  [DIAG] 1er article : {info['first_article_html'][:400]}")
-            print(f"  [DIAG] 1er listing el : {info['first_listing_html']}")
-            print(f"  [DIAG] Liens détails : {info['liens_details']}")
-            print(f"  [DIAG] testids ({len(info['testids'])}) : {info['testids'][:20]}")
-
         return result
     except Exception as e:
-        print(f"  [ERR] Chrome : {e}")
+        print(f"  [ERR] Scraping page échoué : {e}")
         return [], 0
 
 
@@ -1210,18 +1303,105 @@ def charger(recherche: dict, max_pages: int = 10) -> list:
                     toutes_ids.add(lid)
                     toutes.append(a)
 
-    print(f"  [WEB] Total final : {len(toutes)} annonces")
+    # ── Résumé SRP ────────────────────────────────────────────────────────────
+    # Compte les annonces qui ont déjà la finition dans leur titre SRP
+    # (pas besoin d'aller sur la fiche pour celles-là).
+    m_sport_srp = sum(1 for a in toutes if any(
+        t in (a.get('titre') or '').lower() for t in ['m sport', 'msport', 'm paket', 'm-paket']
+    ))
+    print(f"  [OK] Total : {len(toutes)} annonces uniques — {m_sport_srp} avec M Sport/Paket dans le titre SRP")
+
+    # ── Vérification fiche détail (finition impérative uniquement) ─────────────
+    # Pour les annonces où la finition n'est PAS visible dans la carte SRP
+    # (titre + options_texte), on visite la fiche complète.
+    # On injecte ensuite le terme trouvé dans options_texte pour que scorer_annonce le détecte.
+    finition_r = (recherche.get("finition") or "").strip().lower()
+    if finition_r and recherche.get("finition_imperatif"):
+
+        # Construire la liste de termes à chercher (même logique que scorer_annonce).
+        # Ex : "pack m" → ["pack m", "m paket", "m-paket", "m sport", ...]
+        termes_finition = []
+        for mot in [m.strip() for m in finition_r.split(",") if m.strip()]:
+            termes_finition.extend(FINITION_ALIASES.get(mot, [mot]))
+
+        # Séparer les annonces qui ont déjà la finition de celles qui nécessitent une visite
+        deja_ok = [
+            a for a in toutes
+            if any(t in (a.get("titre") or "").lower() for t in termes_finition)
+            or any(t in (a.get("options_texte") or "").lower() for t in termes_finition)
+        ]
+        candidats_bruts = [a for a in toutes if a not in deja_ok and a.get("url")]
+        # DataDome blackliste la session après ~33 visites séquentielles.
+        # On se limite à 30 fiches max, triées par prix (les moins chères d'abord
+        # = les plus intéressantes si elles ont le Pack M).
+        MAX_DETAIL = 30
+        candidats_bruts.sort(key=lambda a: (a.get("prix") or 999999))
+        candidats = candidats_bruts[:MAX_DETAIL]
+        if len(candidats_bruts) > MAX_DETAIL:
+            print(f"  [WEB] {len(candidats_bruts)} candidats, limité à {MAX_DETAIL} pour éviter le blacklist DataDome")
+
+        print(f"  [WEB] Finition '{finition_r}' : {len(deja_ok)} trouvées dans carte SRP, "
+              f"{len(candidats)} à vérifier sur fiche détail")
+        print(f"  [WEB] Termes recherchés : {', '.join(termes_finition)}")
+
+        trouves_detail = 0
+        bloques = 0
+        delai_base = 4.0  # augmente après chaque blocage
+        # URL de la recherche courante pour les pauses de "reset" anti-bot
+        url_srp = recherche.get("mobile_de_url") or "https://www.mobile.de/?lang=fr"
+
+        for i, a in enumerate(candidats, 1):
+            titre_court = (a.get('titre') or '?')[:55]
+            print(f"    [{i}/{len(candidats)}] Vérif fiche : {titre_court}")
+
+            # Toutes les 25 fiches : retour sur la page de recherche pour casser
+            # le pattern de visite séquentielle détecté par DataDome.
+            if i > 1 and (i - 1) % 25 == 0:
+                print(f"    [WEB] Pause anti-bot : retour SRP après {i-1} fiches...")
+                driver.get(url_srp)
+                time.sleep(random.uniform(8, 15))
+
+            # Délai anti-bot entre chaque fiche (augmente si blocages détectés)
+            time.sleep(random.uniform(delai_base, delai_base + 4.0))
+
+            terme, citation, bloquee = _chercher_finition_sur_detail(driver, a["url"], termes_finition)
+
+            if bloquee:
+                # Retry unique après une longue pause
+                print(f"      [BLOCK] Attente 20s puis retry...")
+                time.sleep(random.uniform(20, 30))
+                terme, citation, bloquee = _chercher_finition_sur_detail(driver, a["url"], termes_finition)
+                if bloquee:
+                    bloques += 1
+                    delai_base = min(delai_base + 2.0, 12.0)  # durcit le délai après échec
+                    a["finition_source"] = "BLOQUÉ"
+                    print(f"      [BLOCK] Toujours bloqué, fiche ignorée (délai porté à {delai_base:.0f}s)")
+                    continue
+
+            if terme:
+                a["options_texte"] = (a.get("options_texte") or "") + f" {terme}"
+                a["finition_source"] = citation
+                trouves_detail += 1
+                print(f"      [OK] Trouvé : {citation[:100]}")
+            else:
+                a["finition_source"] = None
+                print(f"      [--] Non trouvé")
+
+        total_ok = len(deja_ok) + trouves_detail
+        print(f"  [OK] Finition '{finition_r}' confirmée : {total_ok}/{len(toutes)} annonces "
+              f"({len(deja_ok)} carte SRP + {trouves_detail} fiche détail, {bloques} bloquées)")
+
     return toutes
 
 
 def _scraper_url(driver, base_url: str, max_pages: int) -> list:
     """Scrape une URL directe (mobile_de_url fourni manuellement), sans filtre UI."""
-    print(f"  [WEB] Scraping : {base_url[:80]}...")
+    print(f"  [WEB] URL directe : {base_url[:80]}...")
     annonces_p1, nb_total = _scrape_page(base_url)
     if not annonces_p1:
-        print("  [WEB] Total scrape : 0 annonces")
+        print(f"  [ERR] Aucune annonce page 1 — abandon")
         return []
-    print(f"  [WEB] Page 1 : {len(annonces_p1)} annonces ({nb_total} au total)")
+    print(f"  [OK] Page 1 : {len(annonces_p1)} annonces ({nb_total} au total)")
     toutes = list(annonces_p1)
     page_num = 2
     while len(toutes) < nb_total and page_num <= max_pages:
@@ -1229,9 +1409,9 @@ def _scraper_url(driver, base_url: str, max_pages: int) -> list:
         time.sleep(random.uniform(2.0, 3.5))
         annonces, _ = _scrape_page(url_page)
         if not annonces:
+            print(f"  [WARN] Page {page_num} vide — arrêt")
             break
         toutes.extend(annonces)
-        print(f"  [WEB] Page {page_num} : {len(annonces)} annonces")
         page_num += 1
     return toutes
 
@@ -1248,14 +1428,14 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
     if marque:
         base_url = _url_via_detailsuche(driver, marque, modele, recherche)
         if base_url:
-            # Ajouter les filtres supplémentaires (couleur, prix, km, etc.) à l'URL retournée
+            # Ajouter les filtres supplémentaires (couleur, prix, km, etc.) Ã  l'URL retournée
             parsed = urlparse(base_url)
             qs = parse_qs(parsed.query, keep_blank_values=True)
             extra = _build_url(recherche, page=1)
             extra_parsed = urlparse(extra)
             extra_qs = parse_qs(extra_parsed.query, keep_blank_values=True)
             # Fusionner : garder les params detailsuche, ajouter ceux de _build_url qui manquent
-            # Ignorer extCol si detailsuche a déjà ajouté ecol (même filtre, nom natif prioritaire)
+            # Ignorer extCol si detailsuche a déjÃ  ajouté ecol (même filtre, nom natif prioritaire)
             skip = {"mk", "mo", "s", "vc", "isSearchRequest"}
             if "ecol" in qs:
                 skip.add("extCol")
@@ -1274,9 +1454,9 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
 
     annonces_p1, nb_total = _scrape_page(base_url)
     if not annonces_p1:
-        print("  [WEB] 0 annonces")
+        print(f"  [ERR] Aucune annonce page 1 — abandon")
         return []
-    print(f"  [WEB] Page 1 : {len(annonces_p1)} annonces ({nb_total} au total)")
+    print(f"  [OK] Page 1 : {len(annonces_p1)} annonces ({nb_total} au total sur mobile.de)")
     toutes = list(annonces_p1)
     page_num = 2
     while len(toutes) < nb_total and page_num <= max_pages:
@@ -1284,55 +1464,60 @@ def _scraper_avec_filtre(driver, recherche: dict, marque: str, modele: str, max_
         time.sleep(random.uniform(2.0, 3.5))
         annonces, _ = _scrape_page(url_page)
         if not annonces:
+            print(f"  [WARN] Page {page_num} vide — arrêt de la pagination")
             break
         toutes.extend(annonces)
-        print(f"  [WEB] Page {page_num} : {len(annonces)} annonces")
         page_num += 1
 
-    print(f"  [WEB] Total scrape : {len(toutes)} annonces (avant filtre client)")
+    m_sport_total = sum(1 for a in toutes if any(
+        t in (a.get('titre') or '').lower() for t in ['m sport', 'msport', 'm paket', 'm-paket']
+    ))
+    print(f"  [OK] {len(toutes)} annonces scrappées sur {nb_total} disponibles — {m_sport_total} avec M Sport dans le titre")
 
     if marque:
         marque_lower = marque.strip().lower()
         avant = len(toutes)
-        # La marque est toujours filtrée côté client — contrainte dure, pas un critère de score.
-        # mobile.de peut ignorer mk= ou mk=<id> selon son humeur ; on ne fait pas confiance à l'URL.
         toutes = [a for a in toutes if marque_lower in (a.get("titre") or "").lower()]
-        print(f"  [WEB] Filtre marque '{marque}' : {len(toutes)} annonces (sur {avant})")
+        if len(toutes) < avant:
+            print(f"  [OK] Filtre marque '{marque}' : {len(toutes)}/{avant}")
+        else:
+            print(f"  [OK] Filtre marque '{marque}' : toutes les annonces correspondent ({avant})")
 
         if modele:
-            modele_lower = modele.strip().lower()
             avant2 = len(toutes)
-            toutes = [a for a in toutes if modele_lower in (a.get("titre") or "").lower()]
-            print(f"  [WEB] Filtre modèle '{modele}' : {len(toutes)} annonces (sur {avant2})")
+            keywords = MODEL_TITLE_KEYWORDS.get(modele, [modele.strip().lower()])
+            toutes = [a for a in toutes if any(kw in (a.get("titre") or "").lower() for kw in keywords)]
+            if len(toutes) < avant2:
+                print(f"  [OK] Filtre modèle '{modele}' : {len(toutes)}/{avant2}")
+            elif avant2 == 0:
+                print(f"  [WARN] Filtre modèle '{modele}' : 0 annonces en entrée")
+            else:
+                print(f"  [OK] Filtre modèle '{modele}' : toutes correspondent ({avant2})")
 
     # Filtre couleur côté client quand impératif
     couleur_imp = recherche.get("couleur_imperatif") and recherche.get("couleur")
     if couleur_imp:
         couleurs_voulues = [c.strip().lower() for c in recherche["couleur"].split(",") if c.strip()]
 
-        # Récupérer la couleur depuis la page détail pour toutes les annonces sans couleur connue
         sans_couleur = [a for a in toutes if not a.get("couleur") and a.get("url")]
         if sans_couleur:
-            print(f"  [WEB] Récupération couleur depuis pages détail ({len(sans_couleur)} annonces)...")
+            print(f"  [WEB] Récupération couleur sur {len(sans_couleur)} fiches détail...")
             progression["total"] = len(sans_couleur)
             progression["actuel"] = 0
             progression["etape"] = "couleur"
             for i, ann in enumerate(sans_couleur, 1):
+                # Sleep AVANT : SPA render + rate-limit anti-bot (un seul sleep)
+                time.sleep(random.uniform(2.5, 4.0))
                 couleur = _charger_couleur_depuis_detail(driver, ann["url"])
                 ann["couleur"] = couleur or ""
                 statut = couleur or "inconnue"
-                print(f"    [{i}/{len(sans_couleur)}] {ann.get('titre','?')} → {statut}")
+                print(f"    [{i}/{len(sans_couleur)}] {ann.get('titre','?')[:50]} → couleur: {statut}")
                 progression["actuel"] = i
-                if i < len(sans_couleur):
-                    time.sleep(random.uniform(1.5, 2.5))
             progression["etape"] = ""
 
-        # Filtre strict : seules les annonces de la bonne couleur passent
         avant_c = len(toutes)
-        toutes = [a for a in toutes if
-                  any(cv in (a.get("couleur") or "") for cv in couleurs_voulues)]
-        eliminees = avant_c - len(toutes)
-        print(f"  [WEB] Filtre couleur '{recherche['couleur']}' : {len(toutes)} gardées, {eliminees} exclues")
+        toutes = [a for a in toutes if any(cv in (a.get("couleur") or "") for cv in couleurs_voulues)]
+        print(f"  [OK] Filtre couleur '{recherche['couleur']}' : {len(toutes)} gardées, {avant_c - len(toutes)} exclues")
 
     return toutes
 

@@ -254,6 +254,7 @@ button:hover { opacity: .88; }
 .tag-baisse { background: #fff7ed; color: #c2410c; font-weight: 700; border-color: #fed7aa; }
 .tag-rejet { background: var(--c-danger-light); color: #b91c1c; border-color: #fecaca; }
 .tag-inondation { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; font-weight: 600; }
+.tag-imperatif-ok { background: #dcfce7; color: #15803d; border-color: #86efac; font-weight: 700; }
 
 .annonce-actions {
   display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
@@ -299,9 +300,12 @@ button:hover { opacity: .88; }
 
 .score-breakdown { display: none; padding: 10px 20px 14px; border-top: 1px solid var(--c-border); background: var(--c-bg); }
 .score-breakdown.open { display: block; }
-.score-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; margin-bottom: 6px; }
+.score-row { display: grid; grid-template-columns: 100px 1fr 50px; align-items: center; column-gap: 8px; font-size: 0.8rem; margin-bottom: 6px; cursor: default; }
+.score-sub { grid-column: 1 / -1; font-size: 0.72rem; color: var(--c-text-muted); margin-top: 2px; padding-left: 2px; display: none; }
+.score-sub strong { color: var(--c-text); font-weight: 600; }
+.score-row:hover .score-sub { display: block; }
 .score-label {
-  width: 140px; color: var(--c-text-muted); flex-shrink: 0; font-size: 0.75rem;
+  color: var(--c-text-muted); flex-shrink: 0; font-size: 0.75rem;
   position: relative; cursor: default;
 }
 .score-label[data-tooltip]::after {
@@ -724,6 +728,7 @@ html[data-theme="dark"] .tag-new { background: #14401a; color: #4ade80; }
 html[data-theme="dark"] .tag-fresh { background: #3d1f00; color: #fb923c; }
 html[data-theme="dark"] .tag-baisse { background: #3d1f00; color: #fb923c; }
 html[data-theme="dark"] .tag-rejet { background: #3d0a0a; color: #f87171; }
+html[data-theme="dark"] .tag-imperatif-ok { background: #052e16; color: #4ade80; border-color: #166534; }
 html[data-theme="dark"] .tag-inondation { background: #0a1f3d; color: #60a5fa; border-color: #1e40af; }
 html[data-theme="dark"] .tag-source { background: #2d1e50; color: #a78bfa; }
 html[data-theme="dark"] .rech-count { background: #1e2545; color: #5c9ef7; }
@@ -2196,33 +2201,60 @@ async function lancerRunUne(searchId, nom, btn) {
 
 // ── Resultats ──────────────────────────────────────────────────────────────────
 
-function renderBreakdown(detailJson) {
-  let d;
-  try { d = JSON.parse(detailJson); } catch { return ''; }
+function renderBreakdown(d) {
+  if (!d || typeof d !== 'object') return '';
   const defs = [
-    { key:'prix',       label:'Prix',              title:'Rapport entre le prix demandé et votre budget max' },
-    { key:'km',         label:'Kilométrage',        title:'Kilométrage du véhicule — moins c\'est mieux' },
-    { key:'annee',      label:'Année',              title:'Année de 1ère immatriculation — plus récente, mieux c\'est' },
-    { key:'boite',      label:'Boîte de vitesses',  title:'Automatique ou manuelle, selon votre préférence' },
-    { key:'carburant',  label:'Carburant',          title:'Type de carburant (diesel, essence, hybride, électrique)' },
-    { key:'options',    label:'Options',            title:'Options souhaitées trouvées dans l\'annonce' },
-    { key:'penalite',   label:'Pénalité',           title:'Malus appliqué si un critère impératif n\'est pas respecté (ex : mauvaise couleur)' },
-    { key:'fraicheur',  label:'Fraîcheur',          title:'Bonus pour les annonces mises en ligne récemment (moins de quelques jours)' },
-    { key:'inondation', label:'Zone inondable',     title:'Malus si le vendeur est situé dans une zone à risque d\'inondation' },
+    { key:'prix',       label:'Prix' },
+    { key:'km',         label:'Kilométrage' },
+    { key:'km_an',      label:'Usage annuel' },
+    { key:'annee',      label:'Année' },
+    { key:'boite',      label:'Boîte' },
+    { key:'carburant',  label:'Carburant' },
+    { key:'carrosserie',label:'Carrosserie' },
+    { key:'finition',   label:'Finition' },
+    { key:'options',    label:'Options' },
+    { key:'couleur',    label:'Couleur' },
+    { key:'fraicheur',  label:'Fraîcheur' },
+    { key:'inondation', label:'Zone inondable' },
+    { key:'penalite',   label:'Pénalité' },
   ];
-  return defs.map(({ key, label, title }) => {
+  return defs.map(({ key, label }) => {
     const item = d[key];
     if (!item) return '';
-    const score = item.score || 0, max = item.max || 0;
-    if (max === 0 && score === 0) return '';
+    const score = item.score ?? 0, max = item.max ?? 0;
+    if (max === 0 && score === 0 && !item.note && !item.trouve) return '';
     const pct   = max > 0 ? Math.round((score / max) * 100) : 0;
-    const color = key === 'penalite' ? '#c62828' : key === 'fraicheur' ? '#ef6c00' : scoreColor(pct);
+    const isNeg = score < 0;
+    const color = isNeg ? '#c62828' : key === 'fraicheur' ? '#ef6c00' : scoreColor(pct);
     const val   = max > 0 ? `${score}/${max}` : `${score > 0 ? '+' : ''}${score}`;
-    const barW  = max > 0 ? pct : Math.min(Math.abs(score) * 4, 100);
+    const barW  = max > 0 ? pct : Math.min(Math.abs(score) * 10, 100);
+
+    // Build sub-line: cherche → trouve or note
+    let sub = '';
+    if (item.cherche && item.trouve) {
+      const match = item.cherche === 'indifférent' || (item.note ? false : true);
+      const arrow = item.note ? '≠' : '→';
+      const srcLine = (key === 'finition' && item.source) ? `<br><em>Trouvé dans : ${item.source}</em>` : '';
+      sub = `<span class="score-sub">${item.cherche} ${arrow} <strong>${item.trouve}</strong>${item.note ? ` — ${item.note}` : ''}${srcLine}</span>`;
+    } else if (item.note) {
+      sub = `<span class="score-sub">${item.note}</span>`;
+    } else if (key === 'fraicheur' && item.age) {
+      sub = `<span class="score-sub">Publiée il y a ${item.age}</span>`;
+    } else if (key === 'inondation' && item.risque && item.ville) {
+      sub = `<span class="score-sub">⚠ ${item.ville}</span>`;
+    } else if (key === 'options' && item.presentes) {
+      const parts = [];
+      if (item.presentes.length) parts.push(`✓ ${item.presentes.join(', ')}`);
+      if (item.absentes && item.absentes.length) parts.push(`✗ ${item.absentes.join(', ')}`);
+      if (item.imperatives_manquantes && item.imperatives_manquantes.length) parts.push(`⛔ impératif : ${item.imperatives_manquantes.join(', ')}`);
+      if (parts.length) sub = `<span class="score-sub">${parts.join(' · ')}</span>`;
+    }
+
     return `<div class="score-row">
-      <span class="score-label" data-tooltip="${title}">${label}</span>
+      <span class="score-label">${label}</span>
       <div class="score-bar-bg"><div class="score-bar-fill" style="width:${barW}%;background:${color}"></div></div>
-      <span class="score-val">${val}</span>
+      <span class="score-val" style="color:${color}">${val}</span>
+      ${sub}
     </div>`;
   }).join('');
 }
@@ -2243,15 +2275,14 @@ function renderAnnonce(a, searchId, historique = false) {
   const prixBaisseStr = baisse ? `<span class="prix-baisse">↓ -${Math.round(a.baisse_prix).toLocaleString('fr')} €</span>` : '';
   const anneeStr  = a.date_immat || (a.annee ? String(a.annee) : '');
   const kmStr     = a.km ? Math.round(a.km).toLocaleString('fr') + ' km' : '';
-  const breakdown = renderBreakdown(a.score_detail || '');
+  const breakdown = renderBreakdown(a._sd);
   const seenIdSafe = (a.seen_id || '').replace(/'/g, "\\'");
 
   const sourceBadge = historique && a.nom_recherche
     ? `<span class="tag tag-source">&#128269; ${a.nom_recherche}</span>` : '';
   const doublonBadge = (a.autres_clients && a.autres_clients.length)
     ? `<span class="badge-doublon">⚠ Vu aussi : ${a.autres_clients.join(', ')}</span>` : '';
-  let zoneInondable = false;
-  try { zoneInondable = JSON.parse(a.score_detail || '{}')?.inondation?.risque === true; } catch {}
+  const zoneInondable = (a._sd || {})?.inondation?.risque === true;
 
   const thumbUrls = a.images_urls ? a.images_urls.split('\n').filter(Boolean) : (a.image_url ? [a.image_url] : []);
   const thumbHtml = thumbUrls.length
@@ -2274,10 +2305,19 @@ function renderAnnonce(a, searchId, historique = false) {
     i === 0 ? s : `<span class="sep">·</span>${s}`
   ).join('');
 
-  // Badges de statut (seulement les alertes)
+  // Critères impératifs validés — utilise a._sd déjà parsé par _afficherResultats
+  let imperatifsOk = [];
+  const sd = a._sd || {};
+  if (sd.finition?.cherche && sd.finition.trouve && sd.finition.trouve !== 'non trouvé') {
+    const src = sd.finition.source ? ` (${sd.finition.source})` : '';
+    imperatifsOk.push(`✔ ${sd.finition.cherche.toUpperCase()} confirmé${src}`);
+  }
+
+  // Badges de statut
   const statusBadges = [
     sourceBadge,
-    a.est_nouvelle ? '<span class="tag tag-new" title="Carveille n\'avait pas encore vu cette annonce — elle peut avoir été postée il y a plusieurs jours sur mobile.de">🆕 Nouvelle pour Carveille</span>' : '',
+    ...imperatifsOk.map(t => `<span class="tag tag-imperatif-ok">${t}</span>`),
+    a.est_nouvelle ? '<span class="tag tag-new" title="Carveille n\'avait pas encore vu cette annonce">🆕 Nouvelle</span>' : '',
     ageBadge(a.date_publication),
     baisse        ? `<span class="tag tag-baisse">↓ Baisse de prix</span>` : '',
     zoneInondable ? '<span class="tag tag-inondation">🌊 Zone inondable</span>' : '',
@@ -2404,28 +2444,43 @@ async function voirResultats(searchId, nom) {
 }
 
 function _afficherResultats(nom) {
-  const texte = (document.getElementById('filtre-texte')?.value || '').toLowerCase();
+  // Parser score_detail UNE SEULE FOIS par annonce (pas à chaque keypress).
+  // On stocke le résultat parsé dans a._sd pour les filtres et le rendu.
+  for (const a of _resultatsData) {
+    if (!a._sd) {
+      try { a._sd = JSON.parse(a.score_detail || '{}'); }
+      catch { a._sd = {}; }
+    }
+  }
+
+  const texte   = (document.getElementById('filtre-texte')?.value || '').toLowerCase();
   const prixMax = parseFloat(document.getElementById('filtre-prix-max')?.value) || Infinity;
-  const kmMax = parseFloat(document.getElementById('filtre-km-max')?.value) || Infinity;
+  const kmMax   = parseFloat(document.getElementById('filtre-km-max')?.value) || Infinity;
+
+  const textOk    = a => !texte || (a.titre||'').toLowerCase().includes(texte) || (a.ville||'').toLowerCase().includes(texte);
+  const prixOk    = a => prixMax === Infinity || (a.prix && a.prix <= prixMax);
+  const kmOk      = a => kmMax  === Infinity || (a.km  && a.km  <= kmMax);
+
+  // Filtre finition : si une finition impérative est configurée (fin.cherche présent),
+  // on n'affiche que les annonces où elle est confirmée. Si pas de finition requise → tout passe.
+  const finitionOk = a => {
+    const fin = a._sd?.finition;
+    if (!fin?.cherche) return true;
+    return fin.trouve && fin.trouve !== 'non trouvé';
+  };
+
   const filtered = _resultatsData
-    .filter(a =>
-      (a.score || 0) >= 70 &&
-      !a.raison_rejet &&
-      (!texte || (a.titre||'').toLowerCase().includes(texte) || (a.ville||'').toLowerCase().includes(texte)) &&
-      (prixMax === Infinity || (a.prix && a.prix <= prixMax)) &&
-      (kmMax === Infinity || (a.km && a.km <= kmMax))
-    )
+    .filter(a => finitionOk(a) && textOk(a) && prixOk(a) && kmOk(a))
     .sort((a, b) => (b.score || 0) - (a.score || 0));
-  const nbRejet = _resultatsData.filter(a => a.raison_rejet).length;
-  const nbBas   = _resultatsData.filter(a => !a.raison_rejet && (a.score || 0) < 70).length;
-  const hidden  = nbRejet + nbBas;
+
+  // Note sur les annonces masquées : lire le nom de la finition depuis les données
+  const nbMasques = _resultatsData.filter(a => !finitionOk(a)).length;
+  const finitionCherchee = _resultatsData.find(a => a._sd?.finition?.cherche)?._sd?.finition?.cherche || 'finition';
   const el = document.getElementById('resultats-content');
   const nom2 = nom || currentSearchNom;
-  const hiddenParts = [
-    nbRejet > 0 ? `${nbRejet} exclue${nbRejet > 1 ? 's' : ''} (critères impératifs)` : '',
-    nbBas   > 0 ? `${nbBas} sous 70 pts` : '',
-  ].filter(Boolean).join(', ');
-  const hiddenNote = hidden > 0 ? `<span style="font-size:0.75rem;color:var(--c-text-subtle);margin-left:8px">(${hiddenParts} masquée${hidden > 1 ? 's' : ''})</span>` : '';
+  const hiddenNote = nbMasques > 0
+    ? `<span style="font-size:0.75rem;color:var(--c-text-subtle);margin-left:8px">(${nbMasques} sans ${finitionCherchee} masquée${nbMasques > 1 ? 's' : ''})</span>`
+    : '';
   el.innerHTML = `<div class="resultats-header">
     <span class="resultats-title">${nom2}</span>
     <span class="resultats-count">${filtered.length} annonce${filtered.length > 1 ? 's' : ''}${hiddenNote}</span>

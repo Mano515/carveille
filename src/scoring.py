@@ -111,23 +111,21 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
         score_prix = round(p_prix * 0.78, 1)    # raisonnable
     else:
         score_prix = round(p_prix * 0.65, 1)    # proche du budget max
-    detail["prix"] = {"score": score_prix, "max": p_prix}
+    if prix is None:
+        detail["prix"] = {"score": score_prix, "max": p_prix, "trouve": "inconnu", "note": "Prix non renseigné"}
+    else:
+        budget_str = f"≤ {int(budget_max):,}€".replace(",", " ") if budget_max else "libre"
+        detail["prix"] = {"score": score_prix, "max": p_prix, "trouve": f"{int(prix):,}€".replace(",", " "), "cherche": budget_str}
 
     # ── Kilométrage ────────────────────────────────────────────────────────────
-    # Score absolu TOUJOURS actif : une voiture à 250 000 km reste risquée
-    # même si le critère km_max n'est pas renseigné.
     if km is None:
-        # Km non renseigné : suspicion (info potentiellement cachée)
         score_km = round(p_km * 0.20, 1)
-        detail["km"] = {"score": score_km, "max": p_km, "note": "non renseigné"}
+        detail["km"] = {"score": score_km, "max": p_km, "trouve": "inconnu", "note": "Kilométrage non renseigné"}
     else:
         score_km_abs = _score_km_absolu(km, p_km)
-
         if km > 200_000 and not raison_rejet:
             raison_rejet = f"Kilométrage très élevé : {km:.0f} km"
-
         if km_max is not None:
-            # Score relatif au critère
             if km > km_max * 1.10:
                 score_km_rel = 0
                 if not raison_rejet:
@@ -140,25 +138,23 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
                 score_km_rel = round(p_km * 0.88, 1)
             else:
                 score_km_rel = round(p_km * 0.72, 1)
-            # Le plus strict des deux s'applique
             score_km = min(score_km_abs, score_km_rel)
         else:
             score_km = score_km_abs
-        detail["km"] = {"score": score_km, "max": p_km}
+        km_str = f"{int(km):,} km".replace(",", " ")
+        cherche_km = f"≤ {int(km_max):,} km".replace(",", " ") if km_max else "libre"
+        detail["km"] = {"score": score_km, "max": p_km, "trouve": km_str, "cherche": cherche_km}
 
     # ── Année ─────────────────────────────────────────────────────────────────
-    # Score absolu TOUJOURS actif : une voiture de 2008 est objectivement vieille.
     if annee is None:
         score_annee = round(p_annee * 0.25, 1)
-        detail["annee"] = {"score": score_annee, "max": p_annee, "note": "non renseignée"}
+        detail["annee"] = {"score": score_annee, "max": p_annee, "trouve": "inconnu", "note": "Année non renseignée"}
     else:
-        # Bloquer les années manifestement fausses (scraping artifact)
         if annee > annee_actuelle or annee < 1980:
             score_annee = 0
-            detail["annee"] = {"score": 0, "max": p_annee, "note": "année invalide"}
+            detail["annee"] = {"score": 0, "max": p_annee, "trouve": str(annee), "note": "Année invalide"}
         else:
             score_annee_abs = _score_annee_absolue(annee, p_annee)
-
             if annee_min is not None:
                 if annee >= annee_min:
                     score_annee_rel = p_annee
@@ -173,112 +169,132 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
                 score_annee = min(score_annee_abs, score_annee_rel)
             else:
                 score_annee = score_annee_abs
-            detail["annee"] = {"score": score_annee, "max": p_annee}
+            cherche_annee = f"≥ {annee_min}" if annee_min else "libre"
+            detail["annee"] = {"score": score_annee, "max": p_annee, "trouve": str(annee), "cherche": cherche_annee}
 
     # ── Kilométrage annuel (km/an) ─────────────────────────────────────────────
-    # Si km et année connus, on peut estimer l'usage annuel.
-    # Un taxi fait 80 000 km/an, une voiture "normale" 12-15 000 km/an.
     bonus_km_an = 0
+    note_km_an = ""
     if km is not None and annee is not None and annee < annee_actuelle and annee >= 1980:
         age_ans = max(1, annee_actuelle - annee)
         km_an = km / age_ans
         if km_an <= 8_000:
-            bonus_km_an = 4    # très peu roulée (retraité, collection)
+            bonus_km_an = 4
+            note_km_an = f"{int(km_an):,} km/an — très peu roulée".replace(",", " ")
         elif km_an <= 15_000:
-            bonus_km_an = 1    # usage normal
+            bonus_km_an = 1
+            note_km_an = f"{int(km_an):,} km/an — usage normal".replace(",", " ")
         elif km_an <= 25_000:
-            bonus_km_an = -3   # usage élevé (commercial ?)
+            bonus_km_an = -3
+            note_km_an = f"{int(km_an):,} km/an — usage élevé".replace(",", " ")
         else:
-            bonus_km_an = -7   # usage intensif (taxi, livreur)
-    detail["km_an"] = {"score": bonus_km_an, "max": 4}
+            bonus_km_an = -7
+            note_km_an = f"{int(km_an):,} km/an — usage intensif".replace(",", " ")
+    detail["km_an"] = {"score": bonus_km_an, "max": 4, "note": note_km_an}
 
     # ── Boîte de vitesses ─────────────────────────────────────────────────────
     boite_list = [b.strip() for b in boite_r.split(",") if b.strip() and b.strip() != "indifferent"]
     if not boite_list or boite_r in ("indifferent", ""):
         score_boite = p_boite
+        detail["boite"] = {"score": score_boite, "max": p_boite, "cherche": "indifférent", "trouve": boite_a or "inconnu"}
     elif not boite_a:
         score_boite = round(p_boite * 0.40, 1)
+        detail["boite"] = {"score": score_boite, "max": p_boite, "cherche": "/".join(boite_list), "trouve": "inconnu", "note": "Non renseignée dans l'annonce"}
     elif boite_a in boite_list:
         score_boite = p_boite
+        detail["boite"] = {"score": score_boite, "max": p_boite, "cherche": "/".join(boite_list), "trouve": boite_a}
     else:
         score_boite = 0
-    detail["boite"] = {"score": score_boite, "max": p_boite}
+        detail["boite"] = {"score": score_boite, "max": p_boite, "cherche": "/".join(boite_list), "trouve": boite_a, "note": "Ne correspond pas"}
 
     # ── Carburant ─────────────────────────────────────────────────────────────
     carburant_list = [c.strip() for c in carburant_r.split(",") if c.strip() and c.strip() != "indifferent"]
     if not carburant_list or carburant_r in ("indifferent", ""):
         score_carburant = p_carburant
+        detail["carburant"] = {"score": score_carburant, "max": p_carburant, "cherche": "indifférent", "trouve": carburant_a or "inconnu"}
     elif not carburant_a:
-        score_carburant = round(p_carburant * 0.40, 1)  # inconnu : score partiel
-    elif any(
-        carburant_a == c or (c == "hybride" and carburant_a.startswith("hybride"))
-        for c in carburant_list
-    ):
+        score_carburant = round(p_carburant * 0.40, 1)
+        detail["carburant"] = {"score": score_carburant, "max": p_carburant, "cherche": "/".join(carburant_list), "trouve": "inconnu", "note": "Non renseigné dans l'annonce"}
+    elif any(carburant_a == c or (c == "hybride" and carburant_a.startswith("hybride")) for c in carburant_list):
         score_carburant = p_carburant
+        detail["carburant"] = {"score": score_carburant, "max": p_carburant, "cherche": "/".join(carburant_list), "trouve": carburant_a}
     else:
         score_carburant = 0
-    detail["carburant"] = {"score": score_carburant, "max": p_carburant}
+        detail["carburant"] = {"score": score_carburant, "max": p_carburant, "cherche": "/".join(carburant_list), "trouve": carburant_a, "note": "Ne correspond pas"}
 
     # ── Vendeur ───────────────────────────────────────────────────────────────
     if vendeur_r in ("indifferent", ""):
         score_vendeur = 0
+        detail["vendeur"] = {"score": 0, "max": 0}
     elif vendeur_a == vendeur_r:
         score_vendeur = 0
+        detail["vendeur"] = {"score": 0, "max": 0, "cherche": vendeur_r, "trouve": vendeur_a}
     else:
         score_vendeur = -3
-    detail["vendeur"] = {"score": score_vendeur, "max": 0}
+        detail["vendeur"] = {"score": -3, "max": 0, "cherche": vendeur_r, "trouve": vendeur_a or "inconnu", "note": "Type de vendeur différent"}
 
     # ── Couleur (impératif uniquement) ────────────────────────────────────────
     couleur_list = [c.strip() for c in couleur_r.split(",") if c.strip()]
     couleur_a = (annonce.get("couleur") or "").lower()
     if couleur_imperatif and couleur_list:
         if any(c in couleur_a for c in couleur_list):
-            malus_couleur = 0    # bonne couleur confirmée
+            malus_couleur = 0
+            detail["couleur"] = {"score": 0, "max": 0, "cherche": "/".join(couleur_list), "trouve": couleur_a}
         elif not couleur_a:
-            malus_couleur = -5   # couleur non récupérable (page détail inaccessible)
+            malus_couleur = -5
+            detail["couleur"] = {"score": -5, "max": 0, "cherche": "/".join(couleur_list), "trouve": "inconnu", "note": "Couleur non détectée"}
         else:
-            malus_couleur = -40  # mauvaise couleur (ne devrait pas passer le filtre)
+            malus_couleur = -40
+            detail["couleur"] = {"score": -40, "max": 0, "cherche": "/".join(couleur_list), "trouve": couleur_a, "note": "Mauvaise couleur"}
     else:
         malus_couleur = 0
-    detail["couleur"] = {"score": malus_couleur, "max": 0}
+        detail["couleur"] = {"score": 0, "max": 0}
 
     # ── Carrosserie ───────────────────────────────────────────────────────────
     carrosserie_list = [c.strip() for c in carrosserie_r.split(",") if c.strip()]
     if not carrosserie_list:
         score_carrosserie = 0
+        detail["carrosserie"] = {"score": 0, "max": 3}
     elif not carrosserie_a:
         score_carrosserie = 0
+        detail["carrosserie"] = {"score": 0, "max": 3, "cherche": "/".join(carrosserie_list), "trouve": "inconnu"}
     elif carrosserie_a in carrosserie_list:
         score_carrosserie = 3
+        detail["carrosserie"] = {"score": 3, "max": 3, "cherche": "/".join(carrosserie_list), "trouve": carrosserie_a}
     else:
         score_carrosserie = -5
-    detail["carrosserie"] = {"score": score_carrosserie, "max": 3}
+        detail["carrosserie"] = {"score": -5, "max": 3, "cherche": "/".join(carrosserie_list), "trouve": carrosserie_a, "note": "Ne correspond pas"}
 
     # ── Options / mots-clés ───────────────────────────────────────────────────
     mots_cles = [m.strip().lower() for m in options_r.split(",") if m.strip()]
     imperatives = [m.strip().lower() for m in options_imp_r.split(",") if m.strip()]
-    # Matériaux et couleur intérieure : ajoutés comme mots-clés bonus dans options_texte
     mat_list = [m.strip().lower() for m in materiaux_r.split(",") if m.strip()]
     col_int_list = [c.strip().lower() for c in couleur_int_r.split(",") if c.strip()]
     mots_cles_bonus = mat_list + col_int_list
+    malus_imperatives = 0
+    bonus_extra = 0
     if not mots_cles:
         bonus_options = p_options
-        malus_imperatives = 0
+        detail["options"] = {"score": p_options, "max": p_options, "note": "Aucune option demandée"}
     else:
-        trouves = sum(1 for m in mots_cles if m in options_a)
-        ratio = trouves / len(mots_cles)
+        presentes = [m for m in mots_cles if m in options_a]
+        absentes = [m for m in mots_cles if m not in options_a]
+        ratio = len(presentes) / len(mots_cles)
         bonus_options = round(p_options * ratio, 1)
         manquantes = [m for m in imperatives if m not in options_a]
         malus_imperatives = len(manquantes) * -12
         if manquantes and not raison_rejet:
             raison_rejet = f"Option(s) impérative(s) manquante(s) : {', '.join(manquantes)}"
-    # Petit bonus si matériaux/couleur intérieure trouvés dans l'annonce
-    bonus_extra = sum(2 for m in mots_cles_bonus if m in options_a)
-    detail["options"] = {"score": bonus_options + malus_imperatives + bonus_extra, "max": p_options}
+        bonus_extra = sum(2 for m in mots_cles_bonus if m in options_a)
+        detail["options"] = {
+            "score": bonus_options + malus_imperatives + bonus_extra,
+            "max": p_options,
+            "presentes": presentes,
+            "absentes": absentes,
+            "imperatives_manquantes": manquantes,
+        }
 
     # ── Pénalité champs critiques manquants ────────────────────────────────────
-    # Prix, km et année manquants sont déjà pénalisés ci-dessus via leur score.
-    # On ajoute une pénalité supplémentaire légère pour souligner le manque d'info.
     nb_manquants = sum([
         1 if annonce.get("prix") is None else 0,
         1 if annonce.get("km") is None else 0,
@@ -296,29 +312,43 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
     titre_a = (annonce.get("titre") or "").lower()
     if finition_r:
         mots_finition = [m.strip() for m in finition_r.split(",") if m.strip()]
-        # Pour chaque mot de finition, chercher aussi ses aliases (termes allemands équivalents)
         termes = []
         for m in mots_finition:
             termes.extend(FINITION_ALIASES.get(m, [m]))
-        finition_trouvee = any(t in titre_a or t in options_a for t in termes)
-        bonus_finition = 5 if finition_trouvee else 0
-        if not finition_trouvee and finition_imperatif and not raison_rejet:
-            raison_rejet = f"Finition '{finition_r}' non trouvée dans l'annonce"
+        terme_trouve = next((t for t in termes if t in titre_a or t in options_a), None)
+        finition_trouvee = terme_trouve is not None
+        if finition_trouvee:
+            bonus_finition = 5
+        elif finition_imperatif:
+            # Impératif non trouvé : malus fort mais pas d'exclusion — reste visible avec score bas
+            bonus_finition = -20
+            if not raison_rejet:
+                raison_rejet = f"Finition '{finition_r}' non trouvée"
+        else:
+            bonus_finition = 0
+        finition_entry = {
+            "score": bonus_finition, "max": 5,
+            "cherche": finition_r,
+            "trouve": terme_trouve or "non trouvé",
+        }
+        if annonce.get("finition_source"):
+            finition_entry["source"] = annonce["finition_source"]
+        detail["finition"] = finition_entry
     else:
         bonus_finition = 0
-    detail["finition"] = {"score": bonus_finition, "max": 5}
+        detail["finition"] = {"score": 0, "max": 5}
 
     # ── Risque inondation ──────────────────────────────────────────────────────
     ville_a = (annonce.get("ville") or "").lower().strip()
     zone_inondable = bool(ville_a and any(z in ville_a for z in ZONES_INONDATION))
     malus_inondation = -8 if zone_inondable else 0
-    detail["inondation"] = {"score": malus_inondation, "max": 0, "risque": zone_inondable}
+    detail["inondation"] = {"score": malus_inondation, "max": 0, "risque": zone_inondable, "ville": annonce.get("ville", "")}
 
     # ── Score final ────────────────────────────────────────────────────────────
     score_brut = (
         score_prix + score_km + score_annee + bonus_km_an
         + score_boite + score_carburant + score_vendeur
-        + bonus_options - penalite + bonus_fraicheur + malus_inondation + malus_couleur
+        + bonus_options + malus_imperatives + bonus_extra - penalite + bonus_fraicheur + malus_inondation + malus_couleur
         + score_carrosserie + bonus_finition
     )
     score_final = max(0.0, min(100.0, score_brut))
@@ -331,8 +361,8 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
 
 
 def selectionner_top_annonces(annonces_scorees: list, recherche: dict) -> list:
-    seuil = recherche.get("score_min_notification", 60)
-    max_n = recherche.get("max_annonces", 3)
+    seuil = recherche.get("score_min_notification", 50)
+    max_n = recherche.get("max_annonces", 10)
     filtre = [a for a in annonces_scorees if a["score"] >= seuil]
     filtre.sort(key=lambda a: (a["score"], a.get("date_publication") or ""), reverse=True)
     return filtre[:max_n]

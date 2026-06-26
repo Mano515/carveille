@@ -16,28 +16,52 @@ def _formater_detail(score_detail_json: str) -> str:
     except Exception:
         return ""
     lignes = []
-    labels = {
-        "prix": "Prix", "km": "Km", "annee": "Annee",
-        "boite": "Boite", "carburant": "Carburant",
-        "options": "Options", "vendeur": "Vendeur",
-        "penalite": "Penalite", "fraicheur": "Fraicheur",
-    }
-    for key, label in labels.items():
+    defs = [
+        ("prix",        "Prix"),
+        ("km",          "Kilométrage"),
+        ("km_an",       "Usage annuel"),
+        ("annee",       "Année"),
+        ("boite",       "Boîte"),
+        ("carburant",   "Carburant"),
+        ("carrosserie", "Carrosserie"),
+        ("finition",    "Finition"),
+        ("options",     "Options"),
+        ("couleur",     "Couleur"),
+        ("fraicheur",   "Fraîcheur"),
+        ("inondation",  "Zone inondable"),
+        ("penalite",    "Pénalité"),
+    ]
+    for key, label in defs:
         if key not in d:
             continue
         item = d[key]
         score = item.get("score", 0)
         max_v = item.get("max", 0)
-        if key == "penalite" and score == 0:
+        if max_v == 0 and score == 0 and not item.get("note") and not item.get("trouve"):
             continue
-        if key == "fraicheur" and score == 0:
-            continue
-        if key == "vendeur" and score == 0:
-            continue
-        if max_v > 0:
-            lignes.append(f"    {label}: {score}/{max_v}")
-        else:
-            lignes.append(f"    {label}: {score:+.0f}")
+        score_str = f"{score}/{max_v}" if max_v > 0 else f"{score:+.0f}"
+        # Contexte cherche → trouve
+        ctx = ""
+        if item.get("cherche") and item.get("trouve"):
+            arrow = "≠" if item.get("note") else "→"
+            ctx = f" ({item['cherche']} {arrow} {item['trouve']})"
+        elif item.get("note"):
+            ctx = f" ({item['note']})"
+        elif key == "fraicheur" and item.get("age"):
+            ctx = f" (il y a {item['age']})"
+        elif key == "inondation" and item.get("risque") and item.get("ville"):
+            ctx = f" (⚠ {item['ville']})"
+        elif key == "options" and item.get("presentes") is not None:
+            parts = []
+            if item["presentes"]:
+                parts.append(f"✓ {', '.join(item['presentes'])}")
+            if item.get("absentes"):
+                parts.append(f"✗ {', '.join(item['absentes'])}")
+            if item.get("imperatives_manquantes"):
+                parts.append(f"⛔ {', '.join(item['imperatives_manquantes'])}")
+            if parts:
+                ctx = f" ({' · '.join(parts)})"
+        lignes.append(f"    {label}: {score_str}{ctx}")
     return "\n".join(lignes)
 
 
