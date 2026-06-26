@@ -2289,7 +2289,7 @@ function renderAnnonce(a, searchId, historique = false) {
   const thumbUrls = a.images_urls ? a.images_urls.split('\n').filter(Boolean) : (a.image_url ? [a.image_url] : []);
   const thumbHtml = thumbUrls.length
     ? `<div class="annonce-thumb-wrap" onclick="_ouvrirDepuisThumb(this)" data-url="${_urlFr(a.url||'').replace(/"/g,'&quot;')}" title="Voir l'annonce">
-        <img class="annonce-thumb" src="${thumbUrls[0]}" alt="" loading="lazy" onerror="this.closest('.annonce-thumb-wrap').style.display='none'">
+        <img class="annonce-thumb" src="${_proxyUrl(thumbUrls[0])}" alt="" loading="lazy" onerror="this.closest('.annonce-thumb-wrap').style.display='none'">
         ${thumbUrls.length > 1 ? `<span class="thumb-count">+${thumbUrls.length - 1}</span>` : ''}
        </div>` : '';
 
@@ -2956,8 +2956,11 @@ function _galerieClose() {
   document.getElementById('galerie-modal').classList.remove('open');
   document.removeEventListener('keydown', _galerieKey);
 }
+function _proxyUrl(url) {
+  return `${API}/photo-proxy?url=${encodeURIComponent(url)}`;
+}
 function _galerieShow() {
-  document.getElementById('galerie-img').src = _galerieUrls[_galerieIdx];
+  document.getElementById('galerie-img').src = _proxyUrl(_galerieUrls[_galerieIdx]);
   const total = _galerieUrls.length;
   document.getElementById('galerie-counter').textContent = total > 1 ? `${_galerieIdx + 1} / ${total}` : '';
   document.getElementById('galerie-prev').style.display = total > 1 ? '' : 'none';

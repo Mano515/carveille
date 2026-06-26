@@ -488,6 +488,31 @@ def cmd_ui():
             elif self.path == "/status":
                 from src.sources.mobile_de import progression as _prog
                 self._send_json({**_run_status, "progression": dict(_prog)})
+            elif self.path.startswith("/photo-proxy"):
+                import urllib.parse
+                qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                url = qs.get("url", [""])[0]
+                _cdn = ["img.mobile.de", "i.ebayimg.com", "images.mobile.de", "pic.classistatic.de", "mobile.de"]
+                if not url or not any(d in url for d in _cdn):
+                    self.send_response(403); self.end_headers(); return
+                try:
+                    req = urllib.request.Request(url, headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        "Referer": "https://www.mobile.de/",
+                        "Accept": "image/avif,image/webp,image/*,*/*;q=0.8",
+                    })
+                    data = urllib.request.urlopen(req, timeout=15).read()
+                    low = url.lower()
+                    ct = "image/avif" if ".avif" in low else ("image/webp" if ".webp" in low else "image/jpeg")
+                    self.send_response(200)
+                    self.send_header("Content-Type", ct)
+                    self.send_header("Content-Length", str(len(data)))
+                    self.send_header("Cache-Control", "max-age=3600")
+                    self.end_headers()
+                    self.wfile.write(data)
+                except Exception as e:
+                    print(f"[WARN] /photo-proxy : {e}")
+                    self.send_response(502); self.end_headers()
             else:
                 if self.path != '/favicon.ico':
                     print(f"[WARN] GET {self.path} : route inconnue (404)")
@@ -729,7 +754,7 @@ def cmd_ui():
                     html = urllib.request.urlopen(req, timeout=12).read().decode("utf-8", errors="replace")
                     raw = re.findall(
                         r'https?://(?:img\.mobile\.de|i\.ebayimg\.com|images\.mobile\.de|pic\.classistatic\.de)'
-                        r'/[^\s"\'<>]+\.(?:jpg|jpeg|png|webp)',
+                        r'/[^\s"\'<>]+\.(?:jpg|jpeg|png|webp|avif)',
                         html, re.IGNORECASE
                     )
                     # Dédupliquer en gardant l'ordre
@@ -789,7 +814,11 @@ def cmd_ui():
                     nb_ok = 0
                     for idx, img_url in enumerate(urls):
                         try:
-                            req = urllib.request.Request(img_url.strip(), headers={"User-Agent": "Mozilla/5.0"})
+                            req = urllib.request.Request(img_url.strip(), headers={
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                                "Referer": "https://www.mobile.de/",
+                                "Accept": "image/avif,image/webp,image/*,*/*;q=0.8",
+                            })
                             data = urllib.request.urlopen(req, timeout=15).read()
                             img = Image.open(io.BytesIO(data))
                             suffix = f"_{idx+1}" if len(urls) > 1 else ""
