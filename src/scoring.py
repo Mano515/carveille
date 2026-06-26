@@ -266,8 +266,17 @@ def scorer_annonce(annonce: dict, recherche: dict) -> dict:
         detail["carrosserie"] = {"score": -5, "max": 3, "cherche": "/".join(carrosserie_list), "trouve": carrosserie_a, "note": "Ne correspond pas"}
 
     # ── Options / mots-clés ───────────────────────────────────────────────────
-    mots_cles = [m.strip().lower() for m in options_r.split(",") if m.strip()]
-    imperatives = [m.strip().lower() for m in options_imp_r.split(",") if m.strip()]
+    # Exclure la finition des options et impératives : déjà évaluée via fiche détail,
+    # donc pas de double pénalité si renseignée aussi dans options_imperatives/recherchees.
+    finition_aliases: set[str] = set()
+    if finition_r:
+        from config import FINITION_ALIASES
+        finition_aliases = {t.lower() for t in FINITION_ALIASES.get(finition_r, [finition_r])}
+        finition_aliases.add(finition_r)
+    mots_cles = [m.strip().lower() for m in options_r.split(",")
+                 if m.strip() and m.strip().lower() not in finition_aliases]
+    imperatives = [m.strip().lower() for m in options_imp_r.split(",")
+                   if m.strip() and m.strip().lower() not in finition_aliases]
     mat_list = [m.strip().lower() for m in materiaux_r.split(",") if m.strip()]
     col_int_list = [c.strip().lower() for c in couleur_int_r.split(",") if c.strip()]
     mots_cles_bonus = mat_list + col_int_list
