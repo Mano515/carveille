@@ -907,44 +907,44 @@ def fetch_images_annonce(url: str) -> list[str]:
             print(f"  [BLOCK] fetch_images_annonce bloqué sur {url[-60:]}")
             return []
 
-        # Récupérer le source complet (inclut les <script> RSC avec les données)
-        source = driver.page_source
+        # Scroller toute la page pour forcer le lazy-loading de toutes les slides
+        total_height = driver.execute_script("return document.body.scrollHeight")
+        step = 300
+        pos = 0
+        while pos < total_height:
+            driver.execute_script(f"window.scrollTo(0, {pos});")
+            time.sleep(0.15)
+            pos += step
+        driver.execute_script("window.scrollTo(0, 0);")
+        time.sleep(0.5)
 
-        # mobile.de utilise img.classistatic.de pour les photos du carrousel
-        CDN_PATTERN = re.compile(
-            r'https?://(?:img\.classistatic\.de|img\.mobile\.de|i\.ebayimg\.com|images\.mobile\.de|pic\.classistatic\.de)'
-            r'/[^\s"\'\\,\]>\}]{5,}',
-            re.IGNORECASE
-        )
-        raw = CDN_PATTERN.findall(source)
+        # Cibler uniquement les slides du carrousel véhicule :
+        # data-testid="image-0", "image-1", ... (exclut panorama360, etc.)
+        urls = driver.execute_script("""
+            const gallery = document.querySelector('[data-testid="image-gallery"]');
+            if (!gallery) return [];
+            const slides = gallery.querySelectorAll('[data-testid^="image-"]');
+            const result = [];
+            for (const slide of slides) {
+                const img = slide.querySelector('img');
+                if (!img) continue;
+                // Extraire la plus haute résolution depuis srcset
+                let best = null, bestW = 0;
+                const srcset = img.getAttribute('srcset') || '';
+                for (const part of srcset.split(',')) {
+                    const [u, w] = part.trim().split(/\\s+/);
+                    const width = parseInt(w) || 0;
+                    if (u && width > bestW) { best = u; bestW = width; }
+                }
+                // Fallback sur src
+                if (!best) best = img.getAttribute('src') || '';
+                if (best && !result.includes(best)) result.push(best);
+            }
+            return result;
+        """)
 
-        # Nettoyer et dédupliquer
-        seen: set = set()
-        all_urls = []
-        for u in raw:
-            u = re.split(r'["\'\s\\,\]>\}]', u)[0]
-            if u not in seen:
-                seen.add(u)
-                all_urls.append(u)
-
-        # Préférer rule=mo-1600 (pleine résolution).
-        # Pour chaque image (même chemin de base), ne garder que la plus grande.
-        def base_path(u):
-            return u.split('?')[0]
-
-        full_res = [u for u in all_urls if 'mo-1600' in u or 'rule=mo-1600' in u]
-        if not full_res:
-            # Fallback : garder toutes les URLs uniques par chemin de base
-            bases: set = set()
-            full_res = []
-            for u in all_urls:
-                b = base_path(u)
-                if b not in bases and 'favicon' not in u and 'logo' not in u:
-                    bases.add(b)
-                    full_res.append(u)
-
-        print(f"  [IMG] {len(full_res)} images pleine résolution trouvées")
-        return full_res
+        print(f"  [IMG] {len(urls or [])} photos véhicule trouvées")
+        return urls or []
     except Exception as e:
         print(f"  [WARN] fetch_images_annonce : {e}")
         return []
