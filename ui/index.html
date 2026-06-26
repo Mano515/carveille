@@ -1778,6 +1778,7 @@ function renderClientCard(c) {
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button class="btn-sm" style="background:var(--c-success);color:white;border-color:var(--c-success)" onclick="lancerRunUne('${r.search_id}', '${nomSafe}', this)">🔍 Lancer</button>
         <button class="btn-voir btn-sm" onclick="voirResultats('${r.search_id}', '${nomSafe}')">Résultats</button>
+        ${r.mobile_de_url ? `<a class="btn-sm" href="${r.mobile_de_url}" target="_blank" style="text-decoration:none">🌐 Rechercher</a>` : ''}
         <button class="btn-sm btn-edit" onclick="editerRecherche('${r.search_id}')">✏️</button>
         <button class="btn-sm btn-delete" onclick="supprimerRecherche('${r.search_id}', '${nomSafe}', this)">🗑️</button>
       </div>
@@ -1871,6 +1872,7 @@ async function chargerClients() {
           </select>` : ''}
           <button class="btn-sm" style="background:var(--c-success);color:white;border-color:var(--c-success)" onclick="lancerRunUne('${r.search_id}', '${nomSafe}', this)">🔍 Lancer</button>
           <button class="btn-voir btn-sm" onclick="voirResultats('${r.search_id}', '${nomSafe}')">Résultats</button>
+          ${r.mobile_de_url ? `<a class="btn-sm" href="${r.mobile_de_url}" target="_blank" style="text-decoration:none">🌐 Rechercher</a>` : ''}
           <button class="btn-sm btn-edit" onclick="editerRecherche('${r.search_id}')">✏️</button>
           <button class="btn-sm btn-delete" onclick="supprimerRecherche('${r.search_id}', '${nomSafe}', this)">🗑️</button>
         </div>
