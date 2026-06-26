@@ -2500,7 +2500,10 @@ function filtrerResultats() { _afficherResultats(); }
 async function ouvrirRechercheMobile(searchId) {
   const r = await fetch(`/search-url/${searchId}`);
   const data = await r.json();
-  if (data.url) window.open(data.url, '_blank');
+  if (!data.url) return;
+  // Ouvre d'abord la homepage FR pour forcer le cookie de langue, puis redirige
+  const win = window.open('https://www.mobile.de/?lang=fr', '_blank');
+  setTimeout(() => { win.location.href = data.url; }, 1500);
 }
 
 async function viderResultats(searchId, nom) {
