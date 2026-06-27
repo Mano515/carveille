@@ -722,6 +722,38 @@ def cmd_ui():
                 else:
                     self._send_json({"ok": False, "error": "Parametres invalides"}, 400)
 
+            elif self.path == "/ouvrir-dossier":
+                seen_id = body.get("seen_id")
+                annonce = get_annonce_by_seen_id(seen_id) if seen_id else None
+                if not annonce:
+                    self._send_json({"ok": False, "error": "Annonce introuvable"})
+                    return
+                client_id = annonce.get("client_id")
+                client = get_client_by_id(client_id) if client_id else None
+                titre_safe = "".join(c for c in (annonce.get("titre") or "annonce") if c.isalnum() or c in " _-")[:50].strip()
+                base_dir = (_dossier_client(client["nom"]) / "voitures") if client else (_dossier_clients_root() / "_Non classe")
+                save_dir = base_dir / titre_safe
+                if not save_dir.exists():
+                    save_dir.mkdir(parents=True, exist_ok=True)
+                import subprocess
+                subprocess.Popen(['explorer', str(save_dir)])
+                self._send_json({"ok": True})
+
+            elif self.path == "/charger-photos":
+                seen_id = body.get("seen_id")
+                if not seen_id:
+                    self._send_json({"ok": False, "error": "seen_id manquant"}, 400)
+                    return
+                annonce = get_annonce_by_seen_id(seen_id)
+                if not annonce:
+                    self._send_json({"ok": False, "error": "Annonce introuvable"})
+                    return
+                existing = annonce.get("images_urls") or ""
+                urls = [u for u in existing.split("\n") if u.strip()]
+                if not urls and annonce.get("image_url"):
+                    urls = [annonce["image_url"]]
+                self._send_json({"ok": True, "urls": urls})
+
             elif self.path == "/telecharger-photos":
                 seen_id = body.get("seen_id")
                 if not seen_id:

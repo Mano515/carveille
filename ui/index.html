@@ -175,43 +175,76 @@ button:hover { opacity: .88; }
 /* ── Galerie modale ─────────────────────────────── */
 #galerie-modal {
   display: none; position: fixed; inset: 0; z-index: 2000;
-  background: rgba(0,0,0,.88); align-items: center; justify-content: center;
+  background: rgba(0,0,0,.93);
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 0;
 }
 #galerie-modal.open { display: flex; }
-#galerie-modal img {
-  max-width: 90vw; max-height: 85vh; border-radius: 8px;
-  object-fit: contain; user-select: none;
+
+#galerie-overlay {
+  position: absolute; inset: 0; z-index: 0;
 }
-.galerie-nav {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  background: rgba(255,255,255,.15); border: none; color: #fff;
-  font-size: 2rem; width: 48px; height: 48px; border-radius: 50%;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: background .15s;
+#galerie-dossier {
+  position: absolute; top: 24px; right: 24px; z-index: 10;
+  background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3);
+  color: #fff; font-size: 0.88rem; font-weight: 600; padding: 9px 18px;
+  border-radius: 24px; cursor: pointer; display: flex; align-items: center; gap: 7px;
+  transition: background .15s, transform .15s; font-family: inherit;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
 }
-.galerie-nav:hover { background: rgba(255,255,255,.3); }
-#galerie-prev { left: 16px; }
-#galerie-next { right: 16px; }
-#galerie-close {
-  position: absolute; top: 16px; right: 16px;
-  background: rgba(255,255,255,.15); border: none; color: #fff;
-  font-size: 1.4rem; width: 40px; height: 40px; border-radius: 50%;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-}
-#galerie-close:hover { background: rgba(255,255,255,.3); }
-#galerie-bottom {
-  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
+#galerie-dossier:hover { background: rgba(255,255,255,.28); transform: scale(1.04); }
+#galerie-counter-wrap {
+  flex-shrink: 0; text-align: center; padding: 8px 0 4px;
 }
 #galerie-counter {
-  color: rgba(255,255,255,.65); font-size: 0.82rem; letter-spacing: .3px;
+  color: rgba(255,255,255,.65); font-size: 0.82rem; font-weight: 500;
+  letter-spacing: .5px; font-variant-numeric: tabular-nums;
 }
-#galerie-dl {
-  background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3);
-  padding: 7px 16px; border-radius: 20px; font-size: 0.8rem; cursor: pointer;
-  backdrop-filter: blur(4px); transition: background .15s; font-family: inherit;
+
+#galerie-main {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  gap: 0; width: 100%; min-height: 0; position: relative; padding: 0 60px;
 }
-#galerie-dl:hover { background: rgba(255,255,255,.28); }
+#galerie-img {
+  max-width: 80%; max-height: 80%;
+  object-fit: contain; border-radius: 6px;
+  user-select: none; display: block;
+  transition: opacity .18s ease;
+}
+#galerie-img.fading { opacity: 0; }
+
+.galerie-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18);
+  color: #fff; font-size: 2.2rem; width: 62px; height: 62px; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background .15s, transform .15s; flex-shrink: 0; line-height: 1;
+  padding-bottom: 2px;
+}
+.galerie-nav:hover { background: rgba(255,255,255,.25); transform: translateY(-50%) scale(1.08); }
+.galerie-nav:active { transform: translateY(-50%) scale(0.96); }
+#galerie-prev { left: 10px; }
+#galerie-next { right: 10px; }
+
+#galerie-thumbs-wrap {
+  flex-shrink: 0; width: 100%; padding: 6px 0 12px;
+  display: flex; justify-content: center;
+}
+#galerie-thumbs {
+  display: flex; gap: 6px; overflow-x: auto; max-width: 90vw;
+  padding: 0 8px 4px; scroll-behavior: smooth;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent;
+}
+#galerie-thumbs::-webkit-scrollbar { height: 4px; }
+#galerie-thumbs::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 2px; }
+.galerie-thumb {
+  width: 72px; height: 52px; object-fit: cover; border-radius: 5px;
+  cursor: pointer; flex-shrink: 0; opacity: .5;
+  border: 2px solid transparent;
+  transition: opacity .15s, border-color .15s, transform .15s;
+}
+.galerie-thumb:hover { opacity: .85; transform: scale(1.04); }
+.galerie-thumb.active { opacity: 1; border-color: #fff; }
 .annonce-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .annonce-titre { font-weight: 600; font-size: 0.95rem; color: var(--c-text); line-height: 1.4; letter-spacing: -.2px; }
 .annonce-specs {
@@ -877,6 +910,8 @@ html[data-theme="dark"] .ac-drop { background: #1e2236; border-color: #2e3350; }
 .btn-dropdown-arrow:hover { background: var(--c-border); }
 .btn-photos { background: #37474f; color: white; border-color: #37474f; }
 .btn-photos:hover { background: #263238; }
+.btn-voir-galerie { background: var(--c-accent); color: white; border-color: var(--c-accent); }
+.btn-voir-galerie:hover { background: #1d4ed8; border-color: #1d4ed8; opacity: 1; }
 </style>
 </head>
 <body>
@@ -1405,14 +1440,18 @@ html[data-theme="dark"] .ac-drop { background: #1e2236; border-color: #2e3350; }
 
 <div class="toast" id="toast"><span class="toast-icon"></span><span class="toast-msg"></span></div>
 
-<div id="galerie-modal" onclick="if(event.target===this)_galerieClose()">
-  <button id="galerie-close" onclick="_galerieClose()">✕</button>
-  <button class="galerie-nav" id="galerie-prev" onclick="_galeriePrev()">&#8592;</button>
-  <img id="galerie-img" src="" alt="">
-  <button class="galerie-nav" id="galerie-next" onclick="_galerieNext()">&#8594;</button>
-  <div id="galerie-bottom">
+<div id="galerie-modal" onclick="_galerieClose()">
+  <button id="galerie-dossier" onclick="event.stopPropagation();_ouvrirDossierGalerie()" title="Ouvrir le dossier des photos">&#128193; Ouvrir le dossier</button>
+  <div id="galerie-main">
+    <button class="galerie-nav" id="galerie-prev" onclick="event.stopPropagation();_galeriePrev()">&#8249;</button>
+    <img id="galerie-img" src="" alt="" onclick="event.stopPropagation()">
+    <button class="galerie-nav" id="galerie-next" onclick="event.stopPropagation();_galerieNext()">&#8250;</button>
+  </div>
+  <div id="galerie-counter-wrap" onclick="event.stopPropagation()">
     <span id="galerie-counter"></span>
-    <button id="galerie-dl" onclick="_galerieDl()" title="Télécharger toutes les photos">⬇ Télécharger toutes les photos</button>
+  </div>
+  <div id="galerie-thumbs-wrap" onclick="event.stopPropagation()">
+    <div id="galerie-thumbs"></div>
   </div>
 </div>
 
@@ -1641,9 +1680,11 @@ function ageBadge(dateStr) {
 
 // ── Statut du run ───────────────────────────────────────────────────────────────
 
+let _serverWasDown = false;
 async function updateStatus() {
   try {
     const s = await fetch(`${API}/status`).then(r => r.json());
+    if (_serverWasDown) { _serverWasDown = false; location.reload(); return; }
     const dot  = document.getElementById('status-dot');
     const text = document.getElementById('status-text');
     if (s.en_cours) {
@@ -1658,6 +1699,7 @@ async function updateStatus() {
       text.textContent = 'Aucune recherche effectuee';
     }
   } catch {
+    _serverWasDown = true;
     document.getElementById('status-text').textContent = 'Hors ligne';
   }
 }
@@ -2352,6 +2394,7 @@ function renderAnnonce(a, searchId, historique = false) {
       <button class="btn-sm btn-non ${a.interet === 'non' ? 'active' : ''}"
         onclick="marquerInteret('${seenIdSafe}','${a.interet === 'non' ? 'neutre' : 'non'}','${searchId}')">👎 Non</button>
       <button class="btn-sm btn-photos" onclick="_telechargerPhotos('${seenIdSafe}')">📷 Télécharger les photos</button>
+      <button class="btn-sm btn-voir-galerie" id="btn-voir-galerie-${a.seen_id}" onclick="_ouvrirPhotos('${seenIdSafe}')" style="${a.images_urls ? '' : 'display:none'}">🖼️ Voir les photos</button>
       ${breakdown ? `<button class="btn-sm btn-detail" onclick="toggleDetail('${seenIdSafe}')">Score</button>` : ''}
       <button class="btn-sm btn-note" onclick="toggleNote('${seenIdSafe}')">${hasNote ? '📝 Note' : '+ Note'}</button>
     </div>
@@ -2948,6 +2991,7 @@ function _galerieOpen(urls, idx, seenId) {
   _galerieUrls = urls;
   _galerieIdx = idx;
   _galerieSeenId = seenId || null;
+  _galerieBuildThumbs();
   _galerieShow();
   document.getElementById('galerie-modal').classList.add('open');
   document.addEventListener('keydown', _galerieKey);
@@ -2959,26 +3003,60 @@ function _galerieClose() {
 function _proxyUrl(url) {
   return `${API}/photo-proxy?url=${encodeURIComponent(url)}`;
 }
-function _galerieShow() {
-  document.getElementById('galerie-img').src = _proxyUrl(_galerieUrls[_galerieIdx]);
+function _galerieBuildThumbs() {
+  const strip = document.getElementById('galerie-thumbs');
+  strip.innerHTML = _galerieUrls.map((url, i) =>
+    `<img class="galerie-thumb${i === _galerieIdx ? ' active' : ''}" src="${_proxyUrl(url)}" data-idx="${i}" onclick="_galerieGoto(${i})" loading="lazy" alt="">`
+  ).join('');
+}
+function _galerieShow(fade) {
+  const img = document.getElementById('galerie-img');
   const total = _galerieUrls.length;
   document.getElementById('galerie-counter').textContent = total > 1 ? `${_galerieIdx + 1} / ${total}` : '';
   document.getElementById('galerie-prev').style.display = total > 1 ? '' : 'none';
   document.getElementById('galerie-next').style.display = total > 1 ? '' : 'none';
-  const dlBtn = document.getElementById('galerie-dl');
-  if (dlBtn) dlBtn.style.display = _galerieSeenId ? '' : 'none';
+
+  if (fade) {
+    img.classList.add('fading');
+    setTimeout(() => {
+      img.src = _proxyUrl(_galerieUrls[_galerieIdx]);
+      img.classList.remove('fading');
+    }, 120);
+  } else {
+    img.src = _proxyUrl(_galerieUrls[_galerieIdx]);
+  }
+
+  // Mettre à jour les miniatures actives
+  document.querySelectorAll('.galerie-thumb').forEach((t, i) => {
+    t.classList.toggle('active', i === _galerieIdx);
+  });
+  // Centrer la miniature active dans le strip
+  const activeThumb = document.querySelector('.galerie-thumb.active');
+  if (activeThumb) activeThumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
-function _galeriePrev() { _galerieIdx = (_galerieIdx - 1 + _galerieUrls.length) % _galerieUrls.length; _galerieShow(); }
-function _galerieNext() { _galerieIdx = (_galerieIdx + 1) % _galerieUrls.length; _galerieShow(); }
+function _galerieGoto(idx) { _galerieIdx = idx; _galerieShow(true); }
+function _galeriePrev() { _galerieIdx = (_galerieIdx - 1 + _galerieUrls.length) % _galerieUrls.length; _galerieShow(true); }
+function _galerieNext() { _galerieIdx = (_galerieIdx + 1) % _galerieUrls.length; _galerieShow(true); }
 function _galerieKey(e) {
   if (e.key === 'ArrowLeft')  _galeriePrev();
   if (e.key === 'ArrowRight') _galerieNext();
   if (e.key === 'Escape')     _galerieClose();
 }
-function _galerieDl() {
-  if (!_galerieSeenId) return;
+function _galerieClickFond(e) {
+  const t = e.target;
+  if (t.tagName === 'BUTTON' || t.tagName === 'IMG') return;
   _galerieClose();
-  _telechargerPhotos(_galerieSeenId);
+}
+async function _ouvrirDossierGalerie() {
+  if (!_galerieSeenId) return;
+  try {
+    const r = await fetch(`${API}/ouvrir-dossier`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({seen_id: _galerieSeenId})
+    }).then(r => r.json());
+    if (!r.ok) showToast(r.error || 'Dossier introuvable', false);
+  } catch { showToast('Erreur connexion', false); }
 }
 
 // Ouvre la galerie après avoir chargé toutes les URLs depuis le backend
@@ -3012,8 +3090,11 @@ async function _telechargerPhotos(seenId) {
       body: JSON.stringify({seen_id: seenId})
     }).then(r => r.json());
     _hideToast();
-    if (r.ok) showToast(`📷 ${r.nb} photo${r.nb > 1 ? 's' : ''} sauvegardée${r.nb > 1 ? 's' : ''} → ${r.dossier}`);
-    else showToast(r.error || 'Erreur téléchargement photos', false);
+    if (r.ok) {
+      showToast(`📷 ${r.nb} photo${r.nb > 1 ? 's' : ''} sauvegardée${r.nb > 1 ? 's' : ''} → ${r.dossier}`);
+      const btnVoir = document.getElementById(`btn-voir-galerie-${seenId}`);
+      if (btnVoir) btnVoir.style.display = '';
+    } else showToast(r.error || 'Erreur téléchargement photos', false);
   } catch { _hideToast(); showToast('Erreur connexion', false); }
 }
 

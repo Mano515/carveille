@@ -891,67 +891,263 @@ _JS_LIRE_IMAGES = """
 
 def fetch_images_annonce(url: str) -> list[str]:
     """
-    Visite la fiche détail avec Selenium, récupère le code source complet
-    et extrait toutes les URLs d'images par regex.
-    Les URLs sont dans le payload RSC/JSON de la page, pas dans le DOM rendu.
+    Recupere toutes les photos d'une fiche mobile.de.
+
+    Strategie principale : patch IntersectionObserver via CDP avant navigation.
+    Quand React configure le lazy-loading des images, notre patch declenche
+    immediatement isIntersecting=true sur chaque element observe, forcant
+    le chargement de tous les srcset sans interaction manuelle.
+
+    Strategies de secours : requests SSR HTML, page_source regex, clic Next.
     """
+    import re as _re
+    import requests as _rq
+
     session_ouverte_ici = False
     if _session is None:
         ouvrir_session()
         session_ouverte_ici = True
     driver = _session["driver"]
+
+    IO_PATCH = r"""
+(function() {
+    if (window.__io_patched__) return;
+    window.__io_patched__ = true;
+    var _IO = window.IntersectionObserver;
+    window.IntersectionObserver = function(cb, opts) {
+        var io = new _IO(cb, opts);
+        var _obs = io.observe.bind(io);
+        io.observe = function(target) {
+            _obs(target);
+            try {
+                cb([{
+                    target: target,
+                    isIntersecting: true,
+                    intersectionRatio: 1,
+                    boundingClientRect: target.getBoundingClientRect ? target.getBoundingClientRect() : {},
+                    intersectionRect: target.getBoundingClientRect ? target.getBoundingClientRect() : {},
+                    rootBounds: null,
+                    time: performance.now()
+                }]);
+            } catch(e) {}
+        };
+        return io;
+    };
+    window.IntersectionObserver.prototype = _IO.prototype;
+})();
+"""
+
+    def _urls_from_html(html):
+        """Extrait les UUID classistatic et reconstruit les URLs full-res."""
+        uuids = list(dict.fromkeys(
+            _re.findall(r'mo-prod/images/[0-9a-f]{2}/([0-9a-f-]{36})', html)
+        ))
+        if uuids:
+            return [
+                "https://img.classistatic.de/api/v1/mo-prod/images/{}/{uuid}?rule=mo-1600".format(
+                    uuid[:2], uuid=uuid
+                )
+                for uuid in uuids
+            ]
+        # Fallback : regex URL directe
+        seen, result = set(), []
+        for m in _re.finditer(
+            r'https://img\.classistatic\.de/api/v1/mo-prod/images/[^\s"\'<>&]+', html
+        ):
+            u = _re.sub(r'rule=mo-\d+', 'rule=mo-1600', m.group(0))
+            k = u.split('?')[0]
+            if k not in seen:
+                seen.add(k)
+                result.append(u)
+        return result
+
+    script_id = None
     try:
+        # ── Stratégie 1 : patch IntersectionObserver via CDP ─────────────────
+        # Injecté AVANT driver.get() → actif quand React configure ses observers
+        try:
+            res = driver.execute_cdp_cmd(
+                'Page.addScriptToEvaluateOnNewDocument', {'source': IO_PATCH}
+            )
+            script_id = res.get('identifier')
+        except Exception as e:
+            print(f"  [IMG] CDP inject échoué : {e}")
+
         driver.get(url)
-        time.sleep(3.0)
         if _est_bloquee(driver):
-            print(f"  [BLOCK] fetch_images_annonce bloqué sur {url[-60:]}")
+            print(f"  [IMG] page bloquée")
             return []
 
-        # Scroller toute la page pour forcer le lazy-loading de toutes les slides
-        total_height = driver.execute_script("return document.body.scrollHeight")
-        step = 300
-        pos = 0
-        while pos < total_height:
-            driver.execute_script(f"window.scrollTo(0, {pos});")
-            time.sleep(0.15)
-            pos += step
-        driver.execute_script("window.scrollTo(0, 0);")
-        time.sleep(0.5)
+        # Attendre que React hydrate ET que les IntersectionObserver callbacks
+        # aient eu le temps de se déclencher et de charger les images
+        time.sleep(5)
 
-        # Cibler uniquement les slides du carrousel véhicule :
-        # data-testid="image-0", "image-1", ... (exclut panorama360, etc.)
-        urls = driver.execute_script("""
-            const gallery = document.querySelector('[data-testid="image-gallery"]');
-            if (!gallery) return [];
-            const slides = gallery.querySelectorAll('[data-testid^="image-"]');
-            const result = [];
-            for (const slide of slides) {
-                const img = slide.querySelector('img');
-                if (!img) continue;
-                // Extraire la plus haute résolution depuis srcset
-                let best = null, bestW = 0;
-                const srcset = img.getAttribute('srcset') || '';
-                for (const part of srcset.split(',')) {
-                    const [u, w] = part.trim().split(/\\s+/);
-                    const width = parseInt(w) || 0;
-                    if (u && width > bestW) { best = u; bestW = width; }
+        raw = driver.execute_script(r"""
+            var seen = new Set(), result = [];
+            // UUID strict : exclut co2class, badges, logos concessionnaire
+            var uuidRe = /\/images\/[0-9a-f]{2}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
+
+            // Cibler uniquement le carrousel — exclut couverture et section concessionnaire
+            var container = document.querySelector('[data-testid="image-gallery"]')
+                         || document.querySelector('[data-testid="thumbnail-gallery"]')
+                         || document.querySelector('[data-testid="pictures-section"]');
+            var scope = container || document;
+
+            scope.querySelectorAll('img').forEach(function(img) {
+                var src = img.currentSrc || img.src || '';
+                if (!src || !src.includes('img.classistatic.de') || src.includes('data:')) return;
+                if (!uuidRe.test(src)) return;
+                src = src.replace(/rule=mo-\d+/, 'rule=mo-1600');
+                var key = src.split('?')[0];
+                if (!seen.has(key)) { seen.add(key); result.push(src); }
+            });
+            return {urls: result, scope: container ? container.getAttribute('data-testid') : 'document'};
+        """) or {}
+        urls_dom = (raw or {}).get('urls', [])
+        scope_used = (raw or {}).get('scope', '?')
+        print(f"  [IMG] {len(urls_dom)} photos via IO patch + DOM (scope: {scope_used})")
+        if len(urls_dom) > 2:
+            return urls_dom
+
+        # ── Stratégie 2 : requests avec cookies Selenium (SSR HTML) ──────────
+        try:
+            cookies_dict = {c['name']: c['value'] for c in driver.get_cookies()}
+            ua = driver.execute_script("return navigator.userAgent")
+            resp = _rq.get(
+                url,
+                cookies=cookies_dict,
+                headers={
+                    'User-Agent': ua,
+                    'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8',
+                    'Accept-Language': 'fr-FR,fr;q=0.9,de;q=0.8',
+                    'Referer': 'https://suchen.mobile.de/',
+                },
+                timeout=15,
+            )
+            print(f"  [IMG] requests status={resp.status_code}, taille={len(resp.text)} chars")
+            if resp.ok:
+                urls_req = _urls_from_html(resp.text)
+                print(f"  [IMG] {len(urls_req)} photos via requests SSR")
+                if len(urls_req) > 2:
+                    return urls_req
+        except Exception as e:
+            print(f"  [IMG] requests échoué : {e}")
+
+        # ── Stratégie 3 : page_source Selenium ───────────────────────────────
+        try:
+            urls_ps = _urls_from_html(driver.page_source)
+            print(f"  [IMG] {len(urls_ps)} photos via page_source")
+            if len(urls_ps) > 2:
+                return urls_ps
+        except Exception as e:
+            print(f"  [IMG] page_source échoué : {e}")
+
+        # ── Stratégie 4 : scroll thumbnail gallery ────────────────────────────
+        try:
+            scroll_result = driver.execute_script(r"""
+                var tg = document.querySelector('[data-testid="thumbnail-gallery"]');
+                if (!tg) return {found: false, width: 0};
+                var w = tg.scrollWidth;
+                return {found: true, width: w};
+            """) or {}
+            if scroll_result.get('found'):
+                scroll_width = scroll_result.get('width', 3000)
+                import time as _t
+                step = 120
+                for offset in range(0, scroll_width + step, step):
+                    driver.execute_script(
+                        "var tg = document.querySelector('[data-testid=\"thumbnail-gallery\"]');"
+                        "if (tg) tg.scrollLeft = arguments[0];",
+                        offset
+                    )
+                    _t.sleep(0.15)
+                _t.sleep(0.5)
+                urls_th = driver.execute_script(r"""
+                    var tg = document.querySelector('[data-testid="thumbnail-gallery"]');
+                    if (!tg) return [];
+                    var seen = new Set(), result = [];
+                    tg.querySelectorAll('img').forEach(function(img) {
+                        var src = img.currentSrc || img.src || '';
+                        if (!src || src.includes('data:') || !src.includes('classistatic')) return;
+                        src = src.replace(/rule=mo-\d+/, 'rule=mo-1600');
+                        var key = src.split('?')[0];
+                        if (!seen.has(key)) { seen.add(key); result.push(src); }
+                    });
+                    return result;
+                """) or []
+                print(f"  [IMG] {len(urls_th)} photos via scroll thumbnails")
+                if len(urls_th) > 2:
+                    return urls_th
+            else:
+                print("  [IMG] thumbnail-gallery non trouvé")
+        except Exception as e:
+            print(f"  [IMG] scroll thumbnails échoué : {e}")
+
+        # ── Stratégie 5 : ouvrir galerie + bouton suivant ─────────────────────
+        try:
+            # Ouvrir la galerie plein écran via JS click sur le focus container
+            driver.execute_script(r"""
+                var selectors = [
+                    '[data-testid="gallery-main-focus-container"]',
+                    '[data-testid="gallery-image-container"]',
+                    '.g-image-gallery__image',
+                    'img[data-testid="main-image"]',
+                ];
+                for (var i = 0; i < selectors.length; i++) {
+                    var el = document.querySelector(selectors[i]);
+                    if (el) { el.dispatchEvent(new MouseEvent('click', {bubbles: true})); break; }
                 }
-                // Fallback sur src
-                if (!best) best = img.getAttribute('src') || '';
-                if (best && !result.includes(best)) result.push(best);
-            }
-            return result;
-        """)
+            """)
+            time.sleep(1.5)
 
-        print(f"  [IMG] {len(urls or [])} photos véhicule trouvées")
-        return urls or []
+            n_slides = driver.execute_script(r"""
+                var g = document.querySelector('[data-testid="image-gallery"]');
+                return g ? g.querySelectorAll('[data-testid^="image-"]').length : 0;
+            """) or 0
+            print(f"  [IMG] galerie ouverte : {n_slides} slides")
+
+            for _ in range(max(n_slides, 1) - 1):
+                driver.execute_script(r"""
+                    var btn = document.querySelector('[data-testid="gallery-next-button"]');
+                    if (btn) btn.click();
+                """)
+                time.sleep(0.12)
+            time.sleep(0.5)
+
+            urls_gal = driver.execute_script(r"""
+                var g = document.querySelector('[data-testid="image-gallery"]');
+                if (!g) return [];
+                var seen = new Set(), result = [];
+                g.querySelectorAll('img').forEach(function(img) {
+                    var src = img.currentSrc || img.src || '';
+                    if (!src || src.includes('data:') || !src.includes('classistatic')) return;
+                    src = src.replace(/rule=mo-\d+/, 'rule=mo-1600');
+                    var key = src.split('?')[0];
+                    if (!seen.has(key)) { seen.add(key); result.push(src); }
+                });
+                return result;
+            """) or []
+            print(f"  [IMG] {len(urls_gal)} photos via galerie + bouton suivant")
+            return urls_gal
+        except Exception as e:
+            print(f"  [IMG] galerie bouton suivant échoué : {e}")
+
+        return urls_dom or []
+
     except Exception as e:
         print(f"  [WARN] fetch_images_annonce : {e}")
         return []
     finally:
+        if script_id:
+            try:
+                driver.execute_cdp_cmd(
+                    'Page.removeScriptToEvaluateOnNewDocument',
+                    {'identifier': script_id}
+                )
+            except Exception:
+                pass
         if session_ouverte_ici:
             fermer_session()
-
 
 def _chercher_finition_sur_detail(driver, url: str, termes: list[str]) -> tuple[str | None, str | None, bool]:
     """
